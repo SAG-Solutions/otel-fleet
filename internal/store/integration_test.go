@@ -1,0 +1,344 @@
+//go:build integration
+
+// Package store integration tests run the REAL goose migrations against a real
+// PostgreSQL and exercise the PG store end-to-end. They catch the class of bug
+// unit tests with fakes cannot — SQL errors, column/scan mismatches (e.g. a
+// hardcoded column list drifting from scanX), constraint violations — which
+// otherwise only surface live.
+//
+// Run:  OTELFLEET_TEST_DATABASE_URL=postgres://otelfleet:otelfleet@localhost:5432/otelfleet_test \
+//         go test -tags=integration ./internal/store/...
+// With the env unset the whole suite skips, so `go test ./...` stays green.
+package store
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/jansagurna/otelfleet/internal/audit"
+)
+
+var testPG *PG
+
+func TestMain(m *testing.M) {
+	dsn := os.Getenv("OTELFLEET_TEST_DATABASE_URL")
+	if dsn == "" {
+		fmt.Println("skipping store integration tests: OTELFLEET_TEST_DATABASE_URL unset")
+		os.Exit(0)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "connect:", err)
+		os.Exit(1)
+	}
+	if err := Migrate(ctx, pool); err != nil {
+		fmt.Fprintln(os.Stderr, "migrate:", err)
+		os.Exit(1)
+	}
+	testPG = NewPG(pool)
+	code := m.Run()
+	pool.Close()
+	os.Exit(code)
+}
+
+func ctxT(t *testing.T) context.Context {
+	t.Helper()
+	return context.Background()
+}
+
+func uniq() string { return uuid.NewString()[:8] }
+
+func auditEntry(action, entityType, entityID string) []audit.Entry {
+	return []audit.Entry{{Action: action, EntityType: entityType, EntityID: entityID}}
+}
+
+// makeCustomer creates a customer + its initial API key and returns it.
+func makeCustomer(t *testing.T) Customer {
+	t.Helper()
+	ctx := ctxT(t)
+	id := uuid.New()
+	slug := "it-" + uniq()
+	cust, key, err := testPG.CreateCustomer(ctx,
+		NewCustomer{ID: id, Slug: slug, Name: "IT " + slug, ClientID: "cust_" + uniq()},
+		NewAPIKey{ID: uuid.New(), CustomerID: id, Name: "default", KeyPrefix: "otm_" + uniq(), KeyHash: []byte("hash")},
+		auditEntry("customer.create", "customer", id.String()))
+	if err != nil {
+		t.Fatalf("CreateCustomer: %v", err)
+	}
+	if cust.ID != id || cust.Slug != slug {
+		t.Fatalf("customer round-trip mismatch: %+v", cust)
+	}
+	if key.CustomerID != id {
+		t.Fatalf("initial key customer mismatch: %+v", key)
+	}
+	return cust
+}
+
+func TestIntegrationCustomers(t *testing.T) {
+	ctx := ctxT(t)
+	c := makeCustomer(t)
+
+	got, err := testPG.GetCustomer(ctx, c.ID)
+	if err != nil || got.ClientID != c.ClientID {
+		t.Fatalf("GetCustomer: %+v err=%v", got, err)
+	}
+	if _, err := testPG.ListCustomers(ctx, nil); err != nil {
+		t.Fatalf("ListCustomers: %v", err)
+	}
+	active := CustomerActive
+	if _, err := testPG.ListCustomers(ctx, &active); err != nil {
+		t.Fatalf("ListCustomers(active): %v", err)
+	}
+	if _, err := testPG.ListCustomerRefs(ctx); err != nil {
+		t.Fatalf("ListCustomerRefs: %v", err)
+	}
+	if _, err := testPG.CountActiveCustomers(ctx); err != nil {
+		t.Fatalf("CountActiveCustomers: %v", err)
+	}
+
+	rate := 500
+	upd, err := testPG.UpdateCustomer(ctx, c.ID, CustomerUpdate{RateLimitItemsPerSec: OptionalInt{Set: true, Value: &rate}}, auditEntry("customer.update", "customer", c.ID.String()))
+	if err != nil || upd.RateLimitItemsPerSec == nil || *upd.RateLimitItemsPerSec != 500 {
+		t.Fatalf("UpdateCustomer quota: %+v err=%v", upd, err)
+	}
+	if _, err := testPG.ListAPIKeys(ctx, c.ID); err != nil {
+		t.Fatalf("ListAPIKeys: %v", err)
+	}
+}
+
+// TestIntegrationUsers guards the userCols/scanUser* column lists — the class
+// of bug that once broke every login (7-vs-8 column mismatch).
+func TestIntegrationUsers(t *testing.T) {
+	ctx := ctxT(t)
+	// Seed an enabled admin so the last-admin invariant holds for role changes.
+	if _, err := testPG.CreateInvitedUser(ctx, uuid.New(), "admin-"+uniq()+"@example.com", "admin", auditEntry("user.invite", "user", "admin")); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+	email := "it-" + uniq() + "@example.com"
+	u, err := testPG.CreateInvitedUser(ctx, uuid.New(), email, "operator", auditEntry("user.invite", "user", email))
+	if err != nil {
+		t.Fatalf("CreateInvitedUser: %v", err)
+	}
+	if _, err := testPG.GetUser(ctx, u.ID); err != nil {
+		t.Fatalf("GetUser: %v", err)
+	}
+	if _, err := testPG.GetUserWithIdentities(ctx, u.ID); err != nil {
+		t.Fatalf("GetUserWithIdentities: %v", err)
+	}
+	byEmail, err := testPG.GetUserByEmail(ctx, email)
+	if err != nil || byEmail.ID != u.ID {
+		t.Fatalf("GetUserByEmail: %+v err=%v", byEmail, err)
+	}
+	if _, err := testPG.ListUsers(ctx); err != nil {
+		t.Fatalf("ListUsers: %v", err)
+	}
+	role := "viewer"
+	if _, err := testPG.UpdateUserAdmin(ctx, u.ID, UserUpdate{Role: &role}, auditEntry("user.update", "user", u.ID.String())); err != nil {
+		t.Fatalf("UpdateUserAdmin: %v", err)
+	}
+
+	// SCIM provisioning + external id.
+	dn, ext := "SCIM User", "idp-"+uniq()
+	semail := "scim-" + uniq() + "@example.com"
+	su, err := testPG.CreateSCIMUser(ctx, uuid.New(), semail, "viewer", &dn, &ext, auditEntry("scim.user.create", "user", semail))
+	if err != nil || su.ExternalID == nil || *su.ExternalID != ext {
+		t.Fatalf("CreateSCIMUser: %+v err=%v", su, err)
+	}
+	dn2 := "SCIM Renamed"
+	if _, err := testPG.UpdateSCIMUser(ctx, su.ID, &dn2, &ext, auditEntry("scim.user.update", "user", su.ID.String())); err != nil {
+		t.Fatalf("UpdateSCIMUser: %v", err)
+	}
+
+	// Tenant-scope grants round-trip.
+	c := makeCustomer(t)
+	if err := testPG.SetUserCustomerGrants(ctx, u.ID, []uuid.UUID{c.ID}, auditEntry("user.grants", "user", u.ID.String())); err != nil {
+		t.Fatalf("SetUserCustomerGrants: %v", err)
+	}
+	ids, err := testPG.ListUserCustomerIDs(ctx, u.ID)
+	if err != nil || len(ids) != 1 || ids[0] != c.ID {
+		t.Fatalf("ListUserCustomerIDs: %v err=%v", ids, err)
+	}
+	// Clearing grants.
+	if err := testPG.SetUserCustomerGrants(ctx, u.ID, nil, auditEntry("user.grants", "user", u.ID.String())); err != nil {
+		t.Fatalf("clear grants: %v", err)
+	}
+	if ids, _ := testPG.ListUserCustomerIDs(ctx, u.ID); len(ids) != 0 {
+		t.Fatalf("grants not cleared: %v", ids)
+	}
+}
+
+// TestIntegrationAuthProviders guards authProviderCols incl. the saml_config
+// column added in migration 0012.
+func TestIntegrationAuthProviders(t *testing.T) {
+	ctx := ctxT(t)
+	issuer := "https://accounts.google.com"
+	oidc, err := testPG.CreateAuthProvider(ctx, NewAuthProvider{
+		ID: uuid.New(), Type: "oidc", Name: "oidc-" + uniq(), DisplayName: "OIDC",
+		ClientID: "cid", ClientSecretEnc: []byte("enc"), Issuer: &issuer, Enabled: true,
+	}, auditEntry("authprovider.create", "auth_provider", "oidc"))
+	if err != nil {
+		t.Fatalf("CreateAuthProvider oidc: %v", err)
+	}
+	saml, err := testPG.CreateAuthProvider(ctx, NewAuthProvider{
+		ID: uuid.New(), Type: "saml", Name: "saml-" + uniq(), DisplayName: "SAML",
+		SAMLConfig: []byte(`{"idpEntityId":"e","idpSsoUrl":"https://idp/sso","idpCertificate":"pem"}`),
+		ClientSecretEnc: []byte{}, Enabled: true,
+	}, auditEntry("authprovider.create", "auth_provider", "saml"))
+	if err != nil {
+		t.Fatalf("CreateAuthProvider saml: %v", err)
+	}
+	if len(saml.SAMLConfig) == 0 {
+		t.Fatal("saml_config not persisted")
+	}
+	if _, err := testPG.GetAuthProvider(ctx, oidc.ID); err != nil {
+		t.Fatalf("GetAuthProvider: %v", err)
+	}
+	if _, err := testPG.GetAuthProviderByName(ctx, saml.Name); err != nil {
+		t.Fatalf("GetAuthProviderByName: %v", err)
+	}
+	if _, err := testPG.ListAuthProviders(ctx, false); err != nil {
+		t.Fatalf("ListAuthProviders: %v", err)
+	}
+}
+
+// TestIntegrationWebhooks guards webhookCols incl. the type column (0010).
+func TestIntegrationWebhooks(t *testing.T) {
+	ctx := ctxT(t)
+	for _, typ := range []string{WebhookTypeGeneric, WebhookTypeSlack} {
+		w, err := testPG.CreateWebhook(ctx, NewWebhook{
+			ID: uuid.New(), Type: typ, Name: typ + "-" + uniq(), URL: "https://hooks.example.com",
+			Events: []string{WebhookEventAgentOffline}, Enabled: true,
+		}, auditEntry("webhook.create", "webhook", typ))
+		if err != nil || w.Type != typ {
+			t.Fatalf("CreateWebhook %s: %+v err=%v", typ, w, err)
+		}
+		if _, err := testPG.GetWebhook(ctx, w.ID); err != nil {
+			t.Fatalf("GetWebhook: %v", err)
+		}
+	}
+	if _, err := testPG.ListWebhooks(ctx); err != nil {
+		t.Fatalf("ListWebhooks: %v", err)
+	}
+}
+
+// TestIntegrationAgents guards agentCols incl. acked_config_hash/display_name/
+// labels (0008), enrollment, meta update and events.
+func TestIntegrationAgents(t *testing.T) {
+	ctx := ctxT(t)
+	c := makeCustomer(t)
+	bt, err := testPG.CreateBootstrapToken(ctx, NewBootstrapToken{
+		ID: uuid.New(), CustomerID: c.ID, Name: "bt-" + uniq(), TokenPrefix: "otm_bt_" + uniq(),
+		TokenHash: []byte("h"), ExpiresAt: time.Now().Add(time.Hour),
+	}, auditEntry("bootstrap.create", "bootstrap_token", "bt"))
+	if err != nil {
+		t.Fatalf("CreateBootstrapToken: %v", err)
+	}
+	name := "edge-" + uniq()
+	ag, err := testPG.EnrollAgent(ctx, NewAgent{
+		ID: uuid.New(), InstanceUID: uuid.New().NodeID(), CustomerID: c.ID, Class: AgentClassEdge,
+		Name: &name, Capabilities: 14599, EnrolledVia: bt.ID,
+	})
+	if err != nil {
+		t.Fatalf("EnrollAgent: %v", err)
+	}
+	if _, err := testPG.GetAgent(ctx, ag.ID); err != nil {
+		t.Fatalf("GetAgent: %v", err)
+	}
+	if _, err := testPG.GetAgentByInstanceUID(ctx, ag.InstanceUID); err != nil {
+		t.Fatalf("GetAgentByInstanceUID: %v", err)
+	}
+	edge := AgentClassEdge
+	if _, err := testPG.ListAgents(ctx, AgentFilter{Class: &edge, CustomerID: &c.ID}); err != nil {
+		t.Fatalf("ListAgents: %v", err)
+	}
+	dn := "Edge (Berlin)"
+	updated, err := testPG.UpdateAgentMeta(ctx, ag.ID, &dn, []byte(`{"env":"prod"}`), auditEntry("agent.update", "agent", ag.ID.String()))
+	if err != nil || updated.DisplayName == nil || *updated.DisplayName != dn {
+		t.Fatalf("UpdateAgentMeta: %+v err=%v", updated, err)
+	}
+	if err := testPG.SetAgentAckedConfig(ctx, ag.ID, []byte("acked")); err != nil {
+		t.Fatalf("SetAgentAckedConfig: %v", err)
+	}
+	if _, err := testPG.ListAgentEvents(ctx, ag.ID, 50); err != nil {
+		t.Fatalf("ListAgentEvents: %v", err)
+	}
+}
+
+func TestIntegrationAPITokens(t *testing.T) {
+	ctx := ctxT(t)
+	prefix := "otm_pat_" + uniq()
+	tok, err := testPG.CreateAPIToken(ctx, NewAPIToken{
+		ID: uuid.New(), Name: "ci-" + uniq(), TokenPrefix: prefix, TokenHash: []byte("h"), Role: "admin",
+	}, auditEntry("apitoken.create", "api_token", prefix))
+	if err != nil {
+		t.Fatalf("CreateAPIToken: %v", err)
+	}
+	if _, err := testPG.ListAPITokens(ctx); err != nil {
+		t.Fatalf("ListAPITokens: %v", err)
+	}
+	if _, err := testPG.ActiveAPITokensByPrefix(ctx, prefix); err != nil {
+		t.Fatalf("ActiveAPITokensByPrefix: %v", err)
+	}
+	if err := testPG.RevokeAPIToken(ctx, tok.ID, auditEntry("apitoken.revoke", "api_token", tok.ID.String())); err != nil {
+		t.Fatalf("RevokeAPIToken: %v", err)
+	}
+}
+
+func TestIntegrationPipelines(t *testing.T) {
+	ctx := ctxT(t)
+	c := makeCustomer(t)
+	pid, vid := uuid.New(), uuid.New()
+	pipe, ver, err := testPG.CreatePipeline(ctx,
+		NewPipeline{ID: pid, CustomerID: c.ID, Name: "pipe-" + uniq(), TargetClass: ClassForwarding},
+		NewPipelineVersion{ID: vid, PipelineID: pid, Graph: []byte(`{"signals":["logs"]}`), RenderedYAML: "exporters: {}", ConfigHash: []byte("h"), ValidationStatus: ValidationValid},
+		auditEntry("pipeline.create", "pipeline", pid.String()))
+	if err != nil {
+		t.Fatalf("CreatePipeline: %v", err)
+	}
+	if _, err := testPG.GetPipeline(ctx, pipe.ID); err != nil {
+		t.Fatalf("GetPipeline: %v", err)
+	}
+	if _, err := testPG.ListPipelines(ctx, &c.ID); err != nil {
+		t.Fatalf("ListPipelines: %v", err)
+	}
+	if _, err := testPG.ListPipelineVersions(ctx, pipe.ID); err != nil {
+		t.Fatalf("ListPipelineVersions: %v", err)
+	}
+	if _, _, err := testPG.ActivatePipelineVersion(ctx, pipe.ID, ver.Version, auditEntry("pipeline_version.activate", "pipeline", pipe.ID.String())); err != nil {
+		t.Fatalf("ActivatePipelineVersion: %v", err)
+	}
+}
+
+// TestIntegrationBillingSettings guards the singleton billing_settings (0013).
+func TestIntegrationBillingSettings(t *testing.T) {
+	ctx := ctxT(t)
+	if _, err := testPG.GetBillingSettings(ctx); err != nil {
+		t.Fatalf("GetBillingSettings (seeded row): %v", err)
+	}
+	gib, mil := int64(2_000_000), int64(500_000)
+	cur := "EUR"
+	got, err := testPG.UpdateBillingSettings(ctx, BillingSettingsUpdate{PricePerGiBMicro: &gib, PricePerMillionItemsMicro: &mil, Currency: &cur}, nil, auditEntry("billing.settings.update", "billing_settings", "singleton"))
+	if err != nil || got.PricePerGiBMicro != gib || got.Currency != "EUR" {
+		t.Fatalf("UpdateBillingSettings: %+v err=%v", got, err)
+	}
+}
+
+// TestIntegrationAuditLog exercises the audit read path.
+func TestIntegrationAuditLog(t *testing.T) {
+	ctx := ctxT(t)
+	makeCustomer(t) // generates an audit row
+	rows, err := testPG.ListAuditLog(ctx, AuditFilter{Limit: 10})
+	if err != nil {
+		t.Fatalf("ListAuditLog: %v", err)
+	}
+	if len(rows) == 0 {
+		t.Fatal("expected at least one audit row")
+	}
+}

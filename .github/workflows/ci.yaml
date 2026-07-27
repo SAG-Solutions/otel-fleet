@@ -20,6 +20,31 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
 
+  # DB-backed store tests: run the real goose migrations against a real
+  # PostgreSQL and exercise every store query/scan. Catches SQL/column-scan
+  # regressions that fakes cannot (see internal/store/integration_test.go).
+  store-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: otelfleet
+          POSTGRES_PASSWORD: otelfleet
+          POSTGRES_DB: otelfleet_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U otelfleet"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -tags=integration ./internal/store/...
+        env:
+          OTELFLEET_TEST_DATABASE_URL: postgres://otelfleet:otelfleet@localhost:5432/otelfleet_test
+
   codegen-drift:
     runs-on: ubuntu-latest
     steps:
