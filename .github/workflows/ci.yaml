@@ -79,7 +79,9 @@ jobs:
           OTELFLEET_CLICKHOUSE_USER=otelfleet \
           OTELFLEET_CLICKHOUSE_PASSWORD=otelfleet \
           nohup /tmp/otelfleet > /tmp/cp.log 2>&1 &
-          for i in $(seq 1 30); do curl -sf localhost:8080/ >/dev/null 2>&1 && exit 0; sleep 2; done
+          # Poll the ops health endpoint (:9090); "/" on :8080 needs a web dir
+          # we don't ship in CI, so it 404s and is not a readiness signal.
+          for i in $(seq 1 30); do curl -sf localhost:9090/healthz >/dev/null 2>&1 && exit 0; sleep 2; done
           echo "::error::control plane did not come up"; cat /tmp/cp.log; exit 1
       - name: Run e2e smoke
         run: go test -tags=e2e ./test/e2e/... -v -timeout 180s
