@@ -506,6 +506,59 @@ export type BillingStatement = {
     totalMicro: number;
 };
 
+/**
+ * ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
+ */
+export type AlertMetric = 'ingest_items' | 'error_logs';
+
+/**
+ * below fires when the value is under the threshold (e.g. ingest dropped); above when over it.
+ */
+export type AlertComparison = 'below' | 'above';
+
+export type AlertRule = {
+    id: string;
+    name: string;
+    metric: AlertMetric;
+    comparison: AlertComparison;
+    threshold: number;
+    /**
+     * Evaluation window in seconds (>= 60).
+     */
+    windowSeconds: number;
+    /**
+     * null = every active customer
+     */
+    customerId?: string | null;
+    /**
+     * Notification channel (webhook) ids the rule fires.
+     */
+    channelIds: Array<string>;
+    enabled: boolean;
+    createdAt: string;
+};
+
+export type AlertRuleCreate = {
+    name: string;
+    metric: AlertMetric;
+    comparison: AlertComparison;
+    threshold: number;
+    windowSeconds: number;
+    customerId?: string | null;
+    channelIds?: Array<string>;
+    enabled?: boolean;
+};
+
+export type AlertRuleUpdate = {
+    name?: string;
+    metric?: AlertMetric;
+    comparison?: AlertComparison;
+    threshold?: number;
+    windowSeconds?: number;
+    channelIds?: Array<string>;
+    enabled?: boolean;
+};
+
 export type WebhookEvent = 'agent_offline' | 'agent_config_failed' | 'agent_unhealthy';
 
 /**
@@ -2688,6 +2741,144 @@ export type TestWebhookResponses = {
 };
 
 export type TestWebhookResponse = TestWebhookResponses[keyof TestWebhookResponses];
+
+export type ListAlertRulesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/alert-rules';
+};
+
+export type ListAlertRulesErrors = {
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+};
+
+export type ListAlertRulesError = ListAlertRulesErrors[keyof ListAlertRulesErrors];
+
+export type ListAlertRulesResponses = {
+    /**
+     * Rules
+     */
+    200: {
+        rules: Array<AlertRule>;
+    };
+};
+
+export type ListAlertRulesResponse = ListAlertRulesResponses[keyof ListAlertRulesResponses];
+
+export type CreateAlertRuleData = {
+    body: AlertRuleCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/alert-rules';
+};
+
+export type CreateAlertRuleErrors = {
+    /**
+     * Validation error
+     */
+    400: Error;
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+};
+
+export type CreateAlertRuleError = CreateAlertRuleErrors[keyof CreateAlertRuleErrors];
+
+export type CreateAlertRuleResponses = {
+    /**
+     * Created rule
+     */
+    201: AlertRule;
+};
+
+export type CreateAlertRuleResponse = CreateAlertRuleResponses[keyof CreateAlertRuleResponses];
+
+export type DeleteAlertRuleData = {
+    body?: never;
+    path: {
+        ruleId: string;
+    };
+    query?: never;
+    url: '/api/v1/settings/alert-rules/{ruleId}';
+};
+
+export type DeleteAlertRuleErrors = {
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+    /**
+     * Resource not found
+     */
+    404: Error;
+};
+
+export type DeleteAlertRuleError = DeleteAlertRuleErrors[keyof DeleteAlertRuleErrors];
+
+export type DeleteAlertRuleResponses = {
+    /**
+     * Deleted
+     */
+    204: void;
+};
+
+export type DeleteAlertRuleResponse = DeleteAlertRuleResponses[keyof DeleteAlertRuleResponses];
+
+export type UpdateAlertRuleData = {
+    body: AlertRuleUpdate;
+    path: {
+        ruleId: string;
+    };
+    query?: never;
+    url: '/api/v1/settings/alert-rules/{ruleId}';
+};
+
+export type UpdateAlertRuleErrors = {
+    /**
+     * Validation error
+     */
+    400: Error;
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+    /**
+     * Resource not found
+     */
+    404: Error;
+};
+
+export type UpdateAlertRuleError = UpdateAlertRuleErrors[keyof UpdateAlertRuleErrors];
+
+export type UpdateAlertRuleResponses = {
+    /**
+     * Updated rule
+     */
+    200: AlertRule;
+};
+
+export type UpdateAlertRuleResponse = UpdateAlertRuleResponses[keyof UpdateAlertRuleResponses];
 
 export type QueryLogsData = {
     body?: never;

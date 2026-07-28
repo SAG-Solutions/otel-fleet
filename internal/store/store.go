@@ -144,6 +144,53 @@ type BillingSettingsUpdate struct {
 	Currency                  *string
 }
 
+// Alert metric + comparison constants (mirror the alert_rules CHECKs).
+const (
+	AlertMetricIngestItems = "ingest_items"
+	AlertMetricErrorLogs   = "error_logs"
+	AlertComparisonBelow   = "below"
+	AlertComparisonAbove   = "above"
+)
+
+// AlertRule is a metric-threshold alert. CustomerID nil = all active customers.
+type AlertRule struct {
+	ID            uuid.UUID
+	Name          string
+	Metric        string
+	Comparison    string
+	Threshold     float64
+	WindowSeconds int
+	CustomerID    *uuid.UUID
+	ChannelIDs    []uuid.UUID
+	Enabled       bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type NewAlertRule struct {
+	ID            uuid.UUID
+	Name          string
+	Metric        string
+	Comparison    string
+	Threshold     float64
+	WindowSeconds int
+	CustomerID    *uuid.UUID
+	ChannelIDs    []uuid.UUID
+	Enabled       bool
+}
+
+// AlertRuleUpdate carries the PATCH fields; nil means unchanged. ChannelIDs is
+// replaced when non-nil.
+type AlertRuleUpdate struct {
+	Name          *string
+	Metric        *string
+	Comparison    *string
+	Threshold     *float64
+	WindowSeconds *int
+	ChannelIDs    []uuid.UUID
+	Enabled       *bool
+}
+
 // AuditFilter narrows ListAuditLog; nil fields match everything.
 type AuditFilter struct {
 	Action      *string
@@ -578,6 +625,14 @@ type Store interface {
 	UpdateSCIMUser(ctx context.Context, id uuid.UUID, displayName, externalID *string, entries []audit.Entry) (UserWithIdentities, error)
 	UpdateUserAdmin(ctx context.Context, id uuid.UUID, upd UserUpdate, entries []audit.Entry) (UserWithIdentities, error)
 	DeleteUser(ctx context.Context, id uuid.UUID, entries []audit.Entry) error
+
+	// Alert rules (metric-threshold alerting).
+	ListAlertRules(ctx context.Context) ([]AlertRule, error)
+	ListEnabledAlertRules(ctx context.Context) ([]AlertRule, error)
+	GetAlertRule(ctx context.Context, id uuid.UUID) (AlertRule, error)
+	CreateAlertRule(ctx context.Context, r NewAlertRule, entries []audit.Entry) (AlertRule, error)
+	UpdateAlertRule(ctx context.Context, id uuid.UUID, upd AlertRuleUpdate, entries []audit.Entry) (AlertRule, error)
+	DeleteAlertRule(ctx context.Context, id uuid.UUID, entries []audit.Entry) error
 
 	// Billing settings (singleton price list).
 	GetBillingSettings(ctx context.Context) (BillingSettings, error)

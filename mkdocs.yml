@@ -67,6 +67,7 @@ nav:
       - Pipelines: guides/pipelines.md
       - Pipeline templates: guides/pipeline-templates.md
       - Metered billing: guides/billing.md
+      - Alerting & notifications: guides/alerting.md
       - Edge agents: guides/edge-agents.md
       - Single sign-on: guides/sso.md
       - SAML SSO: guides/saml.md

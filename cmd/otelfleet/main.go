@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/jansagurna/otelfleet/internal/alerting"
 	"github.com/jansagurna/otelfleet/internal/api"
 	"github.com/jansagurna/otelfleet/internal/auth"
 	"github.com/jansagurna/otelfleet/internal/config"
@@ -169,6 +170,7 @@ func run(log *slog.Logger) error {
 	webhookDispatcher := webhooks.New(st, cipher, log)
 	opampSrv.Handler().SetEventSink(webhookDispatcher)
 	retentionSvc := retention.New(chConn, st, cfg.RetentionInterval, log)
+	alertingSvc := alerting.New(alerting.NewClickHouseSource(chConn), st, webhookDispatcher, time.Minute, log)
 
 	// Login provider registry: database providers + the OTELFLEET_OIDC_* env
 	// provider, resolved per request under /auth/{name}/...
@@ -278,6 +280,10 @@ func run(log *slog.Logger) error {
 		})
 		g.Go(func() error {
 			retentionSvc.Run(gctx) // per-customer retention sweep (singleton tier)
+			return nil
+		})
+		g.Go(func() error {
+			alertingSvc.Run(gctx) // metric-threshold alert evaluation (singleton tier)
 			return nil
 		})
 	}

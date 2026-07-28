@@ -29,6 +29,7 @@ var adminPathPrefixes = []string{
 	"/api/v1/users",
 	"/api/v1/settings/auth-providers",
 	"/api/v1/settings/api-tokens",
+	"/api/v1/settings/alert-rules",
 	"/api/v1/settings/billing",
 	"/api/v1/billing",
 	"/api/v1/audit",

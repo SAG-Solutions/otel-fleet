@@ -5,8 +5,9 @@ import { ApiTokensTab } from '@/features/settings/api-tokens-tab'
 import { SsoTab } from '@/features/settings/sso-tab'
 import { UsersTab } from '@/features/settings/users-tab'
 import { WebhooksTab } from '@/features/settings/webhooks-tab'
+import { AlertRulesTab } from '@/features/settings/alert-rules-tab'
 
-const TABS = ['sso', 'users', 'tokens', 'alerts'] as const
+const TABS = ['sso', 'users', 'tokens', 'alerts', 'alert-rules'] as const
 type Tab = (typeof TABS)[number]
 
 interface SettingsSearch {
@@ -37,6 +38,7 @@ function SettingsPage() {
         {tab === 'users' && <UsersTab />}
         {tab === 'tokens' && <ApiTokensTab />}
         {tab === 'alerts' && <WebhooksTab />}
+        {tab === 'alert-rules' && <AlertRulesTab />}
       </div>
     </AdminGate>
   )
@@ -48,6 +50,7 @@ function TabBar({ active }: { active: Tab }) {
     users: 'Users',
     tokens: 'API tokens',
     alerts: 'Alerts',
+    'alert-rules': 'Alert rules',
   }
   return (
     <nav aria-label="Settings sections" className="flex gap-1 border-b border-line">

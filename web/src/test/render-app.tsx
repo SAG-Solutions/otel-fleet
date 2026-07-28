@@ -7,6 +7,7 @@ import type {
   Agent,
   AgentDetail,
   AgentEvent,
+  AlertRule,
   ApiKey,
   ApiToken,
   AuditEntry,
@@ -292,6 +293,33 @@ export const testWebhooks: Webhook[] = [
   },
 ]
 
+export const testAlertRules: AlertRule[] = [
+  {
+    id: '4f2c7a1e-0000-4000-8000-000000000071',
+    name: 'ingest-drop',
+    metric: 'ingest_items',
+    comparison: 'below',
+    threshold: 999999,
+    windowSeconds: 300,
+    customerId: null,
+    channelIds: ['4f2c7a1e-0000-4000-8000-000000000061'],
+    enabled: true,
+    createdAt: '2026-07-12T09:00:00Z',
+  },
+  {
+    id: '4f2c7a1e-0000-4000-8000-000000000072',
+    name: 'error-spike',
+    metric: 'error_logs',
+    comparison: 'above',
+    threshold: 50,
+    windowSeconds: 300,
+    customerId: testCustomer.id,
+    channelIds: [],
+    enabled: false,
+    createdAt: '2026-07-13T09:00:00Z',
+  },
+]
+
 export const testBillingSettings: BillingSettings = {
   pricePerGibMicro: 500_000,
   pricePerMillionItemsMicro: 2_000_000,
@@ -463,6 +491,8 @@ export function stubApi(overrides: { me?: Me } = {}): void {
           return json({ entries: testAuditEntries, nextBeforeId: null })
         case '/api/v1/settings/webhooks':
           return json({ webhooks: testWebhooks })
+        case '/api/v1/settings/alert-rules':
+          return json({ rules: testAlertRules })
         case '/api/v1/settings/billing':
           return json(testBillingSettings)
         case '/api/v1/billing/statement':

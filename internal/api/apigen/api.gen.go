@@ -68,6 +68,42 @@ func (e AgentEventEventType) Valid() bool {
 	}
 }
 
+// Defines values for AlertComparison.
+const (
+	Above AlertComparison = "above"
+	Below AlertComparison = "below"
+)
+
+// Valid indicates whether the value is a known member of the AlertComparison enum.
+func (e AlertComparison) Valid() bool {
+	switch e {
+	case Above:
+		return true
+	case Below:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AlertMetric.
+const (
+	ErrorLogs   AlertMetric = "error_logs"
+	IngestItems AlertMetric = "ingest_items"
+)
+
+// Valid indicates whether the value is a known member of the AlertMetric enum.
+func (e AlertMetric) Valid() bool {
+	switch e {
+	case ErrorLogs:
+		return true
+	case IngestItems:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AuditEntryActorType.
 const (
 	AuditEntryActorTypeAgent  AuditEntryActorType = "agent"
@@ -561,6 +597,66 @@ type AgentUpdate struct {
 
 	// Labels Replaces the full label set when present; omit to leave labels unchanged.
 	Labels *map[string]string `json:"labels,omitempty"`
+}
+
+// AlertComparison below fires when the value is under the threshold (e.g. ingest dropped); above when over it.
+type AlertComparison string
+
+// AlertMetric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
+type AlertMetric string
+
+// AlertRule defines model for AlertRule.
+type AlertRule struct {
+	// ChannelIds Notification channel (webhook) ids the rule fires.
+	ChannelIds []openapi_types.UUID `json:"channelIds"`
+
+	// Comparison below fires when the value is under the threshold (e.g. ingest dropped); above when over it.
+	Comparison AlertComparison `json:"comparison"`
+	CreatedAt  time.Time       `json:"createdAt"`
+
+	// CustomerId null = every active customer
+	CustomerId *openapi_types.UUID `json:"customerId,omitempty"`
+	Enabled    bool                `json:"enabled"`
+	Id         openapi_types.UUID  `json:"id"`
+
+	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
+	Metric    AlertMetric `json:"metric"`
+	Name      string      `json:"name"`
+	Threshold float32     `json:"threshold"`
+
+	// WindowSeconds Evaluation window in seconds (>= 60).
+	WindowSeconds int `json:"windowSeconds"`
+}
+
+// AlertRuleCreate defines model for AlertRuleCreate.
+type AlertRuleCreate struct {
+	ChannelIds *[]openapi_types.UUID `json:"channelIds,omitempty"`
+
+	// Comparison below fires when the value is under the threshold (e.g. ingest dropped); above when over it.
+	Comparison AlertComparison     `json:"comparison"`
+	CustomerId *openapi_types.UUID `json:"customerId,omitempty"`
+	Enabled    *bool               `json:"enabled,omitempty"`
+
+	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
+	Metric        AlertMetric `json:"metric"`
+	Name          string      `json:"name"`
+	Threshold     float32     `json:"threshold"`
+	WindowSeconds int         `json:"windowSeconds"`
+}
+
+// AlertRuleUpdate defines model for AlertRuleUpdate.
+type AlertRuleUpdate struct {
+	ChannelIds *[]openapi_types.UUID `json:"channelIds,omitempty"`
+
+	// Comparison below fires when the value is under the threshold (e.g. ingest dropped); above when over it.
+	Comparison *AlertComparison `json:"comparison,omitempty"`
+	Enabled    *bool            `json:"enabled,omitempty"`
+
+	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
+	Metric        *AlertMetric `json:"metric,omitempty"`
+	Name          *string      `json:"name,omitempty"`
+	Threshold     *float32     `json:"threshold,omitempty"`
+	WindowSeconds *int         `json:"windowSeconds,omitempty"`
 }
 
 // ApiKey defines model for ApiKey.
@@ -1425,6 +1521,12 @@ type ValidatePipelineJSONRequestBody ValidatePipelineJSONBody
 // CreatePipelineVersionJSONRequestBody defines body for CreatePipelineVersion for application/json ContentType.
 type CreatePipelineVersionJSONRequestBody CreatePipelineVersionJSONBody
 
+// CreateAlertRuleJSONRequestBody defines body for CreateAlertRule for application/json ContentType.
+type CreateAlertRuleJSONRequestBody = AlertRuleCreate
+
+// UpdateAlertRuleJSONRequestBody defines body for UpdateAlertRule for application/json ContentType.
+type UpdateAlertRuleJSONRequestBody = AlertRuleUpdate
+
 // CreateApiTokenJSONRequestBody defines body for CreateApiToken for application/json ContentType.
 type CreateApiTokenJSONRequestBody CreateApiTokenJSONBody
 
@@ -1568,6 +1670,18 @@ type ServerInterface interface {
 	// Activate a version (deploys it to the forwarding tier; also used for rollback)
 	// (POST /api/v1/pipelines/{pipelineId}/versions/{version}/activate)
 	ActivatePipelineVersion(w http.ResponseWriter, r *http.Request, pipelineId openapi_types.UUID, version int)
+	// Metric-threshold alert rules (admin only)
+	// (GET /api/v1/settings/alert-rules)
+	ListAlertRules(w http.ResponseWriter, r *http.Request)
+	// Create a metric-threshold alert rule
+	// (POST /api/v1/settings/alert-rules)
+	CreateAlertRule(w http.ResponseWriter, r *http.Request)
+	// Delete an alert rule
+	// (DELETE /api/v1/settings/alert-rules/{ruleId})
+	DeleteAlertRule(w http.ResponseWriter, r *http.Request, ruleId openapi_types.UUID)
+	// Update an alert rule
+	// (PATCH /api/v1/settings/alert-rules/{ruleId})
+	UpdateAlertRule(w http.ResponseWriter, r *http.Request, ruleId openapi_types.UUID)
 	// List management-API tokens (admin only, secrets never returned)
 	// (GET /api/v1/settings/api-tokens)
 	ListApiTokens(w http.ResponseWriter, r *http.Request)
@@ -1868,6 +1982,30 @@ func (_ Unimplemented) GetPipelineVersion(w http.ResponseWriter, r *http.Request
 // Activate a version (deploys it to the forwarding tier; also used for rollback)
 // (POST /api/v1/pipelines/{pipelineId}/versions/{version}/activate)
 func (_ Unimplemented) ActivatePipelineVersion(w http.ResponseWriter, r *http.Request, pipelineId openapi_types.UUID, version int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Metric-threshold alert rules (admin only)
+// (GET /api/v1/settings/alert-rules)
+func (_ Unimplemented) ListAlertRules(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create a metric-threshold alert rule
+// (POST /api/v1/settings/alert-rules)
+func (_ Unimplemented) CreateAlertRule(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Delete an alert rule
+// (DELETE /api/v1/settings/alert-rules/{ruleId})
+func (_ Unimplemented) DeleteAlertRule(w http.ResponseWriter, r *http.Request, ruleId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Update an alert rule
+// (PATCH /api/v1/settings/alert-rules/{ruleId})
+func (_ Unimplemented) UpdateAlertRule(w http.ResponseWriter, r *http.Request, ruleId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3415,6 +3553,86 @@ func (siw *ServerInterfaceWrapper) ActivatePipelineVersion(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ListAlertRules operation middleware
+func (siw *ServerInterfaceWrapper) ListAlertRules(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAlertRules(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateAlertRule operation middleware
+func (siw *ServerInterfaceWrapper) CreateAlertRule(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateAlertRule(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAlertRule operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAlertRule(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ruleId" -------------
+	var ruleId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ruleId", chi.URLParam(r, "ruleId"), &ruleId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ruleId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAlertRule(w, r, ruleId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAlertRule operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAlertRule(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ruleId" -------------
+	var ruleId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ruleId", chi.URLParam(r, "ruleId"), &ruleId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ruleId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAlertRule(w, r, ruleId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListApiTokens operation middleware
 func (siw *ServerInterfaceWrapper) ListApiTokens(w http.ResponseWriter, r *http.Request) {
 
@@ -4110,6 +4328,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/pipelines/{pipelineId}/versions/{version}/activate", wrapper.ActivatePipelineVersion)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/settings/alert-rules", wrapper.ListAlertRules)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/settings/alert-rules", wrapper.CreateAlertRule)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/settings/alert-rules/{ruleId}", wrapper.DeleteAlertRule)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/settings/alert-rules/{ruleId}", wrapper.UpdateAlertRule)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/settings/api-tokens", wrapper.ListApiTokens)
@@ -6323,6 +6553,258 @@ func (response ActivatePipelineVersion404JSONResponse) VisitActivatePipelineVers
 	return err
 }
 
+type ListAlertRulesRequestObject struct {
+}
+
+type ListAlertRulesResponseObject interface {
+	VisitListAlertRulesResponse(w http.ResponseWriter) error
+}
+
+type ListAlertRules200JSONResponse struct {
+	Rules []AlertRule `json:"rules"`
+}
+
+func (response ListAlertRules200JSONResponse) VisitListAlertRulesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAlertRules401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListAlertRules401JSONResponse) VisitListAlertRulesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAlertRules403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListAlertRules403JSONResponse) VisitListAlertRulesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAlertRuleRequestObject struct {
+	Body *CreateAlertRuleJSONRequestBody
+}
+
+type CreateAlertRuleResponseObject interface {
+	VisitCreateAlertRuleResponse(w http.ResponseWriter) error
+}
+
+type CreateAlertRule201JSONResponse AlertRule
+
+func (response CreateAlertRule201JSONResponse) VisitCreateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAlertRule400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateAlertRule400JSONResponse) VisitCreateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAlertRule401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateAlertRule401JSONResponse) VisitCreateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAlertRule403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateAlertRule403JSONResponse) VisitCreateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAlertRuleRequestObject struct {
+	RuleId openapi_types.UUID `json:"ruleId"`
+}
+
+type DeleteAlertRuleResponseObject interface {
+	VisitDeleteAlertRuleResponse(w http.ResponseWriter) error
+}
+
+type DeleteAlertRule204Response struct {
+}
+
+func (response DeleteAlertRule204Response) VisitDeleteAlertRuleResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteAlertRule401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteAlertRule401JSONResponse) VisitDeleteAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAlertRule403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteAlertRule403JSONResponse) VisitDeleteAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAlertRule404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteAlertRule404JSONResponse) VisitDeleteAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAlertRuleRequestObject struct {
+	RuleId openapi_types.UUID `json:"ruleId"`
+	Body   *UpdateAlertRuleJSONRequestBody
+}
+
+type UpdateAlertRuleResponseObject interface {
+	VisitUpdateAlertRuleResponse(w http.ResponseWriter) error
+}
+
+type UpdateAlertRule200JSONResponse AlertRule
+
+func (response UpdateAlertRule200JSONResponse) VisitUpdateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAlertRule400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateAlertRule400JSONResponse) VisitUpdateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAlertRule401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateAlertRule401JSONResponse) VisitUpdateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAlertRule403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateAlertRule403JSONResponse) VisitUpdateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAlertRule404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateAlertRule404JSONResponse) VisitUpdateAlertRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListApiTokensRequestObject struct {
 }
 
@@ -7735,6 +8217,18 @@ type StrictServerInterface interface {
 	// Activate a version (deploys it to the forwarding tier; also used for rollback)
 	// (POST /api/v1/pipelines/{pipelineId}/versions/{version}/activate)
 	ActivatePipelineVersion(ctx context.Context, request ActivatePipelineVersionRequestObject) (ActivatePipelineVersionResponseObject, error)
+	// Metric-threshold alert rules (admin only)
+	// (GET /api/v1/settings/alert-rules)
+	ListAlertRules(ctx context.Context, request ListAlertRulesRequestObject) (ListAlertRulesResponseObject, error)
+	// Create a metric-threshold alert rule
+	// (POST /api/v1/settings/alert-rules)
+	CreateAlertRule(ctx context.Context, request CreateAlertRuleRequestObject) (CreateAlertRuleResponseObject, error)
+	// Delete an alert rule
+	// (DELETE /api/v1/settings/alert-rules/{ruleId})
+	DeleteAlertRule(ctx context.Context, request DeleteAlertRuleRequestObject) (DeleteAlertRuleResponseObject, error)
+	// Update an alert rule
+	// (PATCH /api/v1/settings/alert-rules/{ruleId})
+	UpdateAlertRule(ctx context.Context, request UpdateAlertRuleRequestObject) (UpdateAlertRuleResponseObject, error)
 	// List management-API tokens (admin only, secrets never returned)
 	// (GET /api/v1/settings/api-tokens)
 	ListApiTokens(ctx context.Context, request ListApiTokensRequestObject) (ListApiTokensResponseObject, error)
@@ -8893,6 +9387,120 @@ func (sh *strictHandler) ActivatePipelineVersion(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ActivatePipelineVersionResponseObject); ok {
 		if err := validResponse.VisitActivatePipelineVersionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListAlertRules operation middleware
+func (sh *strictHandler) ListAlertRules(w http.ResponseWriter, r *http.Request) {
+	var request ListAlertRulesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAlertRules(ctx, request.(ListAlertRulesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAlertRules")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAlertRulesResponseObject); ok {
+		if err := validResponse.VisitListAlertRulesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateAlertRule operation middleware
+func (sh *strictHandler) CreateAlertRule(w http.ResponseWriter, r *http.Request) {
+	var request CreateAlertRuleRequestObject
+
+	var body CreateAlertRuleJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateAlertRule(ctx, request.(CreateAlertRuleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateAlertRule")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateAlertRuleResponseObject); ok {
+		if err := validResponse.VisitCreateAlertRuleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteAlertRule operation middleware
+func (sh *strictHandler) DeleteAlertRule(w http.ResponseWriter, r *http.Request, ruleId openapi_types.UUID) {
+	var request DeleteAlertRuleRequestObject
+
+	request.RuleId = ruleId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteAlertRule(ctx, request.(DeleteAlertRuleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteAlertRule")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteAlertRuleResponseObject); ok {
+		if err := validResponse.VisitDeleteAlertRuleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateAlertRule operation middleware
+func (sh *strictHandler) UpdateAlertRule(w http.ResponseWriter, r *http.Request, ruleId openapi_types.UUID) {
+	var request UpdateAlertRuleRequestObject
+
+	request.RuleId = ruleId
+
+	var body UpdateAlertRuleJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateAlertRule(ctx, request.(UpdateAlertRuleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateAlertRule")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateAlertRuleResponseObject); ok {
+		if err := validResponse.VisitUpdateAlertRuleResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

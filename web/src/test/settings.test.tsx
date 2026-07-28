@@ -203,6 +203,49 @@ describe('/settings?tab=alerts', () => {
   })
 })
 
+describe('/settings?tab=alert-rules', () => {
+  it('renders the rules table with a human-readable condition, scope, and channel count', async () => {
+    renderApp('/settings?tab=alert-rules')
+    // Rule names.
+    expect(await screen.findByText('ingest-drop')).toBeInTheDocument()
+    expect(screen.getByText('error-spike')).toBeInTheDocument()
+    // Human-readable conditions.
+    expect(screen.getByText('Ingest items below 999999 over 5m')).toBeInTheDocument()
+    expect(screen.getByText('Error logs above 50 over 5m')).toBeInTheDocument()
+    // Scope: null → All customers, else the customer name.
+    expect(screen.getByText('All customers')).toBeInTheDocument()
+    expect(screen.getByText('ACME Corp')).toBeInTheDocument()
+    // Channel counts (singular/plural).
+    expect(screen.getByText('1 channel')).toBeInTheDocument()
+    expect(screen.getByText('0 channels')).toBeInTheDocument()
+    // Enabled toggles reflect each rule's state.
+    expect(screen.getByRole('switch', { name: 'ingest-drop enabled' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'error-spike enabled' })).not.toBeChecked()
+    // Per-row actions.
+    expect(screen.getByRole('button', { name: 'Edit ingest-drop' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete error-spike' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /new rule/i })).toBeInTheDocument()
+  })
+
+  it('opens the create dialog with metric, comparison, window, scope, and channel controls', async () => {
+    const user = userEvent.setup()
+    renderApp('/settings?tab=alert-rules')
+    await user.click(await screen.findByRole('button', { name: /new rule/i }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText('Name')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Metric')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Comparison')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Threshold')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Window')).toBeInTheDocument()
+    // Scope is editable on create and offers a customer option.
+    const scope = within(dialog).getByLabelText('Customer scope')
+    expect(scope).toBeEnabled()
+    expect(within(scope).getByRole('option', { name: 'ACME Corp' })).toBeInTheDocument()
+    // Channels come from the notification channels (webhooks) list.
+    expect(within(dialog).getByText('pagerduty-bridge')).toBeInTheDocument()
+  })
+})
+
 describe('/settings as non-admin', () => {
   it('shows the requires-admin page and hides admin nav items', async () => {
     stubApi({ me: testViewerMe })

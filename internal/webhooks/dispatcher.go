@@ -217,8 +217,39 @@ func slackTitle(event string) (emoji, title string) {
 		return ":x:", "Config apply failed"
 	case "test":
 		return ":bell:", "Test notification"
+	case AlertFiring:
+		return ":rotating_light:", "Alert firing"
+	case AlertResolved:
+		return ":white_check_mark:", "Alert resolved"
 	default:
 		return ":information_source:", event
+	}
+}
+
+// Alert event types (used as Payload.Event for metric-threshold alerts).
+const (
+	AlertFiring   = "alert.firing"
+	AlertResolved = "alert.resolved"
+)
+
+// SendToChannels delivers a payload to an explicit set of channels (metric
+// alerts route to a rule's channels rather than by event subscription). It
+// formats per channel type and retries like a normal delivery.
+func (d *Dispatcher) SendToChannels(ctx context.Context, channels []store.Webhook, p Payload) {
+	for _, wh := range channels {
+		if !wh.Enabled {
+			continue
+		}
+		body, err := encodeBody(wh.Type, p)
+		if err != nil {
+			d.log.Error("webhooks: encode alert payload failed", "webhook", wh.ID, "err", err)
+			continue
+		}
+		d.wg.Add(1)
+		go func(wh store.Webhook, body []byte) {
+			defer d.wg.Done()
+			d.deliverWithRetry(ctx, wh, p.Event, body)
+		}(wh, body)
 	}
 }
 

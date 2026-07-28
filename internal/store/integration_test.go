@@ -330,6 +330,50 @@ func TestIntegrationBillingSettings(t *testing.T) {
 	}
 }
 
+// TestIntegrationAlertRules guards alert_rules CRUD incl. the channel_ids
+// UUID[] scan (migration 0014).
+func TestIntegrationAlertRules(t *testing.T) {
+	ctx := ctxT(t)
+	c := makeCustomer(t)
+	ch := uuid.New()
+	r, err := testPG.CreateAlertRule(ctx, NewAlertRule{
+		ID: uuid.New(), Name: "ingest stopped " + uniq(), Metric: AlertMetricIngestItems,
+		Comparison: AlertComparisonBelow, Threshold: 10, WindowSeconds: 300,
+		CustomerID: &c.ID, ChannelIDs: []uuid.UUID{ch}, Enabled: true,
+	}, auditEntry("alertrule.create", "alert_rule", "r"))
+	if err != nil || len(r.ChannelIDs) != 1 || r.ChannelIDs[0] != ch {
+		t.Fatalf("CreateAlertRule: %+v err=%v", r, err)
+	}
+	if _, err := testPG.GetAlertRule(ctx, r.ID); err != nil {
+		t.Fatalf("GetAlertRule: %v", err)
+	}
+	if _, err := testPG.ListAlertRules(ctx); err != nil {
+		t.Fatalf("ListAlertRules: %v", err)
+	}
+	en, err := testPG.ListEnabledAlertRules(ctx)
+	if err != nil {
+		t.Fatalf("ListEnabledAlertRules: %v", err)
+	}
+	found := false
+	for _, x := range en {
+		if x.ID == r.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("enabled rule not listed")
+	}
+	th := 99.0
+	disabled := false
+	upd, err := testPG.UpdateAlertRule(ctx, r.ID, AlertRuleUpdate{Threshold: &th, Enabled: &disabled}, auditEntry("alertrule.update", "alert_rule", r.ID.String()))
+	if err != nil || upd.Threshold != 99 || upd.Enabled {
+		t.Fatalf("UpdateAlertRule: %+v err=%v", upd, err)
+	}
+	if err := testPG.DeleteAlertRule(ctx, r.ID, auditEntry("alertrule.delete", "alert_rule", r.ID.String())); err != nil {
+		t.Fatalf("DeleteAlertRule: %v", err)
+	}
+}
+
 // TestIntegrationAuditLog exercises the audit read path.
 func TestIntegrationAuditLog(t *testing.T) {
 	ctx := ctxT(t)

@@ -1157,6 +1157,76 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/settings/alert-rules:
+    get:
+      tags: [admin]
+      operationId: listAlertRules
+      summary: Metric-threshold alert rules (admin only)
+      responses:
+        "200":
+          description: Rules
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rules]
+                properties:
+                  rules:
+                    type: array
+                    items: { $ref: "#/components/schemas/AlertRule" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin]
+      operationId: createAlertRule
+      summary: Create a metric-threshold alert rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AlertRuleCreate" }
+      responses:
+        "201":
+          description: Created rule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AlertRule" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/settings/alert-rules/{ruleId}:
+    parameters:
+      - { name: ruleId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [admin]
+      operationId: updateAlertRule
+      summary: Update an alert rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AlertRuleUpdate" }
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AlertRule" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [admin]
+      operationId: deleteAlertRule
+      summary: Delete an alert rule
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/customers/{customerId}/logs:
     parameters:
       - { name: customerId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1813,6 +1883,62 @@ components:
           type: array
           items: { $ref: "#/components/schemas/BillingLine" }
         totalMicro: { type: integer, format: int64 }
+
+    AlertMetric:
+      type: string
+      enum: [ingest_items, error_logs]
+      description: "ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs."
+
+    AlertComparison:
+      type: string
+      enum: [below, above]
+      description: "below fires when the value is under the threshold (e.g. ingest dropped); above when over it."
+
+    AlertRule:
+      type: object
+      required: [id, name, metric, comparison, threshold, windowSeconds, channelIds, enabled, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        metric: { $ref: "#/components/schemas/AlertMetric" }
+        comparison: { $ref: "#/components/schemas/AlertComparison" }
+        threshold: { type: number }
+        windowSeconds: { type: integer, description: Evaluation window in seconds (>= 60). }
+        customerId: { type: string, format: uuid, nullable: true, description: null = every active customer }
+        channelIds:
+          type: array
+          items: { type: string, format: uuid }
+          description: Notification channel (webhook) ids the rule fires.
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    AlertRuleCreate:
+      type: object
+      required: [name, metric, comparison, threshold, windowSeconds]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        metric: { $ref: "#/components/schemas/AlertMetric" }
+        comparison: { $ref: "#/components/schemas/AlertComparison" }
+        threshold: { type: number }
+        windowSeconds: { type: integer, minimum: 60 }
+        customerId: { type: string, format: uuid, nullable: true }
+        channelIds:
+          type: array
+          items: { type: string, format: uuid }
+        enabled: { type: boolean, default: true }
+
+    AlertRuleUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        metric: { $ref: "#/components/schemas/AlertMetric" }
+        comparison: { $ref: "#/components/schemas/AlertComparison" }
+        threshold: { type: number }
+        windowSeconds: { type: integer, minimum: 60 }
+        channelIds:
+          type: array
+          items: { type: string, format: uuid }
+        enabled: { type: boolean }
 
     WebhookEvent:
       type: string

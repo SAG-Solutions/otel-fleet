@@ -21,3 +21,6 @@ web/dist/
 
 # Generated collector distro output
 /collector/dist/
+
+# GoReleaser snapshot output
+/dist/
