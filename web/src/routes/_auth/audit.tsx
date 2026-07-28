@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { ChevronRight, ScrollText } from 'lucide-react'
 import { listAuditLog } from '@/api/generated'
-import { listCustomersOptions } from '@/api/generated/@tanstack/react-query.gen'
+import { getMeOptions, listCustomersOptions } from '@/api/generated/@tanstack/react-query.gen'
+import { isPortalUser } from '@/hooks/use-me'
 import { isTimeRange, rangeToInterval, type TimeRange } from '@/lib/time-range'
 import { formatDateTime, formatRelative } from '@/lib/format'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
@@ -54,6 +55,10 @@ export const Route = createFileRoute('/_auth/audit')({
       typeof search.customer === 'string' && search.customer !== '' ? search.customer : undefined,
     range: isTimeRange(search.range) ? search.range : undefined,
   }),
+  beforeLoad: async ({ context }) => {
+    const me = await context.queryClient.ensureQueryData(getMeOptions())
+    if (isPortalUser(me)) throw redirect({ to: '/' })
+  },
   component: AuditPage,
 })
 

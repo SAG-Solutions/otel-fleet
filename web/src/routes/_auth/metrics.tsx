@@ -1,10 +1,12 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { Check, ChevronsUpDown, ChartLine } from 'lucide-react'
 import {
   getCustomerThroughputOptions,
+  getMeOptions,
   listCustomersOptions,
 } from '@/api/generated/@tanstack/react-query.gen'
+import { isPortalUser } from '@/hooks/use-me'
 import {
   DEFAULT_TIME_RANGE,
   EXTENDED_TIME_RANGES,
@@ -57,6 +59,10 @@ export const Route = createFileRoute('/_auth/metrics')({
     range: isTimeRange(search.range, EXTENDED_TIME_RANGES) ? search.range : undefined,
     compare: search.compare === true ? true : undefined,
   }),
+  beforeLoad: async ({ context }) => {
+    const me = await context.queryClient.ensureQueryData(getMeOptions())
+    if (isPortalUser(me)) throw redirect({ to: '/' })
+  },
   component: MetricsPage,
 })
 

@@ -16,6 +16,8 @@ import { TimeRangePicker } from '@/components/time-range-picker'
 import { StatTile, StatTileSkeleton } from '@/components/stat-tile'
 import { TerminalHint, TELEMETRYGEN_COMMAND } from '@/components/terminal-hint'
 import { ErrorState } from '@/components/error-state'
+import { useMe, isPortalUser } from '@/hooks/use-me'
+import { PortalOverview } from '@/features/portal/portal-overview'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -39,6 +41,12 @@ export const Route = createFileRoute('/_auth/')({
 })
 
 function DashboardPage() {
+  const me = useMe()
+  if (isPortalUser(me)) return <PortalOverview />
+  return <FleetDashboard />
+}
+
+function FleetDashboard() {
   const { range = DEFAULT_TIME_RANGE } = Route.useSearch()
   const navigate = Route.useNavigate()
   const interval = rangeToInterval(range)

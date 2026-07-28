@@ -68,6 +68,7 @@ nav:
       - Pipeline templates: guides/pipeline-templates.md
       - Metered billing: guides/billing.md
       - Alerting & notifications: guides/alerting.md
+      - Tenant self-service portal: guides/tenant-portal.md
       - Edge agents: guides/edge-agents.md
       - Single sign-on: guides/sso.md
       - SAML SSO: guides/saml.md

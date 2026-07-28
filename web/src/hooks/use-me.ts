@@ -33,3 +33,12 @@ export function hasAllCustomers(me: Me | undefined): boolean {
 export function scopedCustomerCount(me: Me | undefined): number {
   return me?.scopedCustomerIds?.length ?? 0
 }
+
+/**
+ * A portal user is a non-admin with per-customer grants (not all-access).
+ * They get the purpose-built tenant self-service portal instead of the
+ * fleet-wide admin console.
+ */
+export function isPortalUser(me: Me | undefined): boolean {
+  return !isAdmin(me) && me !== undefined && !me.allCustomers && scopedCustomerCount(me) >= 1
+}

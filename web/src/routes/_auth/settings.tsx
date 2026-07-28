@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { getMeOptions } from '@/api/generated/@tanstack/react-query.gen'
+import { isPortalUser } from '@/hooks/use-me'
 import { cn } from '@/lib/utils'
 import { AdminGate } from '@/components/admin-gate'
 import { ApiTokensTab } from '@/features/settings/api-tokens-tab'
@@ -18,6 +20,10 @@ export const Route = createFileRoute('/_auth/settings')({
   validateSearch: (search: Record<string, unknown>): SettingsSearch => ({
     tab: TABS.includes(search.tab as Tab) ? (search.tab as Tab) : undefined,
   }),
+  beforeLoad: async ({ context }) => {
+    const me = await context.queryClient.ensureQueryData(getMeOptions())
+    if (isPortalUser(me)) throw redirect({ to: '/' })
+  },
   component: SettingsPage,
 })
 

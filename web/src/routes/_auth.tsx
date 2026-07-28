@@ -20,7 +20,7 @@ import { getMeOptions } from '@/api/generated/@tanstack/react-query.gen'
 import { logoutMutation } from '@/api/generated/@tanstack/react-query.gen'
 import { setCsrfToken } from '@/lib/api-client'
 import { useTheme } from '@/lib/theme'
-import { useMe, isAdmin } from '@/hooks/use-me'
+import { useMe, isAdmin, isPortalUser } from '@/hooks/use-me'
 import { cn } from '@/lib/utils'
 import { Wordmark } from '@/components/wordmark'
 import {
@@ -58,12 +58,14 @@ function AuthLayout() {
   )
 }
 
-const NAV_ITEMS: {
+type NavItem = {
   to: string
   label: string
   icon: ComponentType<{ className?: string }>
   adminOnly?: boolean
-}[] = [
+}
+
+const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/customers', label: 'Customers', icon: Building2 },
   { to: '/pipelines', label: 'Pipelines', icon: Network },
@@ -76,9 +78,20 @@ const NAV_ITEMS: {
   { to: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
 ]
 
+// Portal users self-manage a single tenant: no fleet-wide or global surfaces.
+const PORTAL_NAV_ITEMS: NavItem[] = [
+  { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/pipelines', label: 'Pipelines', icon: Network },
+  { to: '/fleet', label: 'Agents', icon: Ship },
+  { to: '/explore', label: 'Explore', icon: Telescope },
+  { to: '/costs', label: 'Usage & cost', icon: Coins },
+]
+
 function Sidebar() {
   const me = useMe()
-  const items = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin(me))
+  const items = isPortalUser(me)
+    ? PORTAL_NAV_ITEMS
+    : NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin(me))
   return (
     <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-line bg-surface">
       <div className="flex h-14 items-center border-b border-line px-4">

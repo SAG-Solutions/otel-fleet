@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { Download, Pencil } from 'lucide-react'
 import {
   getBillingSettingsOptions,
   getBillingSettingsQueryKey,
   getBillingStatementOptions,
+  getMeOptions,
   updateBillingSettingsMutation,
 } from '@/api/generated/@tanstack/react-query.gen'
+import { isPortalUser } from '@/hooks/use-me'
 import {
   formatBytes,
   formatCompact,
@@ -55,6 +57,10 @@ export const Route = createFileRoute('/_auth/billing')({
   validateSearch: (search: Record<string, unknown>): BillingSearch => ({
     month: typeof search.month === 'string' && MONTH_RE.test(search.month) ? search.month : undefined,
   }),
+  beforeLoad: async ({ context }) => {
+    const me = await context.queryClient.ensureQueryData(getMeOptions())
+    if (isPortalUser(me)) throw redirect({ to: '/' })
+  },
   component: BillingPage,
 })
 

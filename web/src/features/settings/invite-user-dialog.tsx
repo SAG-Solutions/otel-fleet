@@ -135,6 +135,12 @@ export function InviteUserDialog({
                 />
               </div>
               <p className="text-xs text-ink-3">Leave empty for access to all customers.</p>
+              {customerIds.length >= 1 && (
+                <p className="text-xs text-ink-3">
+                  Scoping to a customer gives this user the self-service portal — limited to their
+                  own tenant, no fleet-wide or admin surfaces.
+                </p>
+              )}
             </fieldset>
           )}
 

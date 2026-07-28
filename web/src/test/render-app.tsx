@@ -160,6 +160,18 @@ export const testViewerMe: Me = {
   csrfToken: 'csrf-test-token',
 }
 
+// A tenant-scoped operator: non-admin, allCustomers=false, one grant. The SPA
+// treats this session as a self-service portal user.
+export const testPortalMe: Me = {
+  id: '4f2c7a1e-0000-4000-8000-000000000024',
+  email: 'portal@example.com',
+  displayName: 'Portal Operator',
+  role: 'operator',
+  allCustomers: false,
+  scopedCustomerIds: [testCustomer.id],
+  csrfToken: 'csrf-test-token',
+}
+
 export const testUsers: UserAccount[] = [
   {
     id: testMe.id,
@@ -440,8 +452,9 @@ function json(data: unknown): Response {
 }
 
 /** Route-matching fetch stub for the endpoints the pages use. */
-export function stubApi(overrides: { me?: Me } = {}): void {
+export function stubApi(overrides: { me?: Me; customers?: Customer[] } = {}): void {
   const me = overrides.me ?? testMe
+  const customers = overrides.customers ?? [testCustomer, testCustomer2]
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
@@ -458,7 +471,7 @@ export function stubApi(overrides: { me?: Me } = {}): void {
         case '/api/v1/stats/overview':
           return json(testOverview)
         case '/api/v1/customers':
-          return json({ customers: [testCustomer, testCustomer2] })
+          return json({ customers })
         case `/api/v1/customers/${testCustomer.id}`:
           return json(testCustomer)
         case `/api/v1/customers/${testCustomer.id}/api-keys`:

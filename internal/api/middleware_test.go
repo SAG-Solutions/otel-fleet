@@ -19,7 +19,8 @@ import (
 )
 
 type fakeUsers struct {
-	users map[uuid.UUID]store.User
+	users  map[uuid.UUID]store.User
+	grants map[uuid.UUID][]uuid.UUID // userID -> granted customer IDs (tenant scope)
 }
 
 func (f *fakeUsers) GetUser(_ context.Context, id uuid.UUID) (store.User, error) {
@@ -35,10 +36,10 @@ func (f *fakeUsers) ActiveAPITokensByPrefix(_ context.Context, _ string) ([]stor
 	return nil, nil
 }
 
-// ListUserCustomerIDs: no tenant-scope grants in the middleware session tests
-// (every user is unscoped / all-customers).
-func (f *fakeUsers) ListUserCustomerIDs(_ context.Context, _ uuid.UUID) ([]uuid.UUID, error) {
-	return nil, nil
+// ListUserCustomerIDs returns the user's tenant-scope grants; a user with no
+// entry is unscoped / all-customers.
+func (f *fakeUsers) ListUserCustomerIDs(_ context.Context, id uuid.UUID) ([]uuid.UUID, error) {
+	return f.grants[id], nil
 }
 
 // guardEnv is a small HTTP app: test-only /login and /csrf plus a guarded
@@ -48,17 +49,25 @@ func guardEnv(t *testing.T) (*httptest.Server, *http.Client, map[string]uuid.UUI
 
 	disabledAt := time.Now()
 	ids := map[string]uuid.UUID{
-		"viewer":   uuid.New(),
-		"operator": uuid.New(),
-		"admin":    uuid.New(),
-		"disabled": uuid.New(),
+		"viewer":          uuid.New(),
+		"operator":        uuid.New(),
+		"admin":           uuid.New(),
+		"disabled":        uuid.New(),
+		"portal":          uuid.New(), // operator scoped to a single customer
+		"grantedCustomer": uuid.New(),
 	}
-	users := &fakeUsers{users: map[uuid.UUID]store.User{
-		ids["viewer"]:   {ID: ids["viewer"], Email: "v@example.com", Role: "viewer"},
-		ids["operator"]: {ID: ids["operator"], Email: "o@example.com", Role: "operator"},
-		ids["admin"]:    {ID: ids["admin"], Email: "a@example.com", Role: "admin"},
-		ids["disabled"]: {ID: ids["disabled"], Email: "d@example.com", Role: "admin", DisabledAt: &disabledAt},
-	}}
+	users := &fakeUsers{
+		users: map[uuid.UUID]store.User{
+			ids["viewer"]:   {ID: ids["viewer"], Email: "v@example.com", Role: "viewer"},
+			ids["operator"]: {ID: ids["operator"], Email: "o@example.com", Role: "operator"},
+			ids["admin"]:    {ID: ids["admin"], Email: "a@example.com", Role: "admin"},
+			ids["disabled"]: {ID: ids["disabled"], Email: "d@example.com", Role: "admin", DisabledAt: &disabledAt},
+			ids["portal"]:   {ID: ids["portal"], Email: "p@example.com", Role: "operator"},
+		},
+		grants: map[uuid.UUID][]uuid.UUID{
+			ids["portal"]: {ids["grantedCustomer"]},
+		},
+	}
 
 	sessions := auth.NewSessions(false)
 
@@ -82,6 +91,20 @@ func guardEnv(t *testing.T) (*httptest.Server, *http.Client, map[string]uuid.UUI
 	r.Group(func(g chi.Router) {
 		g.Use(Guard(sessions, users))
 		ok := func(w http.ResponseWriter, req *http.Request) { _, _ = io.WriteString(w, "ok") }
+		// whoami echoes the resolved principal's tenant scope so tests can
+		// assert how grants map onto the request principal.
+		g.Get("/api/v1/whoami", func(w http.ResponseWriter, req *http.Request) {
+			p, _ := auth.PrincipalFrom(req.Context())
+			allowed := make([]string, 0, len(p.AllowedCustomers))
+			for id := range p.AllowedCustomers {
+				allowed = append(allowed, id.String())
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"allCustomers": p.AllCustomers,
+				"role":         p.User.Role,
+				"allowed":      allowed,
+			})
+		})
 		g.HandleFunc("/api/v1/*", ok)
 		g.HandleFunc("/api/v1/customers", ok)
 	})
@@ -248,6 +271,50 @@ func TestGuardAdminOnlyPaths(t *testing.T) {
 		if resp.StatusCode != c.wantStatus {
 			t.Errorf("%s %s %s = %d, want %d", c.role, c.method, c.path, resp.StatusCode, c.wantStatus)
 		}
+	}
+}
+
+// TestGuardScopesPrincipalFromGrants covers the path that powers the tenant
+// self-service portal: a non-admin user with per-customer grants is attached
+// as a tenant-scoped principal (AllCustomers=false, AllowedCustomers set),
+// while admins and non-admins with no grants stay unscoped.
+func TestGuardScopesPrincipalFromGrants(t *testing.T) {
+	srv, client, ids := guardEnv(t)
+
+	whoami := func(role string) (bool, []string) {
+		t.Helper()
+		login(t, client, srv, ids[role])
+		resp := doReq(t, client, http.MethodGet, srv.URL+"/api/v1/whoami", "")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s whoami = %d, want 200", role, resp.StatusCode)
+		}
+		req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/whoami", nil)
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var body struct {
+			AllCustomers bool     `json:"allCustomers"`
+			Allowed      []string `json:"allowed"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+			t.Fatalf("%s whoami body: %v", role, err)
+		}
+		return body.AllCustomers, body.Allowed
+	}
+
+	// Portal user: operator with a single grant -> scoped to exactly that customer.
+	if all, allowed := whoami("portal"); all || len(allowed) != 1 || allowed[0] != ids["grantedCustomer"].String() {
+		t.Errorf("portal principal = (all=%v, allowed=%v), want scoped to grantedCustomer", all, allowed)
+	}
+	// Admin: always unscoped.
+	if all, allowed := whoami("admin"); !all || len(allowed) != 0 {
+		t.Errorf("admin principal = (all=%v, allowed=%v), want unscoped", all, allowed)
+	}
+	// Non-admin with no grants: backward-compatible unscoped.
+	if all, allowed := whoami("operator"); !all || len(allowed) != 0 {
+		t.Errorf("ungranted operator principal = (all=%v, allowed=%v), want unscoped", all, allowed)
 	}
 }
 

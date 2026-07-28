@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
   createColumnHelper,
@@ -10,9 +10,9 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, Plus, Search } from 'lucide-react'
-import { listCustomersOptions } from '@/api/generated/@tanstack/react-query.gen'
+import { getMeOptions, listCustomersOptions } from '@/api/generated/@tanstack/react-query.gen'
 import { formatDate } from '@/lib/format'
-import { useMe, canMutate } from '@/hooks/use-me'
+import { useMe, canMutate, isPortalUser } from '@/hooks/use-me'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +33,10 @@ import { SecretDialog } from '@/components/secret-dialog'
 import type { ApiKeyCreated, Customer } from '@/api/generated'
 
 export const Route = createFileRoute('/_auth/customers/')({
+  beforeLoad: async ({ context }) => {
+    const me = await context.queryClient.ensureQueryData(getMeOptions())
+    if (isPortalUser(me)) throw redirect({ to: '/' })
+  },
   component: CustomersPage,
 })
 
