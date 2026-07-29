@@ -13,7 +13,7 @@ everything: the binary, the three container images and both Helm charts.
    and keeps an open **release PR** titled `chore(main): release X.Y.Z`. That PR
    bumps `.release-please-manifest.json`, updates `CHANGELOG.md`, and bumps
    `version`/`appVersion` in both `deploy/charts/*/Chart.yaml` (via the
-   `# x-release-please-version` annotations).
+   `extra-files` YAML jsonpath updaters in `release-please-config.json`).
 2. When you **merge the release PR**, release-please creates the `vX.Y.Z` tag
    and the GitHub Release (notes = the changelog).
 3. In the **same workflow run** (so no PAT is needed to trigger it), three jobs
