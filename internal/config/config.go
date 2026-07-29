@@ -100,6 +100,19 @@ type Config struct {
 	// (OTELFLEET_RETENTION_INTERVAL, default 24h).
 	RetentionInterval time.Duration
 
+	// Rate limiting for the public HTTP surface (per client IP, token bucket).
+	// RateLimit* applies to the whole API/SPA surface; AuthRateLimit* is a
+	// stricter bucket layered on the SSO browser endpoints (/auth/*). Disable
+	// with OTELFLEET_RATE_LIMIT_ENABLED=false when a fronting proxy already
+	// rate-limits. MaxRequestBodyBytes caps request bodies (OTLP ingest does
+	// not traverse this listener, so a few MiB is ample for the control API).
+	RateLimitEnabled    bool
+	RateLimitRPS        int
+	RateLimitBurst      int
+	AuthRateLimitRPS    int
+	AuthRateLimitBurst  int
+	MaxRequestBodyBytes int64
+
 	// OIDCProviders holds every configured OIDC provider. In Phase 1 at most
 	// one (the generic OTELFLEET_OIDC_* provider) is present.
 	OIDCProviders []OIDCProvider
@@ -150,6 +163,27 @@ func Load() (*Config, error) {
 	}
 
 	var err error
+	if cfg.RateLimitEnabled, err = envBool("RATE_LIMIT_ENABLED", true); err != nil {
+		return nil, err
+	}
+	if cfg.RateLimitRPS, err = envInt("RATE_LIMIT_RPS", 50); err != nil {
+		return nil, err
+	}
+	if cfg.RateLimitBurst, err = envInt("RATE_LIMIT_BURST", 100); err != nil {
+		return nil, err
+	}
+	if cfg.AuthRateLimitRPS, err = envInt("AUTH_RATE_LIMIT_RPS", 5); err != nil {
+		return nil, err
+	}
+	if cfg.AuthRateLimitBurst, err = envInt("AUTH_RATE_LIMIT_BURST", 10); err != nil {
+		return nil, err
+	}
+	var maxBody int
+	if maxBody, err = envInt("MAX_REQUEST_BODY_BYTES", 4<<20); err != nil {
+		return nil, err
+	}
+	cfg.MaxRequestBodyBytes = int64(maxBody)
+
 	if cfg.DevLogin, err = envBool("DEV_LOGIN", false); err != nil {
 		return nil, err
 	}
@@ -205,6 +239,18 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func envInt(key string, def int) (int, error) {
+	v, ok := os.LookupEnv("OTELFLEET_" + key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("OTELFLEET_%s: invalid non-negative integer %q", key, v)
+	}
+	return n, nil
 }
 
 func envBool(key string, def bool) (bool, error) {

@@ -36,6 +36,26 @@ prefixed `OTELFLEET_`. Source of truth: `internal/config/config.go`.
 | `OTELFLEET_WEB_DIR` | *(empty)* | Directory with the built SPA to serve. Empty = API only (dev: run `pnpm dev` instead). The container image sets `/srv/otelfleet/web`. |
 | `OTELFLEET_SESSION_SECURE` | `false` | Set the `Secure` flag on session cookies. Enable whenever the UI is served over HTTPS. |
 
+## Rate limiting and request limits
+
+Per-client-IP token-bucket limiting and a request-body cap on the public HTTP
+surface (`:8080`). OTLP ingest does not traverse this listener, so the body cap
+only bounds control-API/UI requests. Disable rate limiting when a fronting
+proxy already does it. The IP is taken from `X-Forwarded-For`/`X-Real-IP` (via
+chi's RealIP), so run behind a trusted proxy that sets them.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OTELFLEET_RATE_LIMIT_ENABLED` | `true` | Master switch for per-IP rate limiting. |
+| `OTELFLEET_RATE_LIMIT_RPS` | `50` | Sustained requests/sec per IP across the whole surface. |
+| `OTELFLEET_RATE_LIMIT_BURST` | `100` | Burst bucket size per IP. |
+| `OTELFLEET_AUTH_RATE_LIMIT_RPS` | `5` | Stricter sustained rate per IP layered on the SSO endpoints (`/auth/*`). |
+| `OTELFLEET_AUTH_RATE_LIMIT_BURST` | `10` | Burst for the auth-endpoint bucket. |
+| `OTELFLEET_MAX_REQUEST_BODY_BYTES` | `4194304` | Max request body (4 MiB) for `/api/v1`; larger bodies are rejected. `0` disables the cap. |
+
+Exceeded limits return `429` with a `Retry-After` header. In Helm set these
+under `controlPlane.rateLimit` (only keys you set are passed through).
+
 ## Authentication and authorization
 
 | Variable | Default | Description |

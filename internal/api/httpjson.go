@@ -19,6 +19,7 @@ const (
 	codeConflict     = "conflict"
 	codeInternal     = "internal"
 	codeUpstream     = "upstream_unavailable"
+	codeRateLimited  = "rate_limited"
 )
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

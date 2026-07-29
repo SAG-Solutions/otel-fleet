@@ -62,6 +62,17 @@ controlPlane:
   # Extra environment variables for the control-plane container (verbatim
   # EnvVar entries), e.g. proxy settings.
   extraEnv: []
+  # Per-client-IP rate limiting + request-body cap on the public HTTP surface.
+  # Leave empty to use the server defaults (rps 50 / burst 100; auth endpoints
+  # rps 5 / burst 10; body cap 4 MiB). Set enabled: false if a fronting proxy
+  # already rate-limits. Only keys you set are passed through.
+  rateLimit: {}
+    # enabled: true
+    # rps: 50
+    # burst: 100
+    # authRps: 5
+    # authBurst: 10
+    # maxRequestBodyBytes: 4194304
   # In-cluster TLS. When disabled the listeners are plaintext (terminate TLS
   # at an ingress in front). When enabled the pods serve TLS directly.
   tls:

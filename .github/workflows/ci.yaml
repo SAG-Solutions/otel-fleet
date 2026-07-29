@@ -165,6 +165,10 @@ jobs:
             --set controlPlane.tls.opampClientCASecret=opamp-ca \
             --set controlPlane.opamp.service.type=LoadBalancer \
             --set 'controlPlane.opamp.service.loadBalancerSourceRanges={198.51.100.0/24}' > /dev/null
+          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set controlPlane.rateLimit.enabled=true --set controlPlane.rateLimit.rps=25 \
+            --set controlPlane.rateLimit.authBurst=8 --set controlPlane.rateLimit.maxRequestBodyBytes=1048576 \
+            | grep -q OTELFLEET_RATE_LIMIT_RPS
       - run: helm lint deploy/charts/otelfleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |

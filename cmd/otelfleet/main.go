@@ -181,6 +181,10 @@ func run(log *slog.Logger) error {
 		Addr:              cfg.OpsAddr,
 		Handler:           api.NewOpsHandler(reg, st.Ping, pipelinesSvc.RenderCurrent),
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -210,6 +214,10 @@ func run(log *slog.Logger) error {
 				Log:      log,
 			}),
 			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      60 * time.Second,
+			IdleTimeout:       120 * time.Second,
+			MaxHeaderBytes:    1 << 20,
 		}
 		var grpcOpts []grpc.ServerOption
 		if grpcTLS != nil {

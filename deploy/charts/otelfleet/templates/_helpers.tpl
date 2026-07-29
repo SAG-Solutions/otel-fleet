@@ -78,6 +78,26 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- with .Values.controlPlane.opamp.publicEndpoint }}
 - { name: OTELFLEET_OPAMP_PUBLIC_ENDPOINT, value: {{ . | quote }} }
 {{- end }}
+{{- with .Values.controlPlane.rateLimit }}
+{{- if hasKey . "enabled" }}
+- { name: OTELFLEET_RATE_LIMIT_ENABLED, value: {{ .enabled | quote }} }
+{{- end }}
+{{- if hasKey . "rps" }}
+- { name: OTELFLEET_RATE_LIMIT_RPS, value: {{ .rps | quote }} }
+{{- end }}
+{{- if hasKey . "burst" }}
+- { name: OTELFLEET_RATE_LIMIT_BURST, value: {{ .burst | quote }} }
+{{- end }}
+{{- if hasKey . "authRps" }}
+- { name: OTELFLEET_AUTH_RATE_LIMIT_RPS, value: {{ .authRps | quote }} }
+{{- end }}
+{{- if hasKey . "authBurst" }}
+- { name: OTELFLEET_AUTH_RATE_LIMIT_BURST, value: {{ .authBurst | quote }} }
+{{- end }}
+{{- if hasKey . "maxRequestBodyBytes" }}
+- { name: OTELFLEET_MAX_REQUEST_BODY_BYTES, value: {{ .maxRequestBodyBytes | quote }} }
+{{- end }}
+{{- end }}
 {{- with .Values.controlPlane.masterKeySecret }}
 - name: OTELFLEET_MASTER_KEY
   valueFrom:

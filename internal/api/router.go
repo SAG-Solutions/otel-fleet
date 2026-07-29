@@ -36,13 +36,27 @@ func NewRouter(d RouterDeps) http.Handler {
 	r.Use(chimw.RealIP)
 	r.Use(requestLogger(d.Log))
 	r.Use(chimw.Recoverer)
+	// Per-IP rate limiting across the whole surface; a stricter bucket is
+	// layered onto the SSO endpoints below. Must sit behind RealIP.
+	var authLimit func(http.Handler) http.Handler
+	if d.Config.RateLimitEnabled {
+		r.Use(newIPRateLimiter(d.Config.RateLimitRPS, d.Config.RateLimitBurst).middleware())
+		authLimit = newIPRateLimiter(d.Config.AuthRateLimitRPS, d.Config.AuthRateLimitBurst).middleware()
+	}
 	r.Use(d.Sessions.Manager.LoadAndSave)
 
-	r.Get("/auth/{provider}/start", d.Auth.Start)
-	r.Get("/auth/{provider}/callback", d.Auth.Callback)
-	// SAML SP endpoints: the IdP POSTs the assertion to /acs and consumes /metadata.
-	r.Post("/auth/{provider}/acs", d.Auth.ACS)
-	r.Get("/auth/{provider}/metadata", d.Auth.Metadata)
+	// SSO browser flows: an extra, stricter per-IP limiter to blunt abuse of
+	// the login/callback/assertion endpoints.
+	r.Group(func(g chi.Router) {
+		if authLimit != nil {
+			g.Use(authLimit)
+		}
+		g.Get("/auth/{provider}/start", d.Auth.Start)
+		g.Get("/auth/{provider}/callback", d.Auth.Callback)
+		// SAML SP endpoints: the IdP POSTs the assertion to /acs and consumes /metadata.
+		g.Post("/auth/{provider}/acs", d.Auth.ACS)
+		g.Get("/auth/{provider}/metadata", d.Auth.Metadata)
+	})
 
 	// SCIM 2.0 user provisioning for identity providers. Authenticated with an
 	// admin management-API token (not a session), so it sits outside the Guard.
@@ -72,6 +86,9 @@ func NewRouter(d RouterDeps) http.Handler {
 		},
 	})
 	r.Group(func(g chi.Router) {
+		if d.Config.MaxRequestBodyBytes > 0 {
+			g.Use(maxBodyBytes(d.Config.MaxRequestBodyBytes))
+		}
 		g.Use(Guard(d.Sessions, d.Store))
 		g.Use(captureRawBody)
 		apigen.HandlerWithOptions(strict, apigen.ChiServerOptions{
