@@ -8,10 +8,8 @@
       "changelog-path": "CHANGELOG.md",
       "include-v-in-tag": true,
       "extra-files": [
-        { "type": "yaml", "path": "deploy/charts/otel-fleet/Chart.yaml", "jsonpath": "$.version" },
-        { "type": "yaml", "path": "deploy/charts/otel-fleet/Chart.yaml", "jsonpath": "$.appVersion" },
-        { "type": "yaml", "path": "deploy/charts/otel-fleet-agent/Chart.yaml", "jsonpath": "$.version" },
-        { "type": "yaml", "path": "deploy/charts/otel-fleet-agent/Chart.yaml", "jsonpath": "$.appVersion" }
+        "deploy/charts/otel-fleet/Chart.yaml",
+        "deploy/charts/otel-fleet-agent/Chart.yaml"
       ]
     }
   }
