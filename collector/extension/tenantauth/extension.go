@@ -1,12 +1,12 @@
-// Copyright The otelfleet Authors
+// Copyright The otel-fleet Authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package tenantauth implements a collector server authenticator that
-// validates ingest API keys against the otelfleet control plane
+// validates ingest API keys against the otel-fleet control plane
 // (otelfleet.auth.v1.AuthService) and attaches the resolved tenant identity
 // to client.Info so downstream processors (tenantstamp) can stamp it onto
 // telemetry resources.
-package tenantauth // import "github.com/jansagurna/otelfleet/collector/extension/tenantauth"
+package tenantauth // import "github.com/sag-solutions/otel-fleet/collector/extension/tenantauth"
 
 import (
 	"context"
@@ -27,14 +27,14 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/jansagurna/otelfleet/collector/extension/tenantauth/internal/authv1"
+	"github.com/sag-solutions/otel-fleet/collector/extension/tenantauth/internal/authv1"
 )
 
 // validateTimeout bounds a single control-plane ValidateAPIKey call so a slow
 // control plane cannot stall ingest indefinitely.
 const validateTimeout = 5 * time.Second
 
-// Outcome attribute values for otelfleet_auth_requests_total.
+// Outcome attribute values for otel_fleet_auth_requests_total.
 const (
 	outcomeOK                  = "ok"
 	outcomeInvalidKey          = "invalid_key"
@@ -74,15 +74,15 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 		cache:     newKeyCache(cfg.Cache.MaxEntries),
 		now:       time.Now,
 	}
-	meter := telemetry.MeterProvider.Meter("github.com/jansagurna/otelfleet/collector/extension/tenantauth")
+	meter := telemetry.MeterProvider.Meter("github.com/sag-solutions/otel-fleet/collector/extension/tenantauth")
 	var err error
 	a.requestsTotal, err = meter.Int64Counter(
-		"otelfleet_auth_requests_total",
+		"otel_fleet_auth_requests_total",
 		metric.WithDescription("API key authentication attempts, by outcome and tenant (when known)."),
 		metric.WithUnit("{request}"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creating otelfleet_auth_requests_total counter: %w", err)
+		return nil, fmt.Errorf("creating otel_fleet_auth_requests_total counter: %w", err)
 	}
 	return a, nil
 }

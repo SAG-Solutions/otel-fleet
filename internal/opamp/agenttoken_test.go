@@ -10,8 +10,8 @@ import (
 
 	"github.com/open-telemetry/opamp-go/protobufs"
 
-	"github.com/jansagurna/otelfleet/internal/store"
-	"github.com/jansagurna/otelfleet/internal/tenants"
+	"github.com/sag-solutions/otel-fleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/tenants"
 )
 
 // capsWithConnSettings is testCaps plus AcceptsOpAMPConnectionSettings, so the

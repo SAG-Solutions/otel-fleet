@@ -162,7 +162,7 @@ const file_authservice_proto_rawDesc = "" +
 	"\x11cache_ttl_seconds\x18\x04 \x01(\rR\x0fcacheTtlSeconds\x126\n" +
 	"\x18rate_limit_items_per_sec\x18\x05 \x01(\rR\x14rateLimitItemsPerSec2t\n" +
 	"\vAuthService\x12e\n" +
-	"\x0eValidateAPIKey\x12(.otelfleet.auth.v1.ValidateAPIKeyRequest\x1a).otelfleet.auth.v1.ValidateAPIKeyResponseB<Z:github.com/jansagurna/otelfleet/internal/ingestauth/authv1b\x06proto3"
+	"\x0eValidateAPIKey\x12(.otelfleet.auth.v1.ValidateAPIKeyRequest\x1a).otelfleet.auth.v1.ValidateAPIKeyResponseB@Z>github.com/sag-solutions/otel-fleet/internal/ingestauth/authv1b\x06proto3"
 
 var (
 	file_authservice_proto_rawDescOnce sync.Once

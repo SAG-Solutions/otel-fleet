@@ -1,10 +1,10 @@
-# OpAMP supervisor config for the otelfleet edge agent (P3 demo).
+# OpAMP supervisor config for the otel-fleet edge agent (P3 demo).
 # Schema: opampsupervisor v0.156.0
 # (opentelemetry-collector-contrib/cmd/opampsupervisor/supervisor/config).
 #
 # The supervisor's own config supports confmap env expansion
 # (file + env providers, default scheme `env`), so both
-# ${env:OTELFLEET_BOOTSTRAP_TOKEN} and ${OTELFLEET_BOOTSTRAP_TOKEN} resolve
+# ${env:OTEL_FLEET_BOOTSTRAP_TOKEN} and ${OTEL_FLEET_BOOTSTRAP_TOKEN} resolve
 # from the container environment at startup. No entrypoint envsubst needed.
 
 server:
@@ -12,7 +12,7 @@ server:
   endpoint: ws://host.docker.internal:4320/v1/opamp
   headers:
     # Per-customer bootstrap token, injected via the container environment.
-    Authorization: "Bearer ${env:OTELFLEET_BOOTSTRAP_TOKEN}"
+    Authorization: "Bearer ${env:OTEL_FLEET_BOOTSTRAP_TOKEN}"
   tls:
     insecure: true # plain ws:// in dev; drop this once the server has TLS
 
@@ -28,7 +28,7 @@ capabilities:
   accepts_opamp_connection_settings: true
 
 agent:
-  executable: /usr/local/bin/otelfleet-collector
+  executable: /usr/local/bin/otel-fleet-collector
   # Defaults are config_apply_timeout: 5s, bootstrap_timeout: 3s; bumped a
   # little because the edge collector links many components and can be slow
   # to start on cold container caches.
@@ -42,7 +42,7 @@ storage:
   # Persists the last-received (last-good) config, instance ID, and the
   # effective agent config across restarts; the supervisor reverts to it
   # locally when a pushed config crash-loops the collector.
-  directory: /var/lib/otelfleet-supervisor
+  directory: /var/lib/otel-fleet-supervisor
 
 telemetry:
   logs:

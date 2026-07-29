@@ -33,7 +33,7 @@ func newSecurityMetrics(reg prometheus.Registerer) *securityMetrics {
 	}
 	m := &securityMetrics{
 		denied: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "otelfleet_http_denied_total",
+			Name: "otel_fleet_http_denied_total",
 			Help: "HTTP requests denied by the API guard or rate limiter, by reason.",
 		}, []string{"reason"}),
 	}

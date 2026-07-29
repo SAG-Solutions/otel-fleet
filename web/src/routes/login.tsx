@@ -73,7 +73,7 @@ function ProviderList({
     return (
       <p className="text-center text-[13px] text-ink-2">
         No sign-in methods are configured. Set an OIDC provider or{' '}
-        <code className="font-mono text-xs">OTELFLEET_DEV_LOGIN=true</code> on the server.
+        <code className="font-mono text-xs">OTEL_FLEET_DEV_LOGIN=true</code> on the server.
       </p>
     )
   }

@@ -1,4 +1,4 @@
-# otelfleet demo environment — everything in containers, including the
+# otel-fleet demo environment — everything in containers, including the
 # control plane (unlike docker-compose.yaml, where the control plane runs on
 # the host via `make run`).
 #
@@ -7,15 +7,15 @@
 #
 # Generate load against an API key you created in the UI:
 #
-#   OTELFLEET_API_KEY=otm_... docker compose \
+#   OTEL_FLEET_API_KEY=otm_... docker compose \
 #     -f deploy/compose/docker-compose.demo.yaml --profile loadgen up loadgen
 #
 # NOTE: uses the same host ports as the dev environment (8080, 4317/4318,
 # 4320, 5432, 8123/9000, 8428) — stop `make dev-up` / `make run` first.
 #
-# The OTELFLEET_MASTER_KEY below is a published sample for demos only.
+# The OTEL_FLEET_MASTER_KEY below is a published sample for demos only.
 # Generate your own for anything real: openssl rand -base64 32
-name: otelfleet-demo
+name: otel-fleet-demo
 
 services:
   postgres:
@@ -29,7 +29,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U otelfleet"]
+      test: ["CMD-SHELL", "pg_isready -U otel-fleet"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -48,7 +48,7 @@ services:
     ulimits:
       nofile: { soft: 262144, hard: 262144 }
     healthcheck:
-      test: ["CMD-SHELL", "clickhouse-client --user otelfleet --password otelfleet --query 'SELECT 1'"]
+      test: ["CMD-SHELL", "clickhouse-client --user otel-fleet --password otel-fleet --query 'SELECT 1'"]
       interval: 3s
       timeout: 3s
       retries: 30
@@ -83,17 +83,17 @@ services:
       context: ../..
       dockerfile: Dockerfile
     environment:
-      OTELFLEET_DEV_LOGIN: "true" # demo: password-less login with any email
-      OTELFLEET_DATABASE_URL: postgres://otelfleet:otelfleet@postgres:5432/otelfleet?sslmode=disable
-      OTELFLEET_CLICKHOUSE_ADDR: clickhouse:9000
-      OTELFLEET_CLICKHOUSE_DATABASE: otel
-      OTELFLEET_CLICKHOUSE_USER: otelfleet
-      OTELFLEET_CLICKHOUSE_PASSWORD: otelfleet
-      OTELFLEET_VICTORIAMETRICS_URL: http://victoriametrics:8428
-      OTELFLEET_BASE_URL: http://localhost:8080
-      # DEMO ONLY — base64("otelfleet-demo-only-master-key32").
+      OTEL_FLEET_DEV_LOGIN: "true" # demo: password-less login with any email
+      OTEL_FLEET_DATABASE_URL: postgres://otelfleet:otelfleet@postgres:5432/otelfleet?sslmode=disable
+      OTEL_FLEET_CLICKHOUSE_ADDR: clickhouse:9000
+      OTEL_FLEET_CLICKHOUSE_DATABASE: otel
+      OTEL_FLEET_CLICKHOUSE_USER: otelfleet
+      OTEL_FLEET_CLICKHOUSE_PASSWORD: otelfleet
+      OTEL_FLEET_VICTORIAMETRICS_URL: http://victoriametrics:8428
+      OTEL_FLEET_BASE_URL: http://localhost:8080
+      # DEMO ONLY — base64("otel-fleet-demo-only-master-key32").
       # Real deployments: openssl rand -base64 32
-      OTELFLEET_MASTER_KEY: b3RlbGZsZWV0LWRlbW8tb25seS1tYXN0ZXIta2V5MzI=
+      OTEL_FLEET_MASTER_KEY: b3RlbGZsZWV0LWRlbW8tb25seS1tYXN0ZXIta2V5MzI=
     ports:
       - "8080:8080" # REST API + web UI
       - "4320:4320" # OpAMP (edge agents dial in here)
@@ -114,7 +114,7 @@ services:
       dockerfile: Dockerfile.collector
     command: ["--config=/etc/otelcol/config.yaml"]
     environment:
-      OTELFLEET_AUTH_ENDPOINT: control-plane:9443
+      OTEL_FLEET_AUTH_ENDPOINT: control-plane:9443
       CLICKHOUSE_ENDPOINT: tcp://clickhouse:9000?database=otel&username=otelfleet&password=otelfleet
     ports:
       - "4317:4317" # OTLP gRPC
@@ -148,7 +148,7 @@ services:
 
   # Load generator (profile "loadgen"): sends OTLP logs through the gateway
   # with a real API key. Create a customer + API key in the UI first, then:
-  #   OTELFLEET_API_KEY=otm_... docker compose -f ... --profile loadgen up loadgen
+  #   OTEL_FLEET_API_KEY=otm_... docker compose -f ... --profile loadgen up loadgen
   loadgen:
     profiles: ["loadgen"]
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.156.0
@@ -158,7 +158,7 @@ services:
       - --otlp-endpoint
       - gateway:4317
       - --otlp-header
-      - authorization="Bearer ${OTELFLEET_API_KEY:-missing-api-key}"
+      - authorization="Bearer ${OTEL_FLEET_API_KEY:-missing-api-key}"
       - --rate
       - "10"
       - --duration
@@ -182,7 +182,7 @@ configs:
             - targets: ["forwarding:8888"]
               labels:
                 collector_class: forwarding
-        - job_name: otelfleet-control-plane
+        - job_name: otel-fleet-control-plane
           static_configs:
             - targets: ["control-plane:9090"]
 

@@ -15,7 +15,7 @@ import (
 
 // EdgeConfigChannel is the NOTIFY channel carrying a customer UUID whose edge
 // config was (de)activated.
-const EdgeConfigChannel = "otelfleet_edge_config"
+const EdgeConfigChannel = "otel_fleet_edge_config"
 
 // Notifier publishes NOTIFY messages.
 type Notifier struct{ pool *pgxpool.Pool }

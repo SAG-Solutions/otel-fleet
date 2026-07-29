@@ -1,16 +1,16 @@
 # CLI & config-as-code
 
-`otelfleetctl` manages customers and pipelines from the command line and lets
+`otel-fleetctl` manages customers and pipelines from the command line and lets
 you treat them as **declarative config** in Git (GitOps). It talks to the
 control-plane REST API with a management-API token.
 
 ## Install
 
-Grab `otelfleetctl` from a [release](https://github.com/jansagurna/otelfleet/releases)
+Grab `otel-fleetctl` from a [release](https://github.com/sag-solutions/otel-fleet/releases)
 (linux/darwin/windows × amd64/arm64), or build it:
 
 ```sh
-make cli        # → bin/otelfleetctl
+make cli        # → bin/otel-fleetctl
 ```
 
 ## Authenticate
@@ -21,9 +21,9 @@ Create a **management-API token** (distinct from ingest API keys) under
 control plane:
 
 ```sh
-export OTELFLEET_URL=https://otelfleet.example.com
-export OTELFLEET_TOKEN=otm_pat_…
-otelfleetctl customers
+export OTEL_FLEET_URL=https://otel-fleet.example.com
+export OTEL_FLEET_TOKEN=otm_pat_…
+otel-fleetctl customers
 ```
 
 The token authenticates as `Authorization: Bearer <token>`; it is not a browser
@@ -33,11 +33,11 @@ cannot touch admin-only areas).
 ## Commands
 
 ```
-otelfleetctl customers            # list customers
-otelfleetctl pipelines            # list pipelines (all customers)
-otelfleetctl export -o fleet.yaml # dump customers + pipelines as declarative YAML
-otelfleetctl apply -f fleet.yaml  # reconcile the target from the file
-otelfleetctl apply -f fleet.yaml --dry-run   # print the plan, change nothing
+otel-fleetctl customers            # list customers
+otel-fleetctl pipelines            # list pipelines (all customers)
+otel-fleetctl export -o fleet.yaml # dump customers + pipelines as declarative YAML
+otel-fleetctl apply -f fleet.yaml  # reconcile the target from the file
+otel-fleetctl apply -f fleet.yaml --dry-run   # print the plan, change nothing
 ```
 
 ## Config-as-code
@@ -81,7 +81,7 @@ on merge to roll it out.
 ### Secrets caveat
 
 Exporter credentials (e.g. `headers.authorization`) are **redacted**
-(`__otelfleet_redacted__`) in `export` output — never commit real secrets to
+(`__otel_fleet_redacted__`) in `export` output — never commit real secrets to
 Git. When applying to a target that already has the pipeline, the stored secret
 is kept automatically. For a **fresh** target, fill the secret in before the
 first apply (from your secret manager / CI variable), or set it once in the UI.

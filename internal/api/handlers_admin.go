@@ -12,12 +12,12 @@ import (
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
-	"github.com/jansagurna/otelfleet/internal/api/apigen"
-	"github.com/jansagurna/otelfleet/internal/audit"
-	"github.com/jansagurna/otelfleet/internal/auth"
-	"github.com/jansagurna/otelfleet/internal/authz"
-	"github.com/jansagurna/otelfleet/internal/crypto"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/api/apigen"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/auth"
+	"github.com/sag-solutions/otel-fleet/internal/authz"
+	"github.com/sag-solutions/otel-fleet/internal/crypto"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // All handlers in this file sit behind the Guard middleware's admin-only path
@@ -307,7 +307,7 @@ func (s *Server) ListAuthProviderConfigs(ctx context.Context, _ apigen.ListAuthP
 func (s *Server) encryptClientSecret(secret string) ([]byte, error) {
 	enc, err := s.cipher.Encrypt([]byte(secret))
 	if errors.Is(err, crypto.ErrNotConfigured) {
-		return nil, badRequestError{fmt.Errorf("%w — generate one with e.g. OTELFLEET_MASTER_KEY=%s", crypto.ErrNotConfigured, crypto.NewRandomKeyBase64())}
+		return nil, badRequestError{fmt.Errorf("%w — generate one with e.g. OTEL_FLEET_MASTER_KEY=%s", crypto.ErrNotConfigured, crypto.NewRandomKeyBase64())}
 	}
 	return enc, err
 }

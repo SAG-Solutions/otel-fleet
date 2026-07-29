@@ -1,7 +1,7 @@
-// Copyright The otelfleet Authors
+// Copyright The otel-fleet Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package tenantauth // import "github.com/jansagurna/otelfleet/collector/extension/tenantauth"
+package tenantauth // import "github.com/sag-solutions/otel-fleet/collector/extension/tenantauth"
 
 import "go.opentelemetry.io/collector/client"
 

@@ -776,7 +776,7 @@ type AuthProviderConfig struct {
 	// RedirectUri OIDC/OAuth callback URL to register at the identity provider.
 	RedirectUri string `json:"redirectUri"`
 
-	// Source environment = defined via OTELFLEET_OIDC_* env vars (read-only here).
+	// Source environment = defined via OTEL_FLEET_OIDC_* env vars (read-only here).
 	Source AuthProviderConfigSource `json:"source"`
 
 	// SpEntityId SP entity id / audience to register at the IdP (type saml).
@@ -784,7 +784,7 @@ type AuthProviderConfig struct {
 	Type       AuthProviderType `json:"type"`
 }
 
-// AuthProviderConfigSource environment = defined via OTELFLEET_OIDC_* env vars (read-only here).
+// AuthProviderConfigSource environment = defined via OTEL_FLEET_OIDC_* env vars (read-only here).
 type AuthProviderConfigSource string
 
 // AuthProviderConfigCreate defines model for AuthProviderConfigCreate.
@@ -4955,7 +4955,7 @@ type ListAuthProvidersResponseObject interface {
 }
 
 type ListAuthProviders200JSONResponse struct {
-	// DevLoginEnabled True only when OTELFLEET_DEV_LOGIN=true (local development).
+	// DevLoginEnabled True only when OTEL_FLEET_DEV_LOGIN=true (local development).
 	DevLoginEnabled bool           `json:"devLoginEnabled"`
 	Providers       []AuthProvider `json:"providers"`
 }

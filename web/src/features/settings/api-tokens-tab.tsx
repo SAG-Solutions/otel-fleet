@@ -73,7 +73,7 @@ export function ApiTokensTab() {
         <div>
           <h2 className="text-[13px] font-semibold text-ink">API tokens</h2>
           <p className="text-xs text-ink-2">
-            Personal access tokens for the <code className="mx-0.5 font-mono">otelfleetctl</code>{' '}
+            Personal access tokens for the <code className="mx-0.5 font-mono">otel-fleetctl</code>{' '}
             CLI, CI pipelines, and automation. Each token authenticates as an
             <code className="mx-1 font-mono">Authorization: Bearer</code>
             header with a fixed role.
@@ -102,8 +102,8 @@ export function ApiTokensTab() {
             <div className="text-sm font-semibold text-ink">No API tokens</div>
             <p className="max-w-md text-[13px] text-ink-2">
               Create a token for programmatic access — the{' '}
-              <code className="font-mono">otelfleetctl</code> CLI, CI jobs, or scripts that call the
-              otelfleet API. Tokens are admin-managed and carry a fixed role.
+              <code className="font-mono">otel-fleetctl</code> CLI, CI jobs, or scripts that call the
+              otel-fleet API. Tokens are admin-managed and carry a fixed role.
             </p>
             <Button variant="outline" size="sm" className="mt-1" onClick={() => setDialogOpen(true)}>
               <Plus aria-hidden />
@@ -366,12 +366,12 @@ function TokenSecretDialog({
   token: ApiTokenCreated | null
   onClose: () => void
 }) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://otelfleet.example.com'
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://otel-fleet.example.com'
   const usage = token
     ? [
-        `export OTELFLEET_URL=${origin}`,
-        `export OTELFLEET_TOKEN=${token.secret}`,
-        `otelfleetctl customers`,
+        `export OTEL_FLEET_URL=${origin}`,
+        `export OTEL_FLEET_TOKEN=${token.secret}`,
+        `otel-fleetctl customers`,
       ].join('\n')
     : ''
 
@@ -396,7 +396,7 @@ function TokenSecretDialog({
               </DialogTitle>
               <DialogDescription>
                 This is the only time <span className="font-mono text-ink">{token.name}</span> is
-                shown. otelfleet stores a hash — the token cannot be recovered later.
+                shown. otel-fleet stores a hash — the token cannot be recovered later.
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-1 rounded-md border border-warn/40 bg-surface-2 p-3">

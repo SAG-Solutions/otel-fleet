@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
 )
 
 const billingCols = `price_per_gib_micro, price_per_million_items_micro, currency, updated_at, updated_by`

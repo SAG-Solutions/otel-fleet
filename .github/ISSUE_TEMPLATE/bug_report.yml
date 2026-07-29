@@ -28,7 +28,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: otelfleet version, image tag, or commit SHA
+      description: otel-fleet version, image tag, or commit SHA
       placeholder: v0.3.0 / f69cb57
     validations:
       required: true

@@ -59,7 +59,7 @@ func (c *Component) CompiledSchema() (*jsonschema.Schema, error) {
 	c.compileOnce.Do(func() {
 		compiler := jsonschema.NewCompiler()
 		compiler.DefaultDraft(jsonschema.Draft2020)
-		url := "otelfleet://catalog/" + c.Kind + "/" + c.Type + ".json"
+		url := "otel-fleet://catalog/" + c.Kind + "/" + c.Type + ".json"
 		doc, err := jsonschema.UnmarshalJSON(strings.NewReader(c.SchemaJSON))
 		if err != nil {
 			c.compileErr = fmt.Errorf("catalog %s/%s: parse schema: %w", c.Kind, c.Type, err)

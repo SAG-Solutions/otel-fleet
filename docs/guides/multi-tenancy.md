@@ -1,6 +1,6 @@
 # Multi-tenancy
 
-otelfleet's core promise: every datapoint that enters the system is attributed to
+otel-fleet's core promise: every datapoint that enters the system is attributed to
 exactly one tenant, and the attribution cannot be spoofed by the sender.
 
 ## Customers, API keys, tenants
@@ -58,8 +58,8 @@ stats.
 ## Throughput metrics
 
 The gateway's `count` connector produces ground-truth ingest counters —
-`otelfleet.ingest.log_records`, `otelfleet.ingest.spans`,
-`otelfleet.ingest.metric_points` — exported via Prometheus remote-write with
+`otel-fleet.ingest.log_records`, `otel-fleet.ingest.spans`,
+`otel-fleet.ingest.metric_points` — exported via Prometheus remote-write with
 `tenant.id` as a label (resource-to-telemetry conversion). The dashboard and
 customer pages are built on these plus per-request accepted/refused counts.
 

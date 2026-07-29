@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: otelfleet API
+  title: otel-fleet API
   description: >
-    Control-plane REST API for the otelfleet platform. Browser sessions are
-    cookie-based (`__Host-otelfleet_session`, HttpOnly). Mutating requests must
+    Control-plane REST API for the otel-fleet platform. Browser sessions are
+    cookie-based (`__Host-otel_fleet_session`, HttpOnly). Mutating requests must
     send the `X-CSRF-Token` header obtained from `GET /api/v1/me`.
     OIDC browser flows live outside this spec at `/auth/{provider}/start` and
     `/auth/{provider}/callback`.
@@ -54,7 +54,7 @@ paths:
                     items: { $ref: "#/components/schemas/AuthProvider" }
                   devLoginEnabled:
                     type: boolean
-                    description: True only when OTELFLEET_DEV_LOGIN=true (local development).
+                    description: True only when OTEL_FLEET_DEV_LOGIN=true (local development).
 
   /api/v1/auth/dev-login:
     post:
@@ -1708,7 +1708,7 @@ components:
         source:
           type: string
           enum: [database, environment]
-          description: environment = defined via OTELFLEET_OIDC_* env vars (read-only here).
+          description: environment = defined via OTEL_FLEET_OIDC_* env vars (read-only here).
         redirectUri:
           type: string
           description: OIDC/OAuth callback URL to register at the identity provider.

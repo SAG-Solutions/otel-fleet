@@ -6,7 +6,7 @@
 // hardcoded column list drifting from scanX), constraint violations — which
 // otherwise only surface live.
 //
-// Run:  OTELFLEET_TEST_DATABASE_URL=postgres://otelfleet:otelfleet@localhost:5432/otelfleet_test \
+// Run:  OTEL_FLEET_TEST_DATABASE_URL=postgres://otelfleet:otelfleet@localhost:5432/otel_fleet_test \
 //         go test -tags=integration ./internal/store/...
 // With the env unset the whole suite skips, so `go test ./...` stays green.
 package store
@@ -21,15 +21,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
 )
 
 var testPG *PG
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("OTELFLEET_TEST_DATABASE_URL")
+	dsn := os.Getenv("OTEL_FLEET_TEST_DATABASE_URL")
 	if dsn == "" {
-		fmt.Println("skipping store integration tests: OTELFLEET_TEST_DATABASE_URL unset")
+		fmt.Println("skipping store integration tests: OTEL_FLEET_TEST_DATABASE_URL unset")
 		os.Exit(0)
 	}
 	ctx := context.Background()

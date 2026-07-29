@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/auth"
+	"github.com/sag-solutions/otel-fleet/internal/auth"
 )
 
 // errNoCustomerAccess is wrapped in a forbiddenError (→403) when a tenant-scoped

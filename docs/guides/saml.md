@@ -1,13 +1,13 @@
 # SAML single sign-on
 
-otelfleet can act as a **SAML 2.0 Service Provider (SP)** for SP-initiated Web
+otel-fleet can act as a **SAML 2.0 Service Provider (SP)** for SP-initiated Web
 Browser SSO, alongside [OIDC/OAuth and GitHub](sso.md). Use it for identity
 providers that speak SAML — Okta, Microsoft Entra ID, Auth0, OneLogin, Google
 Workspace, ADFS.
 
 Scope: unsigned AuthnRequests and **signed, unencrypted** assertions (the
 default for the IdPs above). Assertion signatures are verified against the IdP
-certificate you configure; otelfleet holds no SP key pair. Encrypted assertions
+certificate you configure; otel-fleet holds no SP key pair. Encrypted assertions
 and signed requests are not supported yet.
 
 ## Configure
@@ -25,8 +25,8 @@ The dialog then shows the two SP values to register **at the IdP**:
 
 | Register at the IdP | Value |
 |---|---|
-| ACS URL (Assertion Consumer Service) | `https://<your-otelfleet>/auth/<slug>/acs` |
-| SP entity ID / Audience | `https://<your-otelfleet>/auth/<slug>/metadata` |
+| ACS URL (Assertion Consumer Service) | `https://<your-otel-fleet>/auth/<slug>/acs` |
+| SP entity ID / Audience | `https://<your-otel-fleet>/auth/<slug>/metadata` |
 
 SP metadata XML is also served at `…/auth/<slug>/metadata` for IdPs that import
 it.
@@ -48,7 +48,7 @@ a session is created.
 
 ## Configuration
 
-- `OTELFLEET_BASE_URL` must be the externally reachable base URL — the ACS and
+- `OTEL_FLEET_BASE_URL` must be the externally reachable base URL — the ACS and
   metadata URLs the IdP posts back to are derived from it.
 
 !!! note

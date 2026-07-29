@@ -10,7 +10,7 @@ import (
 
 // distroBin is where the real collector distro lands after `make build`
 // (relative to this package); tests using it skip when absent (CI).
-const distroBin = "../../collector/dist/otelfleet-collector"
+const distroBin = "../../collector/dist/otel-fleet-collector"
 
 func TestRenderEdgeConfigGolden(t *testing.T) {
 	got, err := RenderEdgeConfig(samplePipelines())

@@ -17,6 +17,6 @@ scrape_configs:
       - targets: ["acme-backend:8888"]
         labels:
           collector_class: demo-backend
-  - job_name: otelfleet-control-plane
+  - job_name: otel-fleet-control-plane
     static_configs:
       - targets: ["host.docker.internal:9090"]

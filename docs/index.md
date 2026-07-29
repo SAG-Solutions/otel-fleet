@@ -1,4 +1,4 @@
-# otelfleet
+# otel-fleet
 
 Self-hosted, multi-tenant OpenTelemetry collector fleet management: receive logs,
 traces and metrics from multiple customers via OTLP, attribute every datapoint to a
@@ -7,7 +7,7 @@ through a web UI.
 
 !!! warning "Pre-1.0 software — read this before deploying"
 
-    otelfleet is under active development and **not yet ready for production use**.
+    otel-fleet is under active development and **not yet ready for production use**.
     Honest limitations, as of today:
 
     - **Single control-plane replica.** Edge-agent OpAMP WebSockets are
@@ -40,7 +40,7 @@ through a web UI.
 - **SSO and RBAC** — Google, Microsoft Entra ID, GitHub, and any generic OIDC
   provider; roles `admin` / `operator` / `viewer`; user invites; audit log.
 - **Secrets encrypted at rest** — SSO client secrets and pipeline credential fields
-  are AES-256-GCM envelope-encrypted with `OTELFLEET_MASTER_KEY`.
+  are AES-256-GCM envelope-encrypted with `OTEL_FLEET_MASTER_KEY`.
 
 ## Architecture at a glance
 
@@ -83,7 +83,7 @@ flowchart LR
     fwdcol -.->|self-telemetry| vm
 ```
 
-One Go binary (`otelfleet`) serves the REST API and embedded React SPA (`:8080`),
+One Go binary (`otel-fleet`) serves the REST API and embedded React SPA (`:8080`),
 an internal gRPC service the gateway uses to validate API keys (`:9443`), an ops
 listener for metrics/health and rendered collector configs (`:9090`), and the OpAMP
 server for edge agents (`:4320`). The collectors are a custom OpenTelemetry
@@ -97,6 +97,6 @@ the metric naming contract, and known limitations.
 
 - [Quickstart](quickstart.md) — running locally in about five minutes.
 - [Helm installation](installation/helm.md) — Kubernetes deployment.
-- [Configuration reference](installation/configuration.md) — every `OTELFLEET_*`
+- [Configuration reference](installation/configuration.md) — every `OTEL_FLEET_*`
   environment variable.
 - [Guides](guides/multi-tenancy.md) — multi-tenancy, pipelines, edge agents, SSO.

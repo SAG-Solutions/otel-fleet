@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
 )
 
 const alertRuleCols = `id, name, metric, comparison, threshold, window_seconds, customer_id, channel_ids, enabled, created_at, updated_at`

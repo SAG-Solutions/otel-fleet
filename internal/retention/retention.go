@@ -10,8 +10,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // startupDelay is how long after boot the first run happens (lets the rest of
@@ -53,7 +53,7 @@ type Service struct {
 }
 
 // New wires the retention job. interval comes from
-// OTELFLEET_RETENTION_INTERVAL (default 24h).
+// OTEL_FLEET_RETENTION_INTERVAL (default 24h).
 func New(ch CH, st Store, interval time.Duration, log *slog.Logger) *Service {
 	return &Service{ch: ch, store: st, interval: interval, log: log}
 }

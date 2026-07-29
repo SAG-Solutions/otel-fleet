@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jansagurna/otelfleet/internal/api/apigen"
-	"github.com/jansagurna/otelfleet/internal/store"
-	"github.com/jansagurna/otelfleet/internal/tenants"
+	"github.com/sag-solutions/otel-fleet/internal/api/apigen"
+	"github.com/sag-solutions/otel-fleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/tenants"
 )
 
 func toAPIToken(t store.APIToken) apigen.ApiToken {

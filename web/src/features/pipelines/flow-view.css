@@ -1,5 +1,5 @@
 /*
- * React Flow chrome mapped onto the otelfleet token system so the canvas
+ * React Flow chrome mapped onto the otel-fleet token system so the canvas
  * reads as part of the app in both themes. Custom nodes carry their own
  * card styling; this only covers edges, handles, and controls.
  */

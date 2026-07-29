@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/auth"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/auth"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 func ctxWithPrincipal(p auth.Principal) context.Context {

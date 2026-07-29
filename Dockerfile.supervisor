@@ -1,11 +1,11 @@
-# Builds the otelfleet edge agent: OpAMP supervisor + otelfleet collector.
+# Builds the otel-fleet edge agent: OpAMP supervisor + otel-fleet collector.
 # Build context: repo root. Used by the `edge-agent` service in
 # deploy/compose/docker-compose.yaml (profile "edge").
 #
 # The supervisor connects out to the control plane's OpAMP server, receives
-# the full collector config as remote config, and runs the otelfleet
+# the full collector config as remote config, and runs the otel-fleet
 # collector as a child process (persisting the last-good config in
-# /var/lib/otelfleet-supervisor and reverting locally on crash-loop).
+# /var/lib/otel-fleet-supervisor and reverting locally on crash-loop).
 
 # --- Source A: OpAMP supervisor ---------------------------------------------
 # `go install .../cmd/opampsupervisor@v0.156.0` does NOT work: the module's
@@ -18,7 +18,7 @@
 ARG SUPERVISOR_VERSION=0.156.0
 FROM ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-opampsupervisor:${SUPERVISOR_VERSION} AS supervisor-source
 
-# --- Builder B: otelfleet collector via OCB ---------------------------------
+# --- Builder B: otel-fleet collector via OCB ---------------------------------
 # NOTE: this duplicates the OCB build in Dockerfile.collector (kept in sync by
 # hand for now; when bumping the release train, update OCB_VERSION here too —
 # see collector/README.md "Version bumps").
@@ -54,17 +54,17 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # spawns the collector as a subprocess; a shell keeps debugging sane.
 FROM alpine:3.22
 
-RUN addgroup -S -g 65532 otelfleet \
- && adduser -S -u 65532 -G otelfleet -h /var/lib/otelfleet-supervisor otelfleet \
- && mkdir -p /var/lib/otelfleet-supervisor /etc/otelfleet \
- && chown 65532:65532 /var/lib/otelfleet-supervisor
+RUN addgroup -S -g 65532 otel-fleet \
+ && adduser -S -u 65532 -G otel-fleet -h /var/lib/otel-fleet-supervisor otel-fleet \
+ && mkdir -p /var/lib/otel-fleet-supervisor /etc/otel-fleet \
+ && chown 65532:65532 /var/lib/otel-fleet-supervisor
 
 COPY --from=supervisor-source /usr/local/bin/opampsupervisor /usr/local/bin/opampsupervisor
-COPY --from=collector-builder /src/collector/dist/otelfleet-collector /usr/local/bin/otelfleet-collector
+COPY --from=collector-builder /src/collector/dist/otel-fleet-collector /usr/local/bin/otel-fleet-collector
 
 USER 65532:65532
 
 # No EXPOSE: edge agents live in customer networks and only dial out.
 
 ENTRYPOINT ["/usr/local/bin/opampsupervisor"]
-CMD ["--config", "/etc/otelfleet/supervisor.yaml"]
+CMD ["--config", "/etc/otel-fleet/supervisor.yaml"]

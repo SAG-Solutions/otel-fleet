@@ -1,4 +1,4 @@
-module github.com/jansagurna/otelfleet/collector/processor/tenantstamp
+module github.com/sag-solutions/otel-fleet/collector/processor/tenantstamp
 
 go 1.25.0
 

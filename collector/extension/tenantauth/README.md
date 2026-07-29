@@ -1,6 +1,6 @@
 # tenantauth extension
 
-Server authenticator (`extensionauth.Server`) for the otelfleet gateway.
+Server authenticator (`extensionauth.Server`) for the otel-fleet gateway.
 Receivers reference it via `auth: {authenticator: tenantauth}`; every request
 must present an ingest API key in `Authorization: Bearer <key>` or `X-Api-Key`
 (header names and bearer scheme are case-insensitive).
@@ -33,7 +33,7 @@ effect within `cache.ttl` (30s in the shipped gateway config).
 
 ## Telemetry
 
-`otelfleet_auth_requests_total` counter, attributes `outcome`
+`otel_fleet_auth_requests_total` counter, attributes `outcome`
 (`ok` | `invalid_key` | `no_key` | `upstream_error_stale` |
 `upstream_error_reject`) and `tenant_id` (when known).
 
@@ -42,7 +42,7 @@ effect within `cache.ttl` (30s in the shipped gateway config).
 ```yaml
 extensions:
   tenantauth:
-    endpoint: ${env:OTELFLEET_AUTH_ENDPOINT} # control-plane gRPC address
+    endpoint: ${env:OTEL_FLEET_AUTH_ENDPOINT} # control-plane gRPC address
     insecure: true                           # dev only: plaintext gRPC
     cache:
       ttl: 30s

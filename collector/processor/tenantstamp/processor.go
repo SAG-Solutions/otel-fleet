@@ -1,4 +1,4 @@
-// Copyright The otelfleet Authors
+// Copyright The otel-fleet Authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package tenantstamp stamps the authenticated tenant identity
@@ -6,7 +6,7 @@
 // onto every Resource of traces, logs and metrics. Any pre-existing values for
 // those attributes are removed first, so clients cannot spoof another tenant.
 // Batches without authentication data are dropped.
-package tenantstamp // import "github.com/jansagurna/otelfleet/collector/processor/tenantstamp"
+package tenantstamp // import "github.com/sag-solutions/otel-fleet/collector/processor/tenantstamp"
 
 import (
 	"context"
@@ -52,14 +52,14 @@ type stamper struct {
 }
 
 func newStamper(telemetry component.TelemetrySettings) (*stamper, error) {
-	meter := telemetry.MeterProvider.Meter("github.com/jansagurna/otelfleet/collector/processor/tenantstamp")
+	meter := telemetry.MeterProvider.Meter("github.com/sag-solutions/otel-fleet/collector/processor/tenantstamp")
 	droppedTotal, err := meter.Int64Counter(
-		"otelfleet_tenantstamp_dropped_batches_total",
+		"otel_fleet_tenantstamp_dropped_batches_total",
 		metric.WithDescription("Batches dropped because no authenticated tenant identity was present on the context."),
 		metric.WithUnit("{batch}"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creating otelfleet_tenantstamp_dropped_batches_total counter: %w", err)
+		return nil, fmt.Errorf("creating otel_fleet_tenantstamp_dropped_batches_total counter: %w", err)
 	}
 	return &stamper{logger: telemetry.Logger, droppedTotal: droppedTotal}, nil
 }

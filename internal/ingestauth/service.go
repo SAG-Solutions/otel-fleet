@@ -14,12 +14,12 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/jansagurna/otelfleet/internal/ingestauth/authv1"
-	"github.com/jansagurna/otelfleet/internal/store"
-	"github.com/jansagurna/otelfleet/internal/tenants"
+	"github.com/sag-solutions/otel-fleet/internal/ingestauth/authv1"
+	"github.com/sag-solutions/otel-fleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/tenants"
 )
 
-// Validation outcomes recorded in otelfleet_validate_requests_total.
+// Validation outcomes recorded in otel_fleet_validate_requests_total.
 const (
 	outcomeOK               = "ok"
 	outcomeMalformed        = "malformed"
@@ -55,7 +55,7 @@ type Service struct {
 // New creates the auth service and registers its metrics with reg.
 func New(st Store, log *slog.Logger, reg prometheus.Registerer) *Service {
 	requests := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "otelfleet_validate_requests_total",
+		Name: "otel_fleet_validate_requests_total",
 		Help: "ValidateAPIKey requests by outcome.",
 	}, []string{"outcome"})
 	reg.MustRegister(requests)

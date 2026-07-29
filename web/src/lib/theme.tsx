@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 
 export type Theme = 'dark' | 'light'
 
-const STORAGE_KEY = 'otelfleet-theme'
+const STORAGE_KEY = 'otel-fleet-theme'
 
 function initialTheme(): Theme {
   try {

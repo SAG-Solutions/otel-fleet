@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/api/apigen"
-	"github.com/jansagurna/otelfleet/internal/audit"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/api/apigen"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 func toAlertRule(r store.AlertRule) apigen.AlertRule {

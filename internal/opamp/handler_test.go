@@ -14,7 +14,7 @@ import (
 	"github.com/open-telemetry/opamp-go/protobufs"
 	"github.com/open-telemetry/opamp-go/server/types"
 
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // --- fakes ---

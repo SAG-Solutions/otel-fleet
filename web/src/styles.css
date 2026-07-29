@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * otelfleet design tokens — "terminal-grade control room, cleaned up".
+ * otel-fleet design tokens — "terminal-grade control room, cleaned up".
  * Surfaces follow the validated dataviz chrome (warm graphite / warm paper)
  * so app chrome and charts read as one system. The single accent is
  * signal-amber, a nod to OpenTelemetry's orange; it is spent on brand,

@@ -4,7 +4,7 @@
 
 ```
 api/openapi.yaml     REST contract — source of truth for Go + TS codegen
-cmd/otelfleet        control-plane binary (one process: REST/SPA, gRPC, ops, OpAMP)
+cmd/otel-fleet        control-plane binary (one process: REST/SPA, gRPC, ops, OpAMP)
 internal/            backend packages (api, auth, authz, config, crypto, opamp,
                      pipelines, store, tenants, …)
 proto/               internal gRPC contract (API-key validation, buf-managed)
@@ -27,8 +27,8 @@ Go 1.26+, Node 24+ with pnpm, Docker + Compose. For the docs:
 | Target | What it does |
 | --- | --- |
 | `make dev-up` / `make dev-down` | Compose dev environment up (with build) / down incl. volumes |
-| `make run` | `go run ./cmd/otelfleet` (control plane on the host) |
-| `make build` | Build `bin/otelfleet` |
+| `make run` | `go run ./cmd/otel-fleet` (control plane on the host) |
+| `make build` | Build `bin/otel-fleet` |
 | `make test` | Go tests: control plane + both collector components |
 | `make lint` | `golangci-lint run` |
 | `make gen` | All codegen (`gen-go` + `gen-web`) |
@@ -79,7 +79,7 @@ missing, mirroring the server's behavior).
   v0.156.0 and bumped in lockstep across `collector/Makefile`,
   `builder-config.yaml`, both Dockerfiles and the component go.mods.
 - Conventional commits, DCO sign-off — see
-  [CONTRIBUTING.md](https://github.com/jansagurna/otelfleet/blob/main/CONTRIBUTING.md).
+  [CONTRIBUTING.md](https://github.com/sag-solutions/otel-fleet/blob/main/CONTRIBUTING.md).
 
 ## Docs site
 

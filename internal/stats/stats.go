@@ -19,7 +19,7 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // ErrUpstreamUnavailable is returned when ClickHouse cannot be queried;
@@ -173,7 +173,7 @@ func (s *Service) refusedRequests(ctx context.Context, from, to time.Time) int64
 	if rangeSecs <= 0 {
 		return 0
 	}
-	query := fmt.Sprintf(`sum(increase(otelfleet_auth_requests_total{outcome!="ok"}[%ds]))`, rangeSecs)
+	query := fmt.Sprintf(`sum(increase(otel_fleet_auth_requests_total{outcome!="ok"}[%ds]))`, rangeSecs)
 
 	u := s.vmURL + "/api/v1/query?" + url.Values{
 		"query": {query},

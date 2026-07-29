@@ -351,7 +351,7 @@ function AlertRuleDialog({
         <DialogHeader>
           <DialogTitle>{editing ? 'Edit alert rule' : 'New alert rule'}</DialogTitle>
           <DialogDescription>
-            otelfleet evaluates this metric over the window and notifies the selected channels when
+            otel-fleet evaluates this metric over the window and notifies the selected channels when
             the threshold is crossed.
           </DialogDescription>
         </DialogHeader>

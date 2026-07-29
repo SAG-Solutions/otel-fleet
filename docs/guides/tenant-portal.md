@@ -1,6 +1,6 @@
 # Tenant self-service portal
 
-otelfleet has two faces of the same console:
+otel-fleet has two faces of the same console:
 
 - **Admin console** — what administrators and unscoped operators see: the whole
   fleet, every customer, settings, billing and the audit log.

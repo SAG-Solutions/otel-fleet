@@ -1,4 +1,4 @@
-module github.com/jansagurna/otelfleet/collector/processor/tenantquota
+module github.com/sag-solutions/otel-fleet/collector/processor/tenantquota
 
 go 1.25.0
 

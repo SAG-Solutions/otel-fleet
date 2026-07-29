@@ -14,7 +14,7 @@ import (
 
 func TestOpsHandler(t *testing.T) {
 	reg := prometheus.NewRegistry()
-	c := prometheus.NewCounter(prometheus.CounterOpts{Name: "otelfleet_test_total"})
+	c := prometheus.NewCounter(prometheus.CounterOpts{Name: "otel_fleet_test_total"})
 	reg.MustRegister(c)
 	c.Inc()
 
@@ -43,7 +43,7 @@ func TestOpsHandler(t *testing.T) {
 	if code, _ := get("/readyz"); code != http.StatusOK {
 		t.Errorf("/readyz with passing check = %d, want 200", code)
 	}
-	if code, body := get("/metrics"); code != http.StatusOK || !strings.Contains(body, "otelfleet_test_total") {
-		t.Errorf("/metrics = %d, want 200 containing otelfleet_test_total", code)
+	if code, body := get("/metrics"); code != http.StatusOK || !strings.Contains(body, "otel_fleet_test_total") {
+		t.Errorf("/metrics = %d, want 200 containing otel_fleet_test_total", code)
 	}
 }

@@ -382,7 +382,7 @@ function downloadCsv(statement: BillingStatement): void {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `otelfleet-billing-${statement.month}.csv`
+  anchor.download = `otel-fleet-billing-${statement.month}.csv`
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()

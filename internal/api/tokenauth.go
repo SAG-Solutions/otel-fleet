@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/store"
-	"github.com/jansagurna/otelfleet/internal/tenants"
+	"github.com/sag-solutions/otel-fleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/tenants"
 )
 
 // tokenStore is the store subset needed to validate management-API tokens.

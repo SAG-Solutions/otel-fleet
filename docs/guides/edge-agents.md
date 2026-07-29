@@ -1,8 +1,8 @@
 # Edge agents
 
-Edge agents are otelfleet collectors running inside customer networks, managed
+Edge agents are otel-fleet collectors running inside customer networks, managed
 centrally over [OpAMP](https://opentelemetry.io/docs/specs/opamp/). Each agent is
-the official **OpAMP supervisor** (v0.156.0) running the otelfleet collector
+the official **OpAMP supervisor** (v0.156.0) running the otel-fleet collector
 distribution as a child process.
 
 Key property: agents only make **outbound** connections — a WebSocket to the
@@ -17,7 +17,7 @@ network needs to be reachable from outside.
 2. Start the agent with the token. With the compose dev/demo environment:
 
     ```sh
-    OTELFLEET_BOOTSTRAP_TOKEN=otm_bt_<prefix>_<secret> \
+    OTEL_FLEET_BOOTSTRAP_TOKEN=otm_bt_<prefix>_<secret> \
       docker compose --profile edge up -d edge-agent
     ```
 
@@ -29,33 +29,33 @@ network needs to be reachable from outside.
    rendered config (the customer's active edge pipelines — or a safe empty-state
    config if there are none).
 
-For your own deployments, run the `ghcr.io/jansagurna/otelfleet-supervisor`
+For your own deployments, run the `ghcr.io/sag-solutions/otel-fleet-supervisor`
 image with a supervisor config modeled on `deploy/compose/supervisor.yaml`,
 pointing at your control plane:
 
 ```yaml
 server:
-  endpoint: wss://otelfleet.example.com:4320/v1/opamp
+  endpoint: wss://otel-fleet.example.com:4320/v1/opamp
   headers:
-    Authorization: "Bearer ${env:OTELFLEET_BOOTSTRAP_TOKEN}"
+    Authorization: "Bearer ${env:OTEL_FLEET_BOOTSTRAP_TOKEN}"
 ```
 
 ### On Kubernetes (Helm)
 
 The whole system runs on **Docker (compose)** *and* **Kubernetes**: the control
-plane, gateway and forwarding tiers ship in the `otelfleet` chart, and edge
-agents ship in the **`otelfleet-agent`** chart (`deploy/charts/otelfleet-agent`).
+plane, gateway and forwarding tiers ship in the `otel-fleet` chart, and edge
+agents ship in the **`otel-fleet-agent`** chart (`deploy/charts/otel-fleet-agent`).
 It runs the same supervisor image as compose, as a StatefulSet (each replica is
 a distinct agent with its own persistent identity) plus a Service exposing OTLP
 to in-cluster apps:
 
 ```sh
-helm install otelfleet-agent deploy/charts/otelfleet-agent \
-  --set opamp.endpoint=wss://otelfleet.example.com:4320/v1/opamp \
+helm install otel-fleet-agent deploy/charts/otel-fleet-agent \
+  --set opamp.endpoint=wss://otel-fleet.example.com:4320/v1/opamp \
   --set bootstrapToken.value=otm_bt_<prefix>_<secret>
 ```
 
-Apps then send OTLP to `http://otelfleet-agent.<namespace>:4318` (gRPC `:4317`)
+Apps then send OTLP to `http://otel-fleet-agent.<namespace>:4318` (gRPC `:4317`)
 — no per-app API key; the agent forwards under the customer it enrolled with.
 Use `bootstrapToken.existingSecret` instead of an inline value to source the
 token from a Secret.
@@ -65,9 +65,9 @@ is internet-facing, use `wss://` and configure TLS/mTLS + an allowlist on the
 agent chart:
 
 ```sh
-helm install otelfleet-agent deploy/charts/otelfleet-agent \
-  --set opamp.endpoint=wss://otelfleet.example.com/v1/opamp \
-  --set bootstrapToken.existingSecret=otelfleet-bootstrap \
+helm install otel-fleet-agent deploy/charts/otel-fleet-agent \
+  --set opamp.endpoint=wss://otel-fleet.example.com/v1/opamp \
+  --set bootstrapToken.existingSecret=otel-fleet-bootstrap \
   --set opamp.tls.caCert="$(cat corp-ca.pem)" \        # verify a private-CA server cert
   --set opamp.tls.clientCertSecret=agent-mtls \          # present a client cert (mTLS)
   --set networkPolicy.enabled=true \                     # restrict who reaches the agent's OTLP ports
@@ -78,7 +78,7 @@ helm install otelfleet-agent deploy/charts/otelfleet-agent \
   PEM), `serverName` (SNI override), `insecureSkipVerify`, and
   `clientCertSecret` (a `kubernetes.io/tls` Secret the agent presents for
   **mTLS**). The control plane already supports serving TLS + requiring client
-  certs (`controlPlane.tls` in the `otelfleet` chart).
+  certs (`controlPlane.tls` in the `otel-fleet` chart).
 - `networkPolicy`: a Kubernetes-level allowlist for the agent's OTLP ports
   (`allowedNamespaces` / `allowedPodSelector` / `allowedCIDRs`); with none set
   it denies all ingress (agents only dial out).
@@ -87,19 +87,19 @@ helm install otelfleet-agent deploy/charts/otelfleet-agent \
 (`minReplicas`/`maxReplicas`/`targetCPUUtilizationPercentage`) to let an HPA
 add or remove agent instances under load; each is a distinct enrolled agent.
 The central gateway/forwarding tiers scale independently via KEDA in the
-`otelfleet` chart.
+`otel-fleet` chart.
 
 **Multiple regions** — install the chart once per region, each pointing at that
 region's OpAMP endpoint (see the
 [multi-region design](../design/multi-region-residency.md)):
 
 ```sh
-helm install agent-eu deploy/charts/otelfleet-agent \
-  --set opamp.endpoint=wss://eu.otelfleet.example.com/v1/opamp --set region=eu \
-  --set bootstrapToken.existingSecret=otelfleet-bootstrap
-helm install agent-us deploy/charts/otelfleet-agent \
-  --set opamp.endpoint=wss://us.otelfleet.example.com/v1/opamp --set region=us \
-  --set bootstrapToken.existingSecret=otelfleet-bootstrap
+helm install agent-eu deploy/charts/otel-fleet-agent \
+  --set opamp.endpoint=wss://eu.otel-fleet.example.com/v1/opamp --set region=eu \
+  --set bootstrapToken.existingSecret=otel-fleet-bootstrap
+helm install agent-us deploy/charts/otel-fleet-agent \
+  --set opamp.endpoint=wss://us.otel-fleet.example.com/v1/opamp --set region=us \
+  --set bootstrapToken.existingSecret=otel-fleet-bootstrap
 ```
 
 ## Lifecycle
@@ -121,7 +121,7 @@ sequenceDiagram
 - Config pushes happen on connect (only when the hash differs) and whenever an
   edge pipeline of the customer is activated.
 - The supervisor persists the **last-good config** (and its instance ID) under
-  `/var/lib/otelfleet-supervisor`. If the control plane is down it starts the
+  `/var/lib/otel-fleet-supervisor`. If the control plane is down it starts the
   collector from the persisted config; if a pushed config crash-loops the
   collector, it **reverts locally** and reports the failure.
 - Connect / disconnect / health / config-status transitions are recorded as

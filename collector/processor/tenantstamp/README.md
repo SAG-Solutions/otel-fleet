@@ -17,7 +17,7 @@ Behavior:
   identity has no value for one of them.
 - **Missing auth → drop**: if the incoming context carries no authentication
   data (or no `tenant.id`), the whole batch is dropped (never forwarded), the
-  `otelfleet_tenantstamp_dropped_batches_total` counter is incremented
+  `otel_fleet_tenantstamp_dropped_batches_total` counter is incremented
   (attribute `signal`), and a throttled warning is logged.
 
 ## Requirements
@@ -30,7 +30,7 @@ receiver **must** be configured with the `tenantauth` server authenticator
 ```yaml
 extensions:
   tenantauth:
-    endpoint: ${env:OTELFLEET_AUTH_ENDPOINT}
+    endpoint: ${env:OTEL_FLEET_AUTH_ENDPOINT}
 
 receivers:
   otlp:

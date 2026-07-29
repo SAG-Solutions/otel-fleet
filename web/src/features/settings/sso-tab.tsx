@@ -241,7 +241,7 @@ function ProvidersTable({
                 <TableCell>
                   <span
                     title={
-                      fromEnv ? 'Defined via OTELFLEET_OIDC_* environment variables' : undefined
+                      fromEnv ? 'Defined via OTEL_FLEET_OIDC_* environment variables' : undefined
                     }
                   >
                     <Switch
@@ -254,7 +254,7 @@ function ProvidersTable({
                 </TableCell>
                 <TableCell>
                   {fromEnv ? (
-                    <Badge title="Read-only — defined via OTELFLEET_OIDC_* environment variables">
+                    <Badge title="Read-only — defined via OTEL_FLEET_OIDC_* environment variables">
                       env
                     </Badge>
                   ) : (

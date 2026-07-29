@@ -1,6 +1,6 @@
 # Representative forwarding-tier collector configuration.
 #
-# This file is the living contract test between the otelfleet distro and the
+# This file is the living contract test between the otel-fleet distro and the
 # control plane's config renderer: it mirrors the shape of what the control
 # plane serves at /internal/v1/collector-config/forwarding, and
 # `make -C collector validate` checks the built binary can run it. If the

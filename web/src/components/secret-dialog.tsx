@@ -43,7 +43,7 @@ export function SecretDialog({
               </DialogTitle>
               <DialogDescription>
                 This is the only time <span className="font-mono text-ink">{apiKey.name}</span> is
-                shown. otelfleet stores a hash — the key cannot be recovered later.
+                shown. otel-fleet stores a hash — the key cannot be recovered later.
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-1 rounded-md border border-warn/40 bg-surface-2 p-3">

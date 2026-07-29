@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
 )
 
 // PG implements Store on top of a pgx connection pool.
@@ -340,7 +340,7 @@ func (s *PG) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 // identity and — if the email is unknown — the user (with roleIfNew) on first
 // login. Existing users keep their assigned role (an invited user's role
 // survives their first login), with one exception: roleIfNew == "admin" means
-// the email is in OTELFLEET_ADMIN_EMAILS, which always forces admin.
+// the email is in OTEL_FLEET_ADMIN_EMAILS, which always forces admin.
 // Every call stamps last_login_at.
 func (s *PG) UpsertUserByIdentity(ctx context.Context, provider, subject, email string, displayName *string, roleIfNew string) (User, error) {
 	var u User
@@ -376,7 +376,7 @@ func (s *PG) UpsertUserByIdentity(ctx context.Context, provider, subject, email 
 		}
 
 		role := u.Role
-		if roleIfNew == "admin" { // OTELFLEET_ADMIN_EMAILS forces admin
+		if roleIfNew == "admin" { // OTEL_FLEET_ADMIN_EMAILS forces admin
 			role = "admin"
 		}
 		if err := scanUserRow(tx.QueryRow(ctx, `

@@ -20,7 +20,7 @@ export function ErrorState({
       <div>
         <div className="text-sm font-semibold text-ink">{title}</div>
         <div className="mt-1 text-[13px] text-ink-2">
-          {detail ?? 'The request failed. Check that the otelfleet API is reachable, then retry.'}
+          {detail ?? 'The request failed. Check that the otel-fleet API is reachable, then retry.'}
         </div>
       </div>
       {onRetry && (

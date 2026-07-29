@@ -1,6 +1,6 @@
 // Package crypto implements envelope encryption for secrets at rest
 // (auth-provider client secrets, pipeline exporter credentials) with
-// AES-256-GCM keyed by OTELFLEET_MASTER_KEY.
+// AES-256-GCM keyed by OTEL_FLEET_MASTER_KEY.
 //
 // Ciphertext layout: [1 version byte][12-byte random nonce][GCM ciphertext].
 // The version byte allows future key rotation / algorithm changes; the only
@@ -23,8 +23,8 @@ const version1 = 0x01
 const KeySize = 32
 
 // ErrNotConfigured is returned by a nil *Cipher: the feature needs the master
-// key but OTELFLEET_MASTER_KEY is not set.
-var ErrNotConfigured = errors.New("master key not configured (set OTELFLEET_MASTER_KEY)")
+// key but OTEL_FLEET_MASTER_KEY is not set.
+var ErrNotConfigured = errors.New("master key not configured (set OTEL_FLEET_MASTER_KEY)")
 
 // ErrDecrypt is returned when a ciphertext cannot be decrypted (tampered
 // data, wrong key or unknown format version).
@@ -96,7 +96,7 @@ func (c *Cipher) Decrypt(ciphertext []byte) ([]byte, error) {
 }
 
 // NewRandomKeyBase64 generates a fresh master key, base64-encoded — used in
-// error hints and setup docs (`OTELFLEET_MASTER_KEY=<value>`).
+// error hints and setup docs (`OTEL_FLEET_MASTER_KEY=<value>`).
 func NewRandomKeyBase64() string {
 	key := make([]byte, KeySize)
 	if _, err := rand.Read(key); err != nil {

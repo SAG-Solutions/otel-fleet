@@ -1,6 +1,6 @@
 # Alerting & notifications
 
-otelfleet can notify you when something needs attention — an agent goes
+otel-fleet can notify you when something needs attention — an agent goes
 offline, a config rollout fails, or a customer's ingest volume crosses a
 threshold you defined. Notifications are delivered to **channels** you
 configure once and then reference from alert sources.

@@ -11,16 +11,16 @@ import (
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
-	"github.com/jansagurna/otelfleet/internal/api/apigen"
-	"github.com/jansagurna/otelfleet/internal/auth"
-	"github.com/jansagurna/otelfleet/internal/authz"
-	"github.com/jansagurna/otelfleet/internal/config"
-	"github.com/jansagurna/otelfleet/internal/crypto"
-	"github.com/jansagurna/otelfleet/internal/pipelines"
-	"github.com/jansagurna/otelfleet/internal/query"
-	"github.com/jansagurna/otelfleet/internal/stats"
-	"github.com/jansagurna/otelfleet/internal/store"
-	"github.com/jansagurna/otelfleet/internal/tenants"
+	"github.com/sag-solutions/otel-fleet/internal/api/apigen"
+	"github.com/sag-solutions/otel-fleet/internal/auth"
+	"github.com/sag-solutions/otel-fleet/internal/authz"
+	"github.com/sag-solutions/otel-fleet/internal/config"
+	"github.com/sag-solutions/otel-fleet/internal/crypto"
+	"github.com/sag-solutions/otel-fleet/internal/pipelines"
+	"github.com/sag-solutions/otel-fleet/internal/query"
+	"github.com/sag-solutions/otel-fleet/internal/stats"
+	"github.com/sag-solutions/otel-fleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/tenants"
 )
 
 // Server implements the OpenAPI strict-server interface.
@@ -147,7 +147,7 @@ func (s *Server) ListAuthProviders(ctx context.Context, _ apigen.ListAuthProvide
 	}, nil
 }
 
-// DevLogin signs in by bare email; enabled only with OTELFLEET_DEV_LOGIN=true.
+// DevLogin signs in by bare email; enabled only with OTEL_FLEET_DEV_LOGIN=true.
 func (s *Server) DevLogin(ctx context.Context, request apigen.DevLoginRequestObject) (apigen.DevLoginResponseObject, error) {
 	if !s.cfg.DevLogin {
 		return apigen.DevLogin403JSONResponse{ForbiddenJSONResponse: apigen.ForbiddenJSONResponse{Code: codeForbidden, Message: "dev login is disabled"}}, nil

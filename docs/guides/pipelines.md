@@ -53,7 +53,7 @@ Validation happens in two stages:
    to form fields (e.g. `exporters[0].config.endpoint`).
 2. **Authoritative** — the control plane renders the full collector config and
    runs `otelcol validate` with the **actual distro binary**
-   (`OTELFLEET_OTELCOL_BIN`). What validates here is exactly what the collectors
+   (`OTEL_FLEET_OTELCOL_BIN`). What validates here is exactly what the collectors
    will load. If the binary is missing, only structural validation runs.
 
 ### Forwarding-tier rollout mechanics
@@ -62,12 +62,12 @@ The forwarding collector loads its *entire* config from the control plane's ops
 endpoint (`GET :9090/internal/v1/collector-config/forwarding`) via the HTTP
 confmap provider.
 
-- **compose / Helm `deployment` mode** (`OTELFLEET_DISTRIBUTOR=publish`):
+- **compose / Helm `deployment` mode** (`OTEL_FLEET_DISTRIBUTOR=publish`):
   activation re-renders and re-serves the config; running collectors keep the old
   one until restarted. The pipeline shows `pending_restart` —
   `docker compose restart forwarding` or
-  `kubectl rollout restart deployment/otelfleet-forwarding` applies it.
-- **Helm `operator` mode** (`OTELFLEET_DISTRIBUTOR=k8s`): the control plane
+  `kubectl rollout restart deployment/otel-fleet-forwarding` applies it.
+- **Helm `operator` mode** (`OTEL_FLEET_DISTRIBUTOR=k8s`): the control plane
   patches the `OpenTelemetryCollector` CR and the opentelemetry-operator rolls
   the pods; no manual restart.
 
@@ -83,7 +83,7 @@ See [Edge agents](edge-agents.md).
 Component fields marked as passwords in the catalog (credentials on exporters)
 are:
 
-- **encrypted at rest** with `OTELFLEET_MASTER_KEY` (AES-256-GCM) — saving a
+- **encrypted at rest** with `OTEL_FLEET_MASTER_KEY` (AES-256-GCM) — saving a
   pipeline with password fields fails cleanly if the key is not configured;
 - **never returned** by the API — reads show a redaction sentinel, and saving a
   graph with the sentinel copies the previously stored secret forward, so the

@@ -1,6 +1,6 @@
 # SCIM provisioning
 
-otelfleet exposes a **SCIM 2.0** (RFC 7643/7644) `Users` endpoint so an
+otel-fleet exposes a **SCIM 2.0** (RFC 7643/7644) `Users` endpoint so an
 identity provider (Okta, Microsoft Entra ID, OneLogin, …) can create, update
 and deprovision console users automatically — no manual invites.
 
@@ -14,7 +14,7 @@ deprovisions the account, SSO logs the user in.
 
 | | |
 |---|---|
-| Base URL | `https://<your-otelfleet>/scim/v2` |
+| Base URL | `https://<your-otel-fleet>/scim/v2` |
 | Auth | `Authorization: Bearer <admin API token>` |
 | Content type | `application/scim+json` |
 
@@ -27,7 +27,7 @@ are served for IdP auto-configuration.
 
 ## Attribute mapping
 
-| SCIM | otelfleet |
+| SCIM | otel-fleet |
 |---|---|
 | `userName` (or primary `emails[]`) | email (the account key) |
 | `active` | enabled / disabled |
@@ -52,7 +52,7 @@ updates; `displayName`, `externalId` and `active` are.
 
 ```sh
 TOKEN=otm_pat_…            # an admin API token
-BASE=https://<your-otelfleet>/scim/v2
+BASE=https://<your-otel-fleet>/scim/v2
 
 # provision
 curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/scim+json' \
@@ -71,7 +71,7 @@ curl -H "Authorization: Bearer $TOKEN" -X DELETE "$BASE/Users/<id>"
 
 ## Configuration
 
-- `OTELFLEET_SCIM_DEFAULT_ROLE` — role for newly provisioned users
+- `OTEL_FLEET_SCIM_DEFAULT_ROLE` — role for newly provisioned users
   (default `viewer`; `operator`/`admin` also accepted).
 
 !!! note

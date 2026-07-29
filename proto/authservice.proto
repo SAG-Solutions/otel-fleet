@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package otelfleet.auth.v1;
 
-option go_package = "github.com/jansagurna/otelfleet/internal/ingestauth/authv1";
+option go_package = "github.com/sag-solutions/otel-fleet/internal/ingestauth/authv1";
 
 // AuthService is the internal control-plane service the gateway collectors'
 // tenantauth extension calls to validate ingest API keys. It is exposed on the

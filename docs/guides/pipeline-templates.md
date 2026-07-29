@@ -1,7 +1,7 @@
 # Pipeline templates
 
 Copy-paste starting points for common pipelines. Each `graph` block is exactly
-what the pipeline builder produces and what `otelfleetctl apply` consumes — drop
+what the pipeline builder produces and what `otel-fleetctl apply` consumes — drop
 one under a pipeline in your [config-as-code](cli.md) spec, or rebuild it in the
 UI. Every graph is validated against the real collector binary before it can be
 activated, so a bad template fails fast with an inline error.
@@ -32,7 +32,7 @@ graph:
 
 ## Store in ClickHouse only
 
-Keep the data in otelfleet's ClickHouse (queryable in **Explore**), no
+Keep the data in otel-fleet's ClickHouse (queryable in **Explore**), no
 forwarding.
 
 ```yaml

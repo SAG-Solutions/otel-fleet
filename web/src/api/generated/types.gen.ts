@@ -306,7 +306,7 @@ export type AuthProviderConfig = {
     issuer?: string | null;
     enabled: boolean;
     /**
-     * environment = defined via OTELFLEET_OIDC_* env vars (read-only here).
+     * environment = defined via OTEL_FLEET_OIDC_* env vars (read-only here).
      */
     source: 'database' | 'environment';
     /**
@@ -785,7 +785,7 @@ export type ListAuthProvidersResponses = {
     200: {
         providers: Array<AuthProvider>;
         /**
-         * True only when OTELFLEET_DEV_LOGIN=true (local development).
+         * True only when OTEL_FLEET_DEV_LOGIN=true (local development).
          */
         devLoginEnabled: boolean;
     };

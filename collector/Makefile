@@ -1,9 +1,9 @@
-# Build targets for the otelfleet collector distribution.
+# Build targets for the otel-fleet collector distribution.
 # (Kept separate from the repo-root Makefile on purpose.)
 
 OCB_VERSION ?= v0.156.0
 BUF_VERSION ?= v1.57.2
-DIST        := dist/otelfleet-collector
+DIST        := dist/otel-fleet-collector
 TOOLS_BIN   := $(CURDIR)/.tools/bin
 
 .PHONY: all build test proto validate docker clean
@@ -32,14 +32,14 @@ proto:
 # (testdata/forwarding-sample.yaml is the contract test for control-plane
 # rendered configs) against the built binary.
 validate:
-	OTELFLEET_AUTH_ENDPOINT=localhost:9443 \
+	OTEL_FLEET_AUTH_ENDPOINT=localhost:9443 \
 	CLICKHOUSE_ENDPOINT='tcp://localhost:9000?database=otel' \
 	./$(DIST) validate --config=../deploy/compose/otelcol-gateway.yaml
 	./$(DIST) validate --config=testdata/forwarding-sample.yaml
 
 # Build the gateway container image (repo root as context).
 docker:
-	docker build -f ../Dockerfile.collector -t otelfleet-collector:dev ..
+	docker build -f ../Dockerfile.collector -t otel-fleet-collector:dev ..
 
 clean:
 	rm -rf dist .tools

@@ -1,4 +1,4 @@
-# otelfleet control plane: Go backend + web UI + bundled collector binary
+# otel-fleet control plane: Go backend + web UI + bundled collector binary
 # (the collector is required for `otelcol validate` during pipeline editing).
 
 # --- web build ---
@@ -24,15 +24,15 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/otelfleet ./cmd/otelfleet
+RUN CGO_ENABLED=0 go build -o /out/otel-fleet ./cmd/otel-fleet
 
 # --- runtime ---
 FROM gcr.io/distroless/static-debian12:nonroot
-COPY --from=backend /out/otelfleet /usr/local/bin/otelfleet
-COPY --from=collector /src/collector/dist/otelfleet-collector /usr/local/bin/otelfleet-collector
-COPY --from=web /src/web/dist /srv/otelfleet/web
-ENV OTELFLEET_WEB_DIR=/srv/otelfleet/web \
-    OTELFLEET_OTELCOL_BIN=/usr/local/bin/otelfleet-collector
+COPY --from=backend /out/otel-fleet /usr/local/bin/otel-fleet
+COPY --from=collector /src/collector/dist/otel-fleet-collector /usr/local/bin/otel-fleet-collector
+COPY --from=web /src/web/dist /srv/otel-fleet/web
+ENV OTEL_FLEET_WEB_DIR=/srv/otel-fleet/web \
+    OTEL_FLEET_OTELCOL_BIN=/usr/local/bin/otel-fleet-collector
 EXPOSE 8080 9443 9090 4320
 USER 65532:65532
-ENTRYPOINT ["/usr/local/bin/otelfleet"]
+ENTRYPOINT ["/usr/local/bin/otel-fleet"]

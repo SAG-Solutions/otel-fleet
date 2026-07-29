@@ -369,7 +369,7 @@ function WebhookDialog({
         <DialogHeader>
           <DialogTitle>{editing ? 'Edit channel' : 'Add channel'}</DialogTitle>
           <DialogDescription>
-            otelfleet notifies this channel on the selected fleet events.
+            otel-fleet notifies this channel on the selected fleet events.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
@@ -408,7 +408,7 @@ function WebhookDialog({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={
-                isSlack ? 'https://hooks.slack.com/services/…' : 'https://alerts.example.com/otelfleet'
+                isSlack ? 'https://hooks.slack.com/services/…' : 'https://alerts.example.com/otel-fleet'
               }
             />
             <p className="text-[11px] text-ink-3">

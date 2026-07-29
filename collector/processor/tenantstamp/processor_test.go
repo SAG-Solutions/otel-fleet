@@ -1,4 +1,4 @@
-// Copyright The otelfleet Authors
+// Copyright The otel-fleet Authors
 // SPDX-License-Identifier: Apache-2.0
 
 package tenantstamp

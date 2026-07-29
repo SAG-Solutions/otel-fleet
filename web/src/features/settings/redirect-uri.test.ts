@@ -3,8 +3,8 @@ import { deriveRedirectUri } from '@/features/settings/redirect-uri'
 
 describe('deriveRedirectUri', () => {
   it('builds origin + /auth/{slug}/callback', () => {
-    expect(deriveRedirectUri('google', 'https://otelfleet.example.com')).toBe(
-      'https://otelfleet.example.com/auth/google/callback',
+    expect(deriveRedirectUri('google', 'https://otel-fleet.example.com')).toBe(
+      'https://otel-fleet.example.com/auth/google/callback',
     )
   })
 

@@ -1,7 +1,7 @@
 # Sending data
 
 Customers send OpenTelemetry data (logs, traces, metrics) to the gateway over
-**OTLP**, authenticated with the customer's **API key**. otelfleet validates the
+**OTLP**, authenticated with the customer's **API key**. otel-fleet validates the
 key, stamps the tenant identity onto every record, and stores and/or forwards
 it per the customer's pipelines.
 
@@ -45,27 +45,27 @@ export OTEL_SERVICE_NAME="checkout"
 That is all most SDKs need. Language-specific setup (auto-instrumentation
 agents, `OTEL_TRACES_EXPORTER=otlp`, etc.) follows the upstream
 [OpenTelemetry docs](https://opentelemetry.io/docs/languages/); only the
-endpoint + `authorization` header are otelfleet-specific.
+endpoint + `authorization` header are otel-fleet-specific.
 
-### A collector you already run (agent → otelfleet gateway)
+### A collector you already run (agent → otel-fleet gateway)
 
-Add otelfleet as an OTLP exporter in your own collector:
+Add otel-fleet as an OTLP exporter in your own collector:
 
 ```yaml
 exporters:
-  otlp/otelfleet:
+  otlp/otel-fleet:
     endpoint: otlp.example.com:4317
     headers:
       authorization: "Bearer otm_ab12cd34_…"
 
 service:
   pipelines:
-    traces: { exporters: [otlp/otelfleet] }
-    logs:    { exporters: [otlp/otelfleet] }
-    metrics: { exporters: [otlp/otelfleet] }
+    traces: { exporters: [otlp/otel-fleet] }
+    logs:    { exporters: [otlp/otel-fleet] }
+    metrics: { exporters: [otlp/otel-fleet] }
 ```
 
-For customer sites you can instead run an **edge agent** that otelfleet manages
+For customer sites you can instead run an **edge agent** that otel-fleet manages
 remotely — see [Edge agents](edge-agents.md).
 
 ### A quick test with telemetrygen

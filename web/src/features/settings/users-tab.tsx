@@ -161,7 +161,7 @@ export function UsersTab() {
 
 function ScimInfoCard() {
   const origin =
-    typeof window !== 'undefined' ? window.location.origin : 'https://otelfleet.example.com'
+    typeof window !== 'undefined' ? window.location.origin : 'https://otel-fleet.example.com'
   const baseUrl = `${origin}/scim/v2`
 
   return (

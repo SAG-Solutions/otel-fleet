@@ -1,0 +1,105 @@
+{{- if .Values.forwarding.enabled }}
+{{- if eq .Values.forwarding.mode "deployment" }}
+# Plain-Deployment mode: the collector pulls its full config from the control
+# plane's ops endpoint at startup (HTTP config provider). Activating a
+# pipeline reports state "pending_restart" — apply with:
+#   kubectl rollout restart deploy/{{ include "otel-fleet.fullname" . }}-forwarding
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-forwarding
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: forwarding
+spec:
+  replicas: {{ .Values.forwarding.replicas }}
+  selector:
+    matchLabels:
+      {{- include "otel-fleet.selector" . | nindent 6 }}
+      app.kubernetes.io/component: forwarding
+  template:
+    metadata:
+      labels:
+        {{- include "otel-fleet.labels" . | nindent 8 }}
+        app.kubernetes.io/component: forwarding
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: otelcol
+          image: {{ include "otel-fleet.collectorImage" . }}
+          imagePullPolicy: {{ .Values.images.collector.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          args:
+            - {{ printf "--config=http://%s-control-plane:9090/internal/v1/collector-config/forwarding" (include "otel-fleet.fullname" .) | quote }}
+          ports:
+            - { name: otlp-grpc, containerPort: 4317 }
+            - { name: telemetry, containerPort: 8888 }
+            - { name: health, containerPort: 13133 }
+          readinessProbe:
+            httpGet: { path: /, port: health }
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: { path: /, port: health }
+            initialDelaySeconds: 10
+          resources: {{- toYaml .Values.forwarding.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- else if eq .Values.forwarding.mode "operator" }}
+# Operator mode: the control plane (OTEL_FLEET_DISTRIBUTOR=k8s) patches
+# spec.config of this CR on every activation; the opentelemetry-operator
+# handles config rollout. Requires the operator to be installed.
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-forwarding
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: forwarding
+spec:
+  mode: deployment
+  replicas: {{ .Values.forwarding.replicas }}
+  image: {{ include "otel-fleet.collectorImage" . }}
+  # Minimal boot config; replaced by the control plane on first activation.
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc: { endpoint: 0.0.0.0:4317 }
+          http: { endpoint: 0.0.0.0:4318 }
+    exporters:
+      debug: {}
+    service:
+      pipelines:
+        logs: { receivers: [otlp], exporters: [debug] }
+        traces: { receivers: [otlp], exporters: [debug] }
+        metrics: { receivers: [otlp], exporters: [debug] }
+{{- else }}
+{{- fail "forwarding.mode must be 'deployment' or 'operator'" }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-forwarding
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: forwarding
+spec:
+  selector:
+    {{- include "otel-fleet.selector" . | nindent 4 }}
+    app.kubernetes.io/component: forwarding
+  ports:
+    - { name: otlp-grpc, port: 4317, targetPort: 4317 }
+    - { name: telemetry, port: 8888, targetPort: 8888 }
+{{- end }}

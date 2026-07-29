@@ -6,7 +6,7 @@
 flowchart TB
     subgraph edge["Customer site"]
         sdk["Apps / SDKs"]
-        agent["Edge agent: OpAMP supervisor<br/>+ otelfleet collector"]
+        agent["Edge agent: OpAMP supervisor<br/>+ otel-fleet collector"]
         sdk -.-> agent
     end
 
@@ -37,7 +37,7 @@ flowchart TB
     gw & fwd -.->|"self-telemetry :8888 (scraped)"| vm
 ```
 
-**Control plane** — a single Go binary (`cmd/otelfleet`): OpenAPI-first REST API
+**Control plane** — a single Go binary (`cmd/otel-fleet`): OpenAPI-first REST API
 (chi) + embedded React SPA on `:8080`, internal gRPC `AuthService` for API-key
 validation on `:9443`, ops listener (Prometheus metrics, health, rendered
 collector configs) on `:9090`, OpAMP WebSocket server on `:4320`. State in
@@ -92,8 +92,8 @@ store:
 1. **Ground-truth ingest counters** from the gateway's `count` connector,
    exported via Prometheus remote-write with resource-to-telemetry conversion
    (`tenant.id` becomes a label):
-   `otelfleet.ingest.log_records`, `otelfleet.ingest.spans`,
-   `otelfleet.ingest.metric_points`.
+   `otel-fleet.ingest.log_records`, `otel-fleet.ingest.spans`,
+   `otel-fleet.ingest.metric_points`.
 2. **Collector self-telemetry** (`otelcol_exporter_sent_*`,
    `otelcol_exporter_send_failed_*`, queue gauges, …), scraped from each
    collector's `:8888` (vmagent in compose; labeled with `collector_class`).

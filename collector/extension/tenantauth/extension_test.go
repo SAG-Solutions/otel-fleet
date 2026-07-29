@@ -1,4 +1,4 @@
-// Copyright The otelfleet Authors
+// Copyright The otel-fleet Authors
 // SPDX-License-Identifier: Apache-2.0
 
 package tenantauth
@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/jansagurna/otelfleet/collector/extension/tenantauth/internal/authv1"
+	"github.com/sag-solutions/otel-fleet/collector/extension/tenantauth/internal/authv1"
 )
 
 // fakeAuthServer is an in-process AuthService implementation.

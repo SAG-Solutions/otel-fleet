@@ -94,7 +94,7 @@ func newSAMLHandler(t *testing.T) *SAMLHandler {
 		},
 	}
 	f := loginFinisher{log: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	h := NewSAMLHandler(info, "https://otelfleet.example.com", f)
+	h := NewSAMLHandler(info, "https://otel-fleet.example.com", f)
 	if h.buildErr != nil {
 		t.Fatalf("build sp: %v", h.buildErr)
 	}
@@ -133,10 +133,10 @@ func TestSAMLMetadataServesXML(t *testing.T) {
 		t.Error("metadata is not an EntityDescriptor")
 	}
 	// The SP entity id and ACS URL must be present for the IdP to consume.
-	if !strings.Contains(body, "https://otelfleet.example.com/auth/okta/metadata") {
+	if !strings.Contains(body, "https://otel-fleet.example.com/auth/okta/metadata") {
 		t.Error("metadata missing SP entity id")
 	}
-	if !strings.Contains(body, "https://otelfleet.example.com/auth/okta/acs") {
+	if !strings.Contains(body, "https://otel-fleet.example.com/auth/okta/acs") {
 		t.Error("metadata missing ACS URL")
 	}
 }

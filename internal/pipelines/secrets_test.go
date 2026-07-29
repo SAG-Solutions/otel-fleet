@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
-	"github.com/jansagurna/otelfleet/internal/crypto"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/crypto"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 func testCipher(t *testing.T) *crypto.Cipher {
@@ -117,7 +117,7 @@ func TestEncryptGraphSecretsWithoutMasterKey(t *testing.T) {
 	if len(issues) == 0 {
 		t.Fatal("no issues without master key")
 	}
-	if !strings.Contains(issues[0].Message, "master key not configured (set OTELFLEET_MASTER_KEY)") {
+	if !strings.Contains(issues[0].Message, "master key not configured (set OTEL_FLEET_MASTER_KEY)") {
 		t.Errorf("issue message = %q, want master-key hint", issues[0].Message)
 	}
 	if issues[0].Path == nil || !strings.Contains(*issues[0].Path, "exporters[0].config.headers") {
@@ -346,7 +346,7 @@ func TestCreateWithoutMasterKeyRejectsSecretGraphs(t *testing.T) {
 	if res == nil || res.Valid {
 		t.Fatal("secret graph accepted without master key")
 	}
-	if !strings.Contains(res.Issues[0].Message, "master key not configured (set OTELFLEET_MASTER_KEY)") {
+	if !strings.Contains(res.Issues[0].Message, "master key not configured (set OTEL_FLEET_MASTER_KEY)") {
 		t.Errorf("issue = %q, want master-key error", res.Issues[0].Message)
 	}
 	if f.captured != nil {

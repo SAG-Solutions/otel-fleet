@@ -5,7 +5,7 @@ version: v2
 plugins:
   - local: ["go", "tool", "protoc-gen-go"]
     out: ..
-    opt: module=github.com/jansagurna/otelfleet
+    opt: module=github.com/sag-solutions/otel-fleet
   - local: ["go", "tool", "protoc-gen-go-grpc"]
     out: ..
-    opt: module=github.com/jansagurna/otelfleet
+    opt: module=github.com/sag-solutions/otel-fleet

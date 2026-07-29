@@ -23,8 +23,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/crypto"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/crypto"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // queueSize bounds the event queue; on overflow the oldest event is dropped
@@ -183,7 +183,7 @@ func encodeBody(whType string, p Payload) ([]byte, error) {
 // slackMessage formats an event as a Slack incoming-webhook message (mrkdwn).
 func slackMessage(p Payload) map[string]any {
 	emoji, title := slackTitle(p.Event)
-	lines := []string{fmt.Sprintf("%s *otelfleet* — %s", emoji, title)}
+	lines := []string{fmt.Sprintf("%s *otel-fleet* — %s", emoji, title)}
 	if p.Agent != nil {
 		name := "unknown"
 		if p.Agent.Name != nil && *p.Agent.Name != "" {
@@ -340,7 +340,7 @@ func (d *Dispatcher) SendTest(ctx context.Context, wh store.Webhook) (bool, stri
 	body, err := encodeBody(wh.Type, Payload{
 		Event:      "test",
 		OccurredAt: time.Now().UTC(),
-		Detail:     map[string]any{"message": "otelfleet test delivery", "channel": wh.Name},
+		Detail:     map[string]any{"message": "otel-fleet test delivery", "channel": wh.Name},
 	})
 	if err != nil {
 		return false, err.Error()

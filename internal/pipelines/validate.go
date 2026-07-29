@@ -16,7 +16,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
-	"github.com/jansagurna/otelfleet/internal/pipelines/catalog"
+	"github.com/sag-solutions/otel-fleet/internal/pipelines/catalog"
 )
 
 // Issue is one validation finding. Path points into the graph
@@ -42,7 +42,7 @@ type Result struct {
 // authoritatively by rendering the full forwarding config and running
 // `otelcol validate` with the real distro binary.
 type Validator struct {
-	// BinPath is the collector binary (env OTELFLEET_OTELCOL_BIN).
+	// BinPath is the collector binary (env OTEL_FLEET_OTELCOL_BIN).
 	BinPath string
 	// Timeout bounds one otelcol validate run.
 	Timeout time.Duration
@@ -201,7 +201,7 @@ func (v *Validator) runValidate(ctx context.Context, fullConfig string) (string,
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	tmp, err := os.CreateTemp("", "otelfleet-validate-*.yaml")
+	tmp, err := os.CreateTemp("", "otel-fleet-validate-*.yaml")
 	if err != nil {
 		return "", fmt.Errorf("create temp config: %w", err)
 	}

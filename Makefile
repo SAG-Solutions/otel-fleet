@@ -10,11 +10,11 @@ dev-down:
 	$(COMPOSE) down -v
 
 run:
-	go run ./cmd/otelfleet
+	go run ./cmd/otel-fleet
 
 build:
 	mkdir -p bin
-	go build -o bin/otelfleet ./cmd/otelfleet
+	go build -o bin/otel-fleet ./cmd/otel-fleet
 
 test:
 	go test ./...
@@ -48,4 +48,4 @@ docs-build:
 
 cli:
 	mkdir -p bin
-	go build -o bin/otelfleetctl ./cmd/otelfleetctl
+	go build -o bin/otel-fleetctl ./cmd/otel-fleetctl

@@ -1,6 +1,6 @@
 # Helm installation
 
-The chart at `deploy/charts/otelfleet` deploys the control plane, the gateway
+The chart at `deploy/charts/otel-fleet` deploys the control plane, the gateway
 (ingest) tier and the forwarding tier.
 
 ## Prerequisites — bring your own stateful services
@@ -21,8 +21,8 @@ owned by this repository.
 ## Install
 
 ```sh
-helm install otelfleet oci://ghcr.io/jansagurna/charts/otelfleet \
-  --namespace otelfleet --create-namespace \
+helm install otel-fleet oci://ghcr.io/sag-solutions/charts/otel-fleet \
+  --namespace otel-fleet --create-namespace \
   --values my-values.yaml
 ```
 
@@ -30,34 +30,34 @@ Minimal `my-values.yaml`:
 
 ```yaml
 external:
-  databaseUrlSecret: otelfleet-db   # Secret with key OTELFLEET_DATABASE_URL
+  databaseUrlSecret: otel-fleet-db   # Secret with key OTEL_FLEET_DATABASE_URL
   clickhouse:
     addr: clickhouse.data:9000
     database: otel
     user: otelfleet
-    passwordSecret: otelfleet-ch    # Secret with key OTELFLEET_CLICKHOUSE_PASSWORD
+    passwordSecret: otel-fleet-ch    # Secret with key OTEL_FLEET_CLICKHOUSE_PASSWORD
     exporterEndpoint: "tcp://clickhouse.data:9000?database=otel&username=otelfleet&password=..."
   victoriaMetrics:
     url: http://victoriametrics.monitoring:8428
     remoteWriteUrl: http://victoriametrics.monitoring:8428/api/v1/write
 
 controlPlane:
-  baseUrl: https://otelfleet.example.com   # required for SSO redirects
+  baseUrl: https://otel-fleet.example.com   # required for SSO redirects
   adminEmails: ["ops@example.com"]         # role admin on first login
   sessionSecure: true
 
 ingress:
   enabled: true
-  host: otelfleet.example.com
+  host: otel-fleet.example.com
 ```
 
 ## Images
 
 | Component | Image | Contents |
 | --- | --- | --- |
-| Control plane | `ghcr.io/jansagurna/otelfleet` | Go binary + embedded web UI + bundled collector binary (used for `otelcol validate`) |
-| Gateway / forwarding collector | `ghcr.io/jansagurna/otelfleet-collector` | custom OCB distro (`tenantauth`, `tenantstamp`, routing connector, …) |
-| Edge agent | `ghcr.io/jansagurna/otelfleet-supervisor` | OpAMP supervisor + the same collector distro (runs at customer sites, not deployed by this chart) |
+| Control plane | `ghcr.io/sag-solutions/otel-fleet` | Go binary + embedded web UI + bundled collector binary (used for `otelcol validate`) |
+| Gateway / forwarding collector | `ghcr.io/sag-solutions/otel-fleet-collector` | custom OCB distro (`tenantauth`, `tenantstamp`, routing connector, …) |
+| Edge agent | `ghcr.io/sag-solutions/otel-fleet-supervisor` | OpAMP supervisor + the same collector distro (runs at customer sites, not deployed by this chart) |
 
 Tags default to the chart's `appVersion`; override with `images.*.tag`.
 
@@ -125,7 +125,7 @@ Two rollout mechanisms:
     `pending_restart`. Apply with:
 
     ```sh
-    kubectl rollout restart deployment/otelfleet-forwarding -n otelfleet
+    kubectl rollout restart deployment/otel-fleet-forwarding -n otel-fleet
     ```
 
 === "operator"
@@ -140,7 +140,7 @@ Two rollout mechanisms:
     Requires the
     [opentelemetry-operator](https://github.com/open-telemetry/opentelemetry-operator).
     The control plane patches the `OpenTelemetryCollector` CR
-    (`OTELFLEET_K8S_CR_NAME` / `OTELFLEET_K8S_CR_NAMESPACE`, RBAC included in the
+    (`OTEL_FLEET_K8S_CR_NAME` / `OTEL_FLEET_K8S_CR_NAMESPACE`, RBAC included in the
     chart) and the operator rolls the collectors — no manual restart.
 
 ## Gateway tier
@@ -183,22 +183,22 @@ the per-request API key. Ingest auth already requires a valid API key regardless
 of TLS; every request is refused otherwise. (The gateway→control-plane gRPC hop
 supports mTLS independently — see `controlPlane.tls`.)
 
-## Secrets encryption (`OTELFLEET_MASTER_KEY`)
+## Secrets encryption (`OTEL_FLEET_MASTER_KEY`)
 
-The control plane needs `OTELFLEET_MASTER_KEY` (base64, 32 bytes —
+The control plane needs `OTEL_FLEET_MASTER_KEY` (base64, 32 bytes —
 `openssl rand -base64 32`) to store SSO providers and pipeline password fields;
 see the [configuration reference](configuration.md#secrets-encryption).
 
 !!! note "Chart gap"
 
-    The chart does not yet expose a value for `OTELFLEET_MASTER_KEY`. Until it
+    The chart does not yet expose a value for `OTEL_FLEET_MASTER_KEY`. Until it
     does, inject it yourself, e.g. with a post-render patch or:
 
     ```sh
-    kubectl -n otelfleet create secret generic otelfleet-master-key \
-      --from-literal=OTELFLEET_MASTER_KEY="$(openssl rand -base64 32)"
-    kubectl -n otelfleet set env deployment/otelfleet-control-plane \
-      --from=secret/otelfleet-master-key
+    kubectl -n otel-fleet create secret generic otel-fleet-master-key \
+      --from-literal=OTEL_FLEET_MASTER_KEY="$(openssl rand -base64 32)"
+    kubectl -n otel-fleet set env deployment/otel-fleet-control-plane \
+      --from=secret/otel-fleet-master-key
     ```
 
     (Note: `kubectl set env` edits drift from the chart — re-apply after
@@ -210,7 +210,7 @@ see the [configuration reference](configuration.md#secrets-encryption).
 
 ## Security hardening & availability
 
-Every otelfleet-managed workload (control plane, gateway, forwarding) ships a
+Every otel-fleet-managed workload (control plane, gateway, forwarding) ships a
 hardened `securityContext` by default, matching the distroless nonroot images
 (uid/gid 65532):
 

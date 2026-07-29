@@ -1,0 +1,34 @@
+{{- if and .Values.controlPlane.tls.enabled .Values.controlPlane.tls.certManager.enabled }}
+{{- $cm := .Values.controlPlane.tls.certManager }}
+{{- if .Values.controlPlane.tls.publicSecretName }}
+# Public-facing cert (HTTPS + wss OpAMP) issued by cert-manager.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-public-tls
+  labels: {{- include "otel-fleet.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.controlPlane.tls.publicSecretName | quote }}
+  dnsNames:
+    {{- range $cm.publicDNSNames }}
+    - {{ . | quote }}
+    {{- end }}
+  issuerRef: {{- toYaml $cm.issuerRef | nindent 4 }}
+{{- end }}
+{{- if .Values.controlPlane.tls.grpcSecretName }}
+---
+# Internal gRPC server cert (in-cluster DNS); with mTLS the same CA signs the
+# gateway client certs.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-grpc-tls
+  labels: {{- include "otel-fleet.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.controlPlane.tls.grpcSecretName | quote }}
+  dnsNames:
+    - {{ printf "%s-control-plane.%s.svc" (include "otel-fleet.fullname" .) .Release.Namespace | quote }}
+    - {{ printf "%s-control-plane.%s.svc.cluster.local" (include "otel-fleet.fullname" .) .Release.Namespace | quote }}
+  issuerRef: {{- toYaml $cm.issuerRef | nindent 4 }}
+{{- end }}
+{{- end }}

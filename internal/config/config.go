@@ -1,5 +1,5 @@
-// Package config loads the otelfleet control-plane configuration from
-// environment variables. All variables use the OTELFLEET_ prefix.
+// Package config loads the otel-fleet control-plane configuration from
+// environment variables. All variables use the OTEL_FLEET_ prefix.
 package config
 
 import (
@@ -75,11 +75,11 @@ type Config struct {
 	SessionSecure bool
 
 	// SCIMDefaultRole is the role assigned to users provisioned via SCIM
-	// (OTELFLEET_SCIM_DEFAULT_ROLE); defaults to "viewer" (least privilege).
+	// (OTEL_FLEET_SCIM_DEFAULT_ROLE); defaults to "viewer" (least privilege).
 	// Admins adjust roles/grants afterward in the UI.
 	SCIMDefaultRole string
 
-	// MasterKeyBase64 is OTELFLEET_MASTER_KEY: the base64-encoded 32-byte key
+	// MasterKeyBase64 is OTEL_FLEET_MASTER_KEY: the base64-encoded 32-byte key
 	// for envelope encryption of secrets at rest (auth-provider client
 	// secrets, pipeline exporter credentials). Empty = not configured; the
 	// server boots, but features that need it fail with a clear error.
@@ -97,13 +97,13 @@ type Config struct {
 	K8sCRNamespace string
 
 	// RetentionInterval is how often the per-customer retention sweep runs
-	// (OTELFLEET_RETENTION_INTERVAL, default 24h).
+	// (OTEL_FLEET_RETENTION_INTERVAL, default 24h).
 	RetentionInterval time.Duration
 
 	// Rate limiting for the public HTTP surface (per client IP, token bucket).
 	// RateLimit* applies to the whole API/SPA surface; AuthRateLimit* is a
 	// stricter bucket layered on the SSO browser endpoints (/auth/*). Disable
-	// with OTELFLEET_RATE_LIMIT_ENABLED=false when a fronting proxy already
+	// with OTEL_FLEET_RATE_LIMIT_ENABLED=false when a fronting proxy already
 	// rate-limits. MaxRequestBodyBytes caps request bodies (OTLP ingest does
 	// not traverse this listener, so a few MiB is ample for the control API).
 	RateLimitEnabled    bool
@@ -114,7 +114,7 @@ type Config struct {
 	MaxRequestBodyBytes int64
 
 	// OIDCProviders holds every configured OIDC provider. In Phase 1 at most
-	// one (the generic OTELFLEET_OIDC_* provider) is present.
+	// one (the generic OTEL_FLEET_OIDC_* provider) is present.
 	OIDCProviders []OIDCProvider
 }
 
@@ -141,23 +141,23 @@ func Load() (*Config, error) {
 		OpAMPClientCAFile:   env("OPAMP_CLIENT_CA_FILE", ""),
 		BaseURL:             strings.TrimSuffix(env("BASE_URL", "http://localhost:8080"), "/"),
 		WebDir:              env("WEB_DIR", ""),
-		OtelcolBin:          env("OTELCOL_BIN", "collector/dist/otelfleet-collector"),
+		OtelcolBin:          env("OTELCOL_BIN", "collector/dist/otel-fleet-collector"),
 		Distributor:         env("DISTRIBUTOR", "publish"),
-		K8sCRName:           env("K8S_CR_NAME", "otelfleet-forwarding"),
+		K8sCRName:           env("K8S_CR_NAME", "otel-fleet-forwarding"),
 		K8sCRNamespace:      env("K8S_CR_NAMESPACE", "otelfleet"),
 		MasterKeyBase64:     env("MASTER_KEY", ""),
 	}
 	if cfg.Distributor != "publish" && cfg.Distributor != "k8s" {
-		return nil, fmt.Errorf("OTELFLEET_DISTRIBUTOR must be 'publish' or 'k8s', got %q", cfg.Distributor)
+		return nil, fmt.Errorf("OTEL_FLEET_DISTRIBUTOR must be 'publish' or 'k8s', got %q", cfg.Distributor)
 	}
 	if cfg.Role != "all" && cfg.Role != "api" && cfg.Role != "opamp" {
-		return nil, fmt.Errorf("OTELFLEET_ROLE must be 'all', 'api' or 'opamp', got %q", cfg.Role)
+		return nil, fmt.Errorf("OTEL_FLEET_ROLE must be 'all', 'api' or 'opamp', got %q", cfg.Role)
 	}
 
 	if raw := env("RETENTION_INTERVAL", "24h"); raw != "" {
 		d, perr := time.ParseDuration(raw)
 		if perr != nil || d < time.Minute {
-			return nil, fmt.Errorf("OTELFLEET_RETENTION_INTERVAL: invalid duration %q (min 1m)", raw)
+			return nil, fmt.Errorf("OTEL_FLEET_RETENTION_INTERVAL: invalid duration %q (min 1m)", raw)
 		}
 		cfg.RetentionInterval = d
 	}
@@ -208,7 +208,7 @@ func Load() (*Config, error) {
 			ClientSecret: env("OIDC_CLIENT_SECRET", ""),
 		}
 		if p.ClientID == "" {
-			return nil, fmt.Errorf("OTELFLEET_OIDC_ISSUER is set but OTELFLEET_OIDC_CLIENT_ID is empty")
+			return nil, fmt.Errorf("OTEL_FLEET_OIDC_ISSUER is set but OTEL_FLEET_OIDC_CLIENT_ID is empty")
 		}
 		cfg.OIDCProviders = append(cfg.OIDCProviders, p)
 	}
@@ -223,7 +223,7 @@ func (c *Config) RunsAPI() bool { return c.Role == "all" || c.Role == "api" }
 // singleton background workers (edge-config listener, webhooks, retention).
 func (c *Config) RunsOpAMP() bool { return c.Role == "all" || c.Role == "opamp" }
 
-// IsAdminEmail reports whether email is listed in OTELFLEET_ADMIN_EMAILS.
+// IsAdminEmail reports whether email is listed in OTEL_FLEET_ADMIN_EMAILS.
 func (c *Config) IsAdminEmail(email string) bool {
 	email = strings.ToLower(strings.TrimSpace(email))
 	for _, a := range c.AdminEmails {
@@ -235,32 +235,32 @@ func (c *Config) IsAdminEmail(email string) bool {
 }
 
 func env(key, def string) string {
-	if v, ok := os.LookupEnv("OTELFLEET_" + key); ok {
+	if v, ok := os.LookupEnv("OTEL_FLEET_" + key); ok {
 		return v
 	}
 	return def
 }
 
 func envInt(key string, def int) (int, error) {
-	v, ok := os.LookupEnv("OTELFLEET_" + key)
+	v, ok := os.LookupEnv("OTEL_FLEET_" + key)
 	if !ok || v == "" {
 		return def, nil
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil || n < 0 {
-		return 0, fmt.Errorf("OTELFLEET_%s: invalid non-negative integer %q", key, v)
+		return 0, fmt.Errorf("OTEL_FLEET_%s: invalid non-negative integer %q", key, v)
 	}
 	return n, nil
 }
 
 func envBool(key string, def bool) (bool, error) {
-	v, ok := os.LookupEnv("OTELFLEET_" + key)
+	v, ok := os.LookupEnv("OTEL_FLEET_" + key)
 	if !ok || v == "" {
 		return def, nil
 	}
 	b, err := strconv.ParseBool(v)
 	if err != nil {
-		return false, fmt.Errorf("OTELFLEET_%s: invalid boolean %q", key, v)
+		return false, fmt.Errorf("OTEL_FLEET_%s: invalid boolean %q", key, v)
 	}
 	return b, nil
 }

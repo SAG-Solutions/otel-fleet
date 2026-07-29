@@ -1,15 +1,15 @@
 # Single sign-on
 
-otelfleet authenticates UI users via external identity providers. Providers are
+otel-fleet authenticates UI users via external identity providers. Providers are
 managed by admins in the UI (Settings → SSO) or via
 `/api/v1/settings/auth-providers`, stored in PostgreSQL with the client secret
 encrypted at rest.
 
 !!! important "Prerequisites"
 
-    - `OTELFLEET_MASTER_KEY` must be configured — client secrets are
+    - `OTEL_FLEET_MASTER_KEY` must be configured — client secrets are
       AES-256-GCM-encrypted with it; saving a provider fails without it.
-    - `OTELFLEET_BASE_URL` must be the externally visible URL — redirect URIs
+    - `OTEL_FLEET_BASE_URL` must be the externally visible URL — redirect URIs
       are derived from it.
 
 ## Provider types
@@ -26,23 +26,23 @@ flow lives at `/auth/{name}/start` and the **redirect/callback URI to register
 at the IdP** is:
 
 ```
-{OTELFLEET_BASE_URL}/auth/{name}/callback
+{OTEL_FLEET_BASE_URL}/auth/{name}/callback
 ```
 
-e.g. `https://otelfleet.example.com/auth/google/callback`.
+e.g. `https://otel-fleet.example.com/auth/google/callback`.
 
 ### Microsoft: why issuer validation is relaxed
 
 The multi-tenant Entra ID endpoint's discovery document advertises the literal
 `{tenantid}` issuer template, and ID tokens carry per-tenant issuers — so strict
-OIDC issuer matching is impossible against the `common` endpoint. otelfleet
+OIDC issuer matching is impossible against the `common` endpoint. otel-fleet
 therefore relaxes issuer validation **for the `microsoft` type only** and
 validates tokens per tenant at login. The provider **Test** button explains this
 when it detects the template issuer.
 
 ### GitHub
 
-GitHub is plain OAuth2 (no ID token): otelfleet requests `read:user` and
+GitHub is plain OAuth2 (no ID token): otel-fleet requests `read:user` and
 `user:email` and resolves the user's primary verified email via the GitHub API.
 
 ### Generic OIDC
@@ -56,7 +56,7 @@ discovery and issuer match without leaking secrets.
 
 1. Create an OAuth client at the IdP; register the redirect URI
    `{BASE_URL}/auth/google/callback`.
-2. In otelfleet: Settings → SSO → add provider — type `google`, name `google`,
+2. In otel-fleet: Settings → SSO → add provider — type `google`, name `google`,
    display name, client ID + secret. The secret is encrypted at rest and never
    returned by the API (updates that omit it keep the stored one).
 3. **Test** the provider, then enable it. It appears as a button on the login
@@ -68,7 +68,7 @@ Roles, weakest to strongest: **`viewer`** (read-only) → **`operator`** (can
 manage customers, keys, pipelines, agents) → **`admin`** (everything, including
 users, SSO settings and the audit log).
 
-- Emails in `OTELFLEET_ADMIN_EMAILS` get `admin` on login; everyone else defaults
+- Emails in `OTEL_FLEET_ADMIN_EMAILS` get `admin` on login; everyone else defaults
   to `viewer`.
 - **Invites** (`POST /api/v1/users`, admin-only): pre-create a user by email with
   a role; it applies on their first SSO login through any provider.
@@ -86,7 +86,7 @@ first.
 
 ## Environment fallback provider
 
-A single generic OIDC provider can be configured via `OTELFLEET_OIDC_*`
+A single generic OIDC provider can be configured via `OTEL_FLEET_OIDC_*`
 environment variables (useful for bootstrap, before any admin exists) — see the
 [configuration reference](../installation/configuration.md#environment-defined-oidc-provider-bootstrap-fallback).
 It shows up under the name `oidc`; a database provider with the same name shadows

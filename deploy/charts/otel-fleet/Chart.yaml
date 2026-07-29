@@ -1,0 +1,18 @@
+apiVersion: v2
+name: otel-fleet
+description: >
+  Multi-tenant OpenTelemetry collector fleet management: control plane
+  (REST API + web UI + OpAMP server), gateway ingest tier and forwarding tier.
+  PostgreSQL, ClickHouse and a Prometheus-compatible metrics store are
+  consumed via endpoints (bring your own); optional in-cluster dependencies
+  land in a later release.
+type: application
+version: 0.5.2
+appVersion: "0.5.2"
+kubeVersion: ">=1.27.0"
+home: https://github.com/sag-solutions/otel-fleet
+sources:
+  - https://github.com/sag-solutions/otel-fleet
+maintainers:
+  - name: SAG-Solutions GmbH
+    email: js@sag-solutions.com

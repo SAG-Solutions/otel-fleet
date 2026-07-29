@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // Bootstrap token format: otm_bt_<8 lowercase hex>_<43 chars base64url of 32

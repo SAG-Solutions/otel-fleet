@@ -60,8 +60,8 @@ processors:
 
 ## Telemetry
 
-- `otelfleet_quota_decisions_total{tenant_id, decision=allowed|rejected}` —
+- `otel_fleet_quota_decisions_total{tenant_id, decision=allowed|rejected}` —
   admission decisions per batch (batches of unlimited tenants are not
   counted).
-- `otelfleet_quota_rejected_items_total{tenant_id, signal}` — items rejected
+- `otel_fleet_quota_rejected_items_total{tenant_id, signal}` — items rejected
   by the quota.

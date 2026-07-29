@@ -1,4 +1,4 @@
-// Copyright The otelfleet Authors
+// Copyright The otel-fleet Authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package tenantquota enforces the per-tenant ingest quota resolved by the
@@ -15,7 +15,7 @@
 // Placement: after tenantstamp (which requires the per-request auth context
 // and drops unauthenticated data) and before batch (which discards that
 // context and would also decouple the client from the rejection).
-package tenantquota // import "github.com/jansagurna/otelfleet/collector/processor/tenantquota"
+package tenantquota // import "github.com/sag-solutions/otel-fleet/collector/processor/tenantquota"
 
 import (
 	"context"
@@ -52,22 +52,22 @@ type quota struct {
 }
 
 func newQuota(cfg *Config, telemetry component.TelemetrySettings) (*quota, error) {
-	meter := telemetry.MeterProvider.Meter("github.com/jansagurna/otelfleet/collector/processor/tenantquota")
+	meter := telemetry.MeterProvider.Meter("github.com/sag-solutions/otel-fleet/collector/processor/tenantquota")
 	decisionsTotal, err := meter.Int64Counter(
-		"otelfleet_quota_decisions_total",
+		"otel_fleet_quota_decisions_total",
 		metric.WithDescription("Quota admission decisions per tenant, by decision (allowed|rejected). Batches without a limit are not counted."),
 		metric.WithUnit("{batch}"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creating otelfleet_quota_decisions_total counter: %w", err)
+		return nil, fmt.Errorf("creating otel_fleet_quota_decisions_total counter: %w", err)
 	}
 	rejectedItemsTotal, err := meter.Int64Counter(
-		"otelfleet_quota_rejected_items_total",
+		"otel_fleet_quota_rejected_items_total",
 		metric.WithDescription("Items (log records, spans, metric data points) rejected by the per-tenant ingest quota."),
 		metric.WithUnit("{item}"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creating otelfleet_quota_rejected_items_total counter: %w", err)
+		return nil, fmt.Errorf("creating otel_fleet_quota_rejected_items_total counter: %w", err)
 	}
 	return &quota{
 		registry:           newRegistry(cfg.BurstSeconds),

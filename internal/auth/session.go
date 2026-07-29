@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // Session keys.
@@ -61,20 +61,20 @@ func PrincipalFrom(ctx context.Context) (Principal, bool) {
 	return p, ok
 }
 
-// Sessions wraps the scs session manager with otelfleet-specific helpers.
+// Sessions wraps the scs session manager with otel-fleet-specific helpers.
 type Sessions struct {
 	Manager *scs.SessionManager
 }
 
 // NewSessions creates a session manager backed by an in-memory store.
 // Production callers must call UsePostgres before serving traffic. The cookie
-// is __Host-otelfleet_session when secure, otelfleet_session otherwise.
+// is __Host-otel_fleet_session when secure, otel_fleet_session otherwise.
 func NewSessions(secure bool) *Sessions {
 	m := scs.New()
 	m.Lifetime = 24 * time.Hour
-	m.Cookie.Name = "otelfleet_session"
+	m.Cookie.Name = "otel_fleet_session"
 	if secure {
-		m.Cookie.Name = "__Host-otelfleet_session"
+		m.Cookie.Name = "__Host-otel_fleet_session"
 	}
 	m.Cookie.HttpOnly = true
 	m.Cookie.SameSite = http.SameSiteLaxMode

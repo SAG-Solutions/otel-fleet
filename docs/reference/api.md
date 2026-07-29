@@ -1,6 +1,6 @@
 # REST API
 
-The API is **OpenAPI-first**: [`api/openapi.yaml`](https://github.com/jansagurna/otelfleet/blob/main/api/openapi.yaml)
+The API is **OpenAPI-first**: [`api/openapi.yaml`](https://github.com/sag-solutions/otel-fleet/blob/main/api/openapi.yaml)
 is the source of truth, and both the Go server interfaces and the TypeScript
 client are generated from it (`make gen`). The spec is the authoritative,
 complete reference — this page is a tour.
@@ -16,7 +16,7 @@ admin section needs `admin`.
 | --- | --- |
 | `GET /api/v1/me` | Current user + role |
 | `GET /api/v1/auth/providers` | Login providers to render on the login page |
-| `POST /api/v1/auth/dev-login` | Password-less login (only with `OTELFLEET_DEV_LOGIN=true`) |
+| `POST /api/v1/auth/dev-login` | Password-less login (only with `OTEL_FLEET_DEV_LOGIN=true`) |
 | `POST /api/v1/auth/logout` | Destroy the session |
 
 Browser SSO flows live outside the API prefix: `GET /auth/{name}/start` and

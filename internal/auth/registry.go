@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jansagurna/otelfleet/internal/config"
-	"github.com/jansagurna/otelfleet/internal/crypto"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/config"
+	"github.com/sag-solutions/otel-fleet/internal/crypto"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // Provider types (mirror the auth_providers.type check).
@@ -116,7 +116,7 @@ type loginFlow interface {
 }
 
 // Registry resolves login providers at request time: enabled database
-// providers plus the OTELFLEET_OIDC_* environment provider as fallback under
+// providers plus the OTEL_FLEET_OIDC_* environment provider as fallback under
 // its configured name. Flow handlers are cached per provider version so OIDC
 // discovery stays lazy and warm across requests.
 type Registry struct {

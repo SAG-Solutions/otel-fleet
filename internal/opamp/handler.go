@@ -22,8 +22,8 @@ import (
 	"github.com/open-telemetry/opamp-go/protobufs"
 	"github.com/open-telemetry/opamp-go/server/types"
 
-	"github.com/jansagurna/otelfleet/internal/store"
-	"github.com/jansagurna/otelfleet/internal/tenants"
+	"github.com/sag-solutions/otel-fleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/tenants"
 )
 
 // Store is the persistence subset the OpAMP module needs.
@@ -88,7 +88,7 @@ type Handler struct {
 }
 
 // NewHandler wires the message handler. publicEndpoint is the externally
-// reachable OpAMP WebSocket URL (OTELFLEET_OPAMP_PUBLIC_ENDPOINT); it may be
+// reachable OpAMP WebSocket URL (OTEL_FLEET_OPAMP_PUBLIC_ENDPOINT); it may be
 // empty, in which case per-agent-token offers carry only the new header.
 func NewHandler(st Store, render ConfigRenderer, publicEndpoint string, log *slog.Logger) *Handler {
 	return &Handler{store: st, render: render, reg: newRegistry(), publicEndpoint: publicEndpoint, log: log}

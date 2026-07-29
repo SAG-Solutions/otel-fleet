@@ -1,4 +1,4 @@
-# otelfleet gateway (ingest-tier) collector configuration.
+# otel-fleet gateway (ingest-tier) collector configuration.
 # Runs the custom distribution built from collector/builder-config.yaml
 # (see Dockerfile.collector). Every OTLP request must present a valid ingest
 # API key; the tenantauth extension resolves it to a tenant identity which
@@ -6,7 +6,7 @@
 
 extensions:
   tenantauth:
-    endpoint: ${env:OTELFLEET_AUTH_ENDPOINT}
+    endpoint: ${env:OTEL_FLEET_AUTH_ENDPOINT}
     insecure: true # dev: control-plane gRPC is plaintext
     cache:
       ttl: 30s
@@ -60,14 +60,14 @@ connectors:
   # turns it into a label in VictoriaMetrics).
   count:
     logs:
-      otelfleet.ingest.log_records:
-        description: Log records accepted by the otelfleet gateway.
+      otel-fleet.ingest.log_records:
+        description: Log records accepted by the otel-fleet gateway.
     spans:
-      otelfleet.ingest.spans:
-        description: Spans accepted by the otelfleet gateway.
+      otel-fleet.ingest.spans:
+        description: Spans accepted by the otel-fleet gateway.
     datapoints:
-      otelfleet.ingest.metric_points:
-        description: Metric data points accepted by the otelfleet gateway.
+      otel-fleet.ingest.metric_points:
+        description: Metric data points accepted by the otel-fleet gateway.
 
 exporters:
   clickhouse:
@@ -81,7 +81,7 @@ exporters:
       enabled: true
       storage: file_storage
   prometheusremotewrite:
-    endpoint: ${env:OTELFLEET_VM_REMOTE_WRITE:-http://victoriametrics:8428/api/v1/write}
+    endpoint: ${env:OTEL_FLEET_VM_REMOTE_WRITE:-http://victoriametrics:8428/api/v1/write}
     resource_to_telemetry_conversion:
       enabled: true # tenant.id resource attribute becomes a metric label
   # P2: unconditional copy of all ingested data to the forwarding tier. The
@@ -93,7 +93,7 @@ exporters:
   # the queue fills and data for this exporter is dropped — the clickhouse
   # pipeline branch is unaffected (per-exporter queues are independent).
   otlp/forwardtier:
-    endpoint: ${env:OTELFLEET_FORWARD_ENDPOINT:-forwarding:4317}
+    endpoint: ${env:OTEL_FLEET_FORWARD_ENDPOINT:-forwarding:4317}
     tls:
       insecure: true
     sending_queue:

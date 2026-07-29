@@ -5,7 +5,7 @@
 
 /** Copy-pasteable enrollment one-liner for the compose dev environment. */
 export function enrollmentCommand(secret: string): string {
-  return `OTELFLEET_BOOTSTRAP_TOKEN=${secret} docker compose --profile edge up -d edge-agent`
+  return `OTEL_FLEET_BOOTSTRAP_TOKEN=${secret} docker compose --profile edge up -d edge-agent`
 }
 
 /** Placeholder variant for empty states where no real secret exists. */

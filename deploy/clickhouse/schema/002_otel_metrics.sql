@@ -1,4 +1,4 @@
--- otelfleet ClickHouse metrics schema. We own the DDL (clickhouse exporter
+-- otel-fleet ClickHouse metrics schema. We own the DDL (clickhouse exporter
 -- runs with create_schema: false). Column layout matches the insert
 -- statements of clickhouseexporter v0.156.0
 -- (internal/sqltemplates/metrics_*_insert.sql); TenantId is MATERIALIZED from

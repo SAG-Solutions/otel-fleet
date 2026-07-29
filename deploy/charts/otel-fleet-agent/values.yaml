@@ -1,0 +1,87 @@
+# otel-fleet edge agent (Kubernetes). Install one release per region, pointing
+# opamp.endpoint at that region's OpAMP endpoint.
+
+image:
+  repository: ghcr.io/sag-solutions/otel-fleet-supervisor
+  tag: "" # defaults to the chart appVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# OpAMP control-plane endpoint for THIS region. Required.
+#   e.g. wss://eu.otel-fleet.example.com/v1/opamp
+opamp:
+  endpoint: ""
+  tls:
+    # true only for a plaintext ws:// endpoint (local/dev). Use wss:// in prod.
+    insecure: false
+    # Skip server-certificate verification (NOT recommended; prefer caCert).
+    insecureSkipVerify: false
+    # PEM of a private CA that signed the server cert (empty = system roots).
+    caCert: ""
+    # Override the hostname verified in the server cert (SNI), if needed.
+    serverName: ""
+    # mTLS: a Secret (type kubernetes.io/tls) with tls.crt + tls.key the agent
+    # presents as a client certificate. Empty = no client cert.
+    clientCertSecret: ""
+
+# Per-customer enrollment bootstrap token (otm_bt_…). Provide it inline (dev)
+# or reference an existing Secret. After first connect the control plane hands
+# the agent its own per-agent token, so this is only used to enroll.
+bootstrapToken:
+  value: ""
+  existingSecret: "" # a Secret holding the token under secretKey
+  secretKey: OTEL_FLEET_BOOTSTRAP_TOKEN
+
+# Region this agent belongs to — surfaced as a pod label/annotation for
+# operators (does not change behaviour; the endpoint above selects the region).
+region: ""
+
+# Number of distinct agents to run. Each replica is a separate OpAMP instance
+# with its own persistent identity (StatefulSet + per-pod PVC). Ignored when
+# autoscaling.enabled (the HPA owns the replica count).
+replicaCount: 1
+
+# Horizontal autoscaling of the agent fleet (adds/removes agent instances).
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Restrict who may reach the agent's OTLP ports (a Kubernetes-level allowlist).
+# When enabled, only the listed sources may send OTLP; everything else is
+# denied. Leave all lists empty to deny all ingress (agents only dial out).
+networkPolicy:
+  enabled: false
+  allowedNamespaces: [] # namespaces whose pods may send OTLP
+  allowedPodSelector: {} # label selector for allowed client pods
+  allowedCIDRs: [] # e.g. ["10.0.0.0/8"] — IP allowlist
+
+logLevel: info
+
+# OTLP receiver ports the managed collector listens on (the control-plane edge
+# pipeline uses otlp on these by default); apps in the cluster send here.
+service:
+  type: ClusterIP
+  otlpGrpcPort: 4317
+  otlpHttpPort: 4318
+  annotations: {}
+
+# Persist the supervisor state (per-agent token, last-good config, instance
+# UID) so a restart keeps the agent's identity and survives a control-plane
+# outage. Disable only for ephemeral/testing agents.
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podLabels: {}

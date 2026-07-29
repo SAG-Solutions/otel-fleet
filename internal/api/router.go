@@ -11,11 +11,11 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/jansagurna/otelfleet/internal/api/apigen"
-	"github.com/jansagurna/otelfleet/internal/auth"
-	"github.com/jansagurna/otelfleet/internal/config"
-	"github.com/jansagurna/otelfleet/internal/scim"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/api/apigen"
+	"github.com/sag-solutions/otel-fleet/internal/auth"
+	"github.com/sag-solutions/otel-fleet/internal/config"
+	"github.com/sag-solutions/otel-fleet/internal/scim"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // RouterDeps carries everything the HTTP router needs.
@@ -26,7 +26,7 @@ type RouterDeps struct {
 	Server   *Server
 	Auth     *auth.Registry
 	Log      *slog.Logger
-	// Registry registers the request-denial counter (otelfleet_http_denied_total).
+	// Registry registers the request-denial counter (otel_fleet_http_denied_total).
 	// May be nil (denials still log; the counter is simply absent).
 	Registry prometheus.Registerer
 }

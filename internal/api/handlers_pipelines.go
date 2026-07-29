@@ -6,11 +6,11 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/jansagurna/otelfleet/internal/api/apigen"
-	"github.com/jansagurna/otelfleet/internal/pipelines"
-	"github.com/jansagurna/otelfleet/internal/pipelines/catalog"
-	"github.com/jansagurna/otelfleet/internal/stats"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/api/apigen"
+	"github.com/sag-solutions/otel-fleet/internal/pipelines"
+	"github.com/sag-solutions/otel-fleet/internal/pipelines/catalog"
+	"github.com/sag-solutions/otel-fleet/internal/stats"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // --- mapping helpers ---

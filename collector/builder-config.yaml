@@ -1,4 +1,4 @@
-# OpenTelemetry Collector Builder (OCB) manifest for the otelfleet gateway
+# OpenTelemetry Collector Builder (OCB) manifest for the otel-fleet gateway
 # collector distribution.
 #
 # Build (from collector/):
@@ -8,9 +8,9 @@
 # Pinned release train: collector core v1.62.0/v0.156.0, contrib v0.156.0.
 
 dist:
-  module: github.com/jansagurna/otelfleet/collector/otelfleet-collector
-  name: otelfleet-collector
-  description: otelfleet gateway OpenTelemetry Collector distribution
+  module: github.com/sag-solutions/otel-fleet/collector/otel-fleet-collector
+  name: otel-fleet-collector
+  description: otel-fleet gateway OpenTelemetry Collector distribution
   version: 0.1.0
   output_path: ./dist
 
@@ -20,8 +20,8 @@ receivers:
 processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.156.0
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.156.0
-  - gomod: github.com/jansagurna/otelfleet/collector/processor/tenantstamp v0.0.0
-  - gomod: github.com/jansagurna/otelfleet/collector/processor/tenantquota v0.0.0
+  - gomod: github.com/sag-solutions/otel-fleet/collector/processor/tenantstamp v0.0.0
+  - gomod: github.com/sag-solutions/otel-fleet/collector/processor/tenantquota v0.0.0
   # P2 forwarding tier: processors available to rendered per-customer pipelines.
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.156.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.156.0
@@ -53,13 +53,13 @@ providers:
   - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.62.0
 
 extensions:
-  - gomod: github.com/jansagurna/otelfleet/collector/extension/tenantauth v0.0.0
+  - gomod: github.com/sag-solutions/otel-fleet/collector/extension/tenantauth v0.0.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.156.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.156.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.156.0
 
 # Paths are relative to the generated module in dist/.
 replaces:
-  - github.com/jansagurna/otelfleet/collector/extension/tenantauth => ../extension/tenantauth
-  - github.com/jansagurna/otelfleet/collector/processor/tenantstamp => ../processor/tenantstamp
-  - github.com/jansagurna/otelfleet/collector/processor/tenantquota => ../processor/tenantquota
+  - github.com/sag-solutions/otel-fleet/collector/extension/tenantauth => ../extension/tenantauth
+  - github.com/sag-solutions/otel-fleet/collector/processor/tenantstamp => ../processor/tenantstamp
+  - github.com/sag-solutions/otel-fleet/collector/processor/tenantquota => ../processor/tenantquota

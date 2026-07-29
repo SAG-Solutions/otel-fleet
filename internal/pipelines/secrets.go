@@ -4,14 +4,14 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/jansagurna/otelfleet/internal/crypto"
-	"github.com/jansagurna/otelfleet/internal/pipelines/catalog"
+	"github.com/sag-solutions/otel-fleet/internal/crypto"
+	"github.com/sag-solutions/otel-fleet/internal/pipelines/catalog"
 )
 
 // RedactedSentinel is what password-marked fields look like whenever a graph
 // leaves the backend. Clients send it back unchanged to mean "keep the stored
 // secret"; the plaintext never round-trips through the browser.
-const RedactedSentinel = "__otelfleet_redacted__"
+const RedactedSentinel = "__otel_fleet_redacted__"
 
 // encKey marks an encrypted value inside a stored graph:
 // {"$enc": "<base64 ciphertext>"} where a plaintext string would sit.

@@ -1,18 +1,18 @@
-# GoReleaser config for the otelfleet control-plane binary.
+# GoReleaser config for the otel-fleet control-plane binary.
 # Container images (control plane, collector, supervisor) and the Helm chart
 # are NOT built here — see .github/workflows/release.yaml.
 #
-# Note: the bare binary serves the API only. The web UI (OTELFLEET_WEB_DIR)
-# and the collector binary for pipeline validation (OTELFLEET_OTELCOL_BIN)
+# Note: the bare binary serves the API only. The web UI (OTEL_FLEET_WEB_DIR)
+# and the collector binary for pipeline validation (OTEL_FLEET_OTELCOL_BIN)
 # are provided externally; the container image bundles both.
 version: 2
 
-project_name: otelfleet
+project_name: otel-fleet
 
 builds:
-  - id: otelfleet
-    main: ./cmd/otelfleet
-    binary: otelfleet
+  - id: otel-fleet
+    main: ./cmd/otel-fleet
+    binary: otel-fleet
     env:
       - CGO_ENABLED=0
     goos:
@@ -23,9 +23,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-  - id: otelfleetctl
-    main: ./cmd/otelfleetctl
-    binary: otelfleetctl
+  - id: otel-fleetctl
+    main: ./cmd/otel-fleetctl
+    binary: otel-fleetctl
     env:
       - CGO_ENABLED=0
     goos:
@@ -39,23 +39,23 @@ builds:
       - -s -w
 
 archives:
-  # One archive per binary: otelfleet builds linux/darwin, otelfleetctl also
+  # One archive per binary: otel-fleet builds linux/darwin, otel-fleetctl also
   # builds windows, so a single archive would have a different binary count
   # per platform (goreleaser rejects that).
-  - id: otelfleet
-    ids: [otelfleet]
+  - id: otel-fleet
+    ids: [otel-fleet]
     formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
       - README.md
-  - id: otelfleetctl
-    ids: [otelfleetctl]
+  - id: otel-fleetctl
+    ids: [otel-fleetctl]
     formats: [tar.gz]
     format_overrides:
       - goos: windows
         formats: [zip]
-    name_template: "otelfleetctl_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "otel-fleetctl_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
       - README.md
@@ -96,8 +96,8 @@ release:
 
     **Container images** (multi-arch, cosign-signed):
 
-    - `ghcr.io/jansagurna/otelfleet:{{ .Version }}` — control plane (binary + web UI + collector for validation)
-    - `ghcr.io/jansagurna/otelfleet-collector:{{ .Version }}` — gateway/forwarding collector distro
-    - `ghcr.io/jansagurna/otelfleet-supervisor:{{ .Version }}` — edge agent (OpAMP supervisor + collector)
+    - `ghcr.io/sag-solutions/otel-fleet:{{ .Version }}` — control plane (binary + web UI + collector for validation)
+    - `ghcr.io/sag-solutions/otel-fleet-collector:{{ .Version }}` — gateway/forwarding collector distro
+    - `ghcr.io/sag-solutions/otel-fleet-supervisor:{{ .Version }}` — edge agent (OpAMP supervisor + collector)
 
-    **Helm chart**: `helm install otelfleet oci://ghcr.io/jansagurna/charts/otelfleet --version {{ .Version }}`
+    **Helm chart**: `helm install otel-fleet oci://ghcr.io/sag-solutions/charts/otel-fleet --version {{ .Version }}`

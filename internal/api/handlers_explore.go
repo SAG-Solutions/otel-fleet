@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/jansagurna/otelfleet/internal/api/apigen"
-	"github.com/jansagurna/otelfleet/internal/query"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/api/apigen"
+	"github.com/sag-solutions/otel-fleet/internal/query"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 func (s *Server) QueryLogs(ctx context.Context, request apigen.QueryLogsRequestObject) (apigen.QueryLogsResponseObject, error) {

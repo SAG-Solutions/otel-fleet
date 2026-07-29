@@ -1,6 +1,6 @@
-# Contributing to otelfleet
+# Contributing to otel-fleet
 
-Thanks for considering a contribution! otelfleet is pre-1.0 and moving fast —
+Thanks for considering a contribution! otel-fleet is pre-1.0 and moving fast —
 for anything larger than a bug fix, please open an issue first so we can agree
 on the direction before you invest time.
 
@@ -10,13 +10,13 @@ Requirements: **Go 1.26+**, **Node 24+ with pnpm**, **Docker + Compose**.
 
 ```sh
 make dev-up      # postgres, clickhouse, victoriametrics, gateway, forwarding
-OTELFLEET_DEV_LOGIN=true OTELFLEET_MASTER_KEY=$(openssl rand -base64 32) make run
+OTEL_FLEET_DEV_LOGIN=true OTEL_FLEET_MASTER_KEY=$(openssl rand -base64 32) make run
 cd web && pnpm install && pnpm dev
 ```
 
-See the [quickstart](https://jansagurna.github.io/otelfleet/quickstart/) for
+See the [quickstart](https://sag-solutions.github.io/otel-fleet/quickstart/) for
 the full walkthrough and
-[development docs](https://jansagurna.github.io/otelfleet/development/) for
+[development docs](https://sag-solutions.github.io/otel-fleet/development/) for
 the repository layout and all make targets.
 
 ## Before you push

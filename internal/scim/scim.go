@@ -1,6 +1,6 @@
 // Package scim implements a minimal SCIM 2.0 (RFC 7643/7644) Users endpoint so
 // identity providers (Okta, Entra ID, …) can provision, update and deprovision
-// otelfleet console users. It maps a SCIM User onto the users table: userName
+// otel-fleet console users. It maps a SCIM User onto the users table: userName
 // = email, active = enabled, displayName/externalId are stored. Roles and
 // tenant-scope grants are NOT set by SCIM — provisioned users get the
 // configured default role (least privilege) and an admin adjusts them in the
@@ -23,9 +23,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
-	"github.com/jansagurna/otelfleet/internal/authz"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/authz"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 const (

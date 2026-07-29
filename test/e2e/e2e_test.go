@@ -8,11 +8,11 @@
 //
 // It assumes a running stack (CI brings it up via docker compose + `go run`):
 //
-//	OTELFLEET_E2E_URL=http://localhost:8080 \
-//	OTELFLEET_E2E_OTLP_HTTP=http://localhost:4318 \
+//	OTEL_FLEET_E2E_URL=http://localhost:8080 \
+//	OTEL_FLEET_E2E_OTLP_HTTP=http://localhost:4318 \
 //	  go test -tags=e2e ./test/e2e/...
 //
-// With OTELFLEET_E2E_URL unset the test skips, so `go test ./...` stays green.
+// With OTEL_FLEET_E2E_URL unset the test skips, so `go test ./...` stays green.
 package e2e
 
 import (
@@ -37,11 +37,11 @@ type client struct {
 
 func newClient(t *testing.T) *client {
 	t.Helper()
-	base := os.Getenv("OTELFLEET_E2E_URL")
+	base := os.Getenv("OTEL_FLEET_E2E_URL")
 	if base == "" {
-		t.Skip("set OTELFLEET_E2E_URL to run the e2e smoke test")
+		t.Skip("set OTEL_FLEET_E2E_URL to run the e2e smoke test")
 	}
-	otlp := os.Getenv("OTELFLEET_E2E_OTLP_HTTP")
+	otlp := os.Getenv("OTEL_FLEET_E2E_OTLP_HTTP")
 	if otlp == "" {
 		otlp = "http://localhost:4318"
 	}

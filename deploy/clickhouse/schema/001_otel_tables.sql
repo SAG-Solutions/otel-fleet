@@ -1,4 +1,4 @@
--- otelfleet ClickHouse schema. We own the DDL (clickhouse exporter runs with
+-- otel-fleet ClickHouse schema. We own the DDL (clickhouse exporter runs with
 -- create_schema: false): TenantId leads the ORDER BY so every per-customer
 -- time-range query is a primary-key range scan. TenantId is MATERIALIZED from
 -- the resource attribute stamped by the gateway, so the exporter's default

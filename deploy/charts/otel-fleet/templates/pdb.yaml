@@ -1,0 +1,32 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- /*
+Control-plane roles mirror the deployments rendered by control-plane.yaml.
+A PDB is emitted only for a workload with >1 replica — a budget over a single
+replica would block voluntary node drains (the singleton opamp tier included).
+*/}}
+{{- $roles := list (dict "component" "control-plane" "replicas" .Values.controlPlane.replicas) }}
+{{- if eq .Values.controlPlane.mode "split" }}
+{{- $roles = list (dict "component" "api" "replicas" .Values.controlPlane.api.replicas) (dict "component" "opamp" "replicas" 1) }}
+{{- end }}
+{{- if .Values.gateway.enabled }}
+{{- $roles = append $roles (dict "component" "gateway" "replicas" .Values.gateway.replicas) }}
+{{- end }}
+{{- range $r := $roles }}
+{{- if gt (int $r.replicas) 1 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "otel-fleet.fullname" $ }}-{{ $r.component }}
+  labels:
+    {{- include "otel-fleet.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $r.component }}
+spec:
+  maxUnavailable: {{ $.Values.podDisruptionBudget.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "otel-fleet.selector" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $r.component }}
+{{- end }}
+{{- end }}
+{{- end }}

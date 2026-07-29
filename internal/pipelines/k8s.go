@@ -24,11 +24,11 @@ var OtelCollectorGVR = schema.GroupVersionResource{
 
 // K8sDistributor applies rendered configs by patching the `spec.config` of an
 // OpenTelemetryCollector custom resource; the opentelemetry-operator then
-// rolls the forwarding collector. Selected with OTELFLEET_DISTRIBUTOR=k8s.
+// rolls the forwarding collector. Selected with OTEL_FLEET_DISTRIBUTOR=k8s.
 type K8sDistributor struct {
 	Client    dynamic.Interface
-	Name      string // OTELFLEET_K8S_CR_NAME
-	Namespace string // OTELFLEET_K8S_CR_NAMESPACE
+	Name      string // OTEL_FLEET_K8S_CR_NAME
+	Namespace string // OTEL_FLEET_K8S_CR_NAMESPACE
 }
 
 var _ Distributor = (*K8sDistributor)(nil)

@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "otel-fleet-agent.fullname" . }}
+  labels:
+    {{- include "otel-fleet-agent.labels" . | nindent 4 }}
+spec:
+  # Headless service gives each replica a stable network identity; each is a
+  # distinct OpAMP agent with its own persistent state.
+  serviceName: {{ include "otel-fleet-agent.fullname" . }}-headless
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "otel-fleet-agent.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "otel-fleet-agent.labels" . | nindent 8 }}
+      annotations:
+        checksum/supervisor: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.region }}
+        otel-fleet.io/region: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 10001
+      containers:
+        - name: supervisor
+          image: {{ include "otel-fleet-agent.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Image ENTRYPOINT runs opampsupervisor --config /etc/otel-fleet/supervisor.yaml.
+          env:
+            - name: OTEL_FLEET_BOOTSTRAP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "otel-fleet-agent.tokenSecret" . }}
+                  key: {{ .Values.bootstrapToken.secretKey }}
+          ports:
+            - { name: otlp-grpc, containerPort: 4317 }
+            - { name: otlp-http, containerPort: 4318 }
+          volumeMounts:
+            - { name: supervisor-config, mountPath: /etc/otel-fleet, readOnly: true }
+            - { name: state, mountPath: /var/lib/otel-fleet-supervisor }
+            {{- if .Values.opamp.tls.clientCertSecret }}
+            - { name: client-tls, mountPath: /etc/otel-fleet-client-tls, readOnly: true }
+            {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: supervisor-config
+          configMap:
+            name: {{ include "otel-fleet-agent.fullname" . }}-supervisor
+        {{- if .Values.opamp.tls.clientCertSecret }}
+        - name: client-tls
+          secret:
+            secretName: {{ .Values.opamp.tls.clientCertSecret | quote }}
+        {{- end }}
+        {{- if not .Values.persistence.enabled }}
+        - name: state
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+        {{- with .Values.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+  {{- end }}

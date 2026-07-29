@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jansagurna/otelfleet/internal/tenants"
+	"github.com/sag-solutions/otel-fleet/internal/tenants"
 )
 
 // PipelineSlug derives the pipeline slug from the pipeline name (same rules

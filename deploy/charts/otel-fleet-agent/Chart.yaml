@@ -1,0 +1,19 @@
+apiVersion: v2
+name: otel-fleet-agent
+description: >
+  otel-fleet edge agent for Kubernetes: an OpAMP-managed OpenTelemetry collector
+  (opampsupervisor + the otel-fleet collector distro) that enrolls with the
+  control plane, receives its pipeline configuration remotely, and forwards a
+  customer's telemetry to the region's gateway. Deploy one release per region
+  (point opamp.endpoint at that region's OpAMP endpoint). The Docker/compose
+  edge agent and this chart run the same supervisor image and config.
+type: application
+version: 0.5.2
+appVersion: "0.5.2"
+kubeVersion: ">=1.27.0"
+home: https://github.com/sag-solutions/otel-fleet
+sources:
+  - https://github.com/sag-solutions/otel-fleet
+maintainers:
+  - name: SAG-Solutions GmbH
+    email: js@sag-solutions.com

@@ -5,7 +5,7 @@ engineering (not part of the user-facing docs nav).
 
 ## Goal
 
-Let an operator run otelfleet across several regions and **pin each customer to
+Let an operator run otel-fleet across several regions and **pin each customer to
 a home region**, with a hard guarantee that the customer's telemetry (logs,
 traces, metrics) is **stored and processed only in that region**. Secondary
 goal: geographic proximity / blast-radius isolation.
@@ -102,7 +102,7 @@ Two viable ingest models:
   residency.
 
 With (A), the guardrail is in **`tenantauth`**: each region's gateway is
-deployed with `OTELFLEET_REGION=<region>`. `ValidateAPIKey` returns the
+deployed with `OTEL_FLEET_REGION=<region>`. `ValidateAPIKey` returns the
 customer's pinned region; the gateway **rejects (401) a key whose home region
 ≠ the gateway's region**. So even if a customer misconfigures their endpoint,
 their data is refused, never stored out-of-region. The rejection surfaces as an
@@ -140,7 +140,7 @@ customer-to-customer leakage; the data at rest stays put. Documented.
   region) and OpAMP server. `EdgeConfigChanged` fans out to the customer's
   region only.
 - **OpAMP**: edge agents connect to their region's OpAMP endpoint
-  (`OTELFLEET_OPAMP_PUBLIC_ENDPOINT` is already per-deployment). The control
+  (`OTEL_FLEET_OPAMP_PUBLIC_ENDPOINT` is already per-deployment). The control
   plane's OpAMP orchestration addresses regions via the existing
   LISTEN/NOTIFY-decoupled push, extended with a region key.
 - **VictoriaMetrics**: per region; the stats PromQL proxy queries the home
@@ -155,10 +155,10 @@ Grounded in the current code:
    (changing it requires a data move — see Migration). Surfaced in the API
    (`Customer` schema) and the create-customer form (region picker); the
    customer detail page shows the region + its **regional ingest endpoint**.
-2. **Region registry / config** — `OTELFLEET_REGIONS` describing each region:
+2. **Region registry / config** — `OTEL_FLEET_REGIONS` describing each region:
    name, ClickHouse DSN, VM URL, OpAMP public endpoint, ingest hostname. The
    control plane builds per-region connection pools; each **gateway** is
-   deployed with its single `OTELFLEET_REGION`.
+   deployed with its single `OTEL_FLEET_REGION`.
 3. **`ValidateAPIKey` (gRPC `AuthService`)** — response gains `region`;
    `tenantauth` gains a configured region and the reject-on-mismatch rule +
    `wrong_region` outcome metric.

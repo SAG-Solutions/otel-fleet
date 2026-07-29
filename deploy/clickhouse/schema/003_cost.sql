@@ -4,7 +4,7 @@
 -- new inserts — historic rows keep Bytes=0, which the cost API documents.
 --
 -- Existing dev volumes need this applied manually (initdb only runs on fresh
--- volumes): docker exec otelfleet-dev-clickhouse-1 clickhouse-client
+-- volumes): docker exec otel-fleet-dev-clickhouse-1 clickhouse-client
 --   --user otelfleet --password otelfleet --queries-file /docker-entrypoint-initdb.d/003_cost.sql
 
 ALTER TABLE otel.ingest_counts_1m ADD COLUMN IF NOT EXISTS Bytes UInt64 AFTER Items;

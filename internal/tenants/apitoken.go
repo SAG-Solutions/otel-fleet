@@ -11,9 +11,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/jansagurna/otelfleet/internal/audit"
-	"github.com/jansagurna/otelfleet/internal/authz"
-	"github.com/jansagurna/otelfleet/internal/store"
+	"github.com/sag-solutions/otel-fleet/internal/audit"
+	"github.com/sag-solutions/otel-fleet/internal/authz"
+	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
 // Management-API token format: otm_pat_<8 hex>_<43 base64url of 32 bytes>.

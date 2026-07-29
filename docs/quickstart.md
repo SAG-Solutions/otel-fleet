@@ -1,19 +1,19 @@
 # Quickstart
 
-Two ways to get a running otelfleet in about five minutes:
+Two ways to get a running otel-fleet in about five minutes:
 
 - **[Demo mode](#demo-mode-everything-in-containers)** — everything in containers,
   one command, no toolchain needed beyond Docker.
 - **[Development mode](#development-mode-control-plane-on-the-host)** — control
-  plane and web UI on the host, for hacking on otelfleet itself.
+  plane and web UI on the host, for hacking on otel-fleet itself.
 
 ## Demo mode (everything in containers)
 
 Requirements: Docker with Compose v2.23.1+ (the demo file uses inline `configs`).
 
 ```sh
-git clone https://github.com/jansagurna/otelfleet
-cd otelfleet
+git clone https://github.com/sag-solutions/otel-fleet
+cd otel-fleet
 docker compose -f deploy/compose/docker-compose.demo.yaml up -d --build
 ```
 
@@ -25,7 +25,7 @@ gateway, and the forwarding tier.
 
     The demo uses the same host ports as the development environment
     (8080, 4317/4318, 4320, 5432, 8123/9000, 8428) — stop `make dev-up` /
-    `make run` first. The `OTELFLEET_MASTER_KEY` in the demo file is a
+    `make run` first. The `OTEL_FLEET_MASTER_KEY` in the demo file is a
     **published sample**; never reuse it outside a demo.
 
 1. Open <http://localhost:8080>. Dev login is enabled — sign in with any email
@@ -35,7 +35,7 @@ gateway, and the forwarding tier.
 3. Send data with the bundled load generator:
 
     ```sh
-    OTELFLEET_API_KEY=otm_... docker compose \
+    OTEL_FLEET_API_KEY=otm_... docker compose \
       -f deploy/compose/docker-compose.demo.yaml --profile loadgen up loadgen
     ```
 
@@ -67,19 +67,19 @@ config from the host ops listener — both crash-loop harmlessly until step 2.
 ### 2. Run the control plane
 
 ```sh
-OTELFLEET_DEV_LOGIN=true \
-OTELFLEET_MASTER_KEY=$(openssl rand -base64 32) \
+OTEL_FLEET_DEV_LOGIN=true \
+OTEL_FLEET_MASTER_KEY=$(openssl rand -base64 32) \
 make run
 ```
 
-- `OTELFLEET_DEV_LOGIN=true` enables password-less login with any email.
-- `OTELFLEET_MASTER_KEY` (base64-encoded 32 bytes) is optional for the core loop
+- `OTEL_FLEET_DEV_LOGIN=true` enables password-less login with any email.
+- `OTEL_FLEET_MASTER_KEY` (base64-encoded 32 bytes) is optional for the core loop
   but required to store SSO providers and pipeline password fields. **Persist the
   key** (e.g. in a local env file) — secrets encrypted with a lost key are
   unrecoverable.
 - Pipeline validation shells out to the real collector binary; build it once with
-  `make -C collector build` (expected at `collector/dist/otelfleet-collector`,
-  override with `OTELFLEET_OTELCOL_BIN`). Without it, validation degrades to
+  `make -C collector build` (expected at `collector/dist/otel-fleet-collector`,
+  override with `OTEL_FLEET_OTELCOL_BIN`). Without it, validation degrades to
   structural checks.
 
 ### 3. Start the web UI
@@ -90,7 +90,7 @@ cd web && pnpm install && pnpm dev
 
 Open the Vite dev server (it proxies API calls to `:8080`) and log in with any
 email. To make yourself an admin, set
-`OTELFLEET_ADMIN_EMAILS=you@example.com` in step 2.
+`OTEL_FLEET_ADMIN_EMAILS=you@example.com` in step 2.
 
 ### 4. Create a customer and send data
 

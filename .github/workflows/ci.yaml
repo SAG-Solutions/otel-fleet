@@ -31,10 +31,10 @@ jobs:
         env:
           POSTGRES_USER: otelfleet
           POSTGRES_PASSWORD: otelfleet
-          POSTGRES_DB: otelfleet_test
+          POSTGRES_DB: otel_fleet_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U otelfleet"
+          --health-cmd "pg_isready -U otel-fleet"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
           go-version-file: go.mod
       - run: go test -tags=integration ./internal/store/...
         env:
-          OTELFLEET_TEST_DATABASE_URL: postgres://otelfleet:otelfleet@localhost:5432/otelfleet_test
+          OTEL_FLEET_TEST_DATABASE_URL: postgres://otelfleet:otelfleet@localhost:5432/otel_fleet_test
 
   # Full-stack smoke: bring up PG + ClickHouse + the gateway via compose, run
   # the control plane, then drive dev-login → create customer → send OTLP → read
@@ -70,15 +70,15 @@ jobs:
           echo "::error::data plane did not become healthy"; exit 1
       - name: Build and run the control plane
         run: |
-          go build -o /tmp/otelfleet ./cmd/otelfleet
-          OTELFLEET_DEV_LOGIN=true \
-          OTELFLEET_ADMIN_EMAILS=js@sag-solutions.com \
-          OTELFLEET_DATABASE_URL=postgres://otelfleet:otelfleet@localhost:5432/otelfleet \
-          OTELFLEET_CLICKHOUSE_ADDR=localhost:9000 \
-          OTELFLEET_CLICKHOUSE_DATABASE=otel \
-          OTELFLEET_CLICKHOUSE_USER=otelfleet \
-          OTELFLEET_CLICKHOUSE_PASSWORD=otelfleet \
-          nohup /tmp/otelfleet > /tmp/cp.log 2>&1 &
+          go build -o /tmp/otel-fleet ./cmd/otel-fleet
+          OTEL_FLEET_DEV_LOGIN=true \
+          OTEL_FLEET_ADMIN_EMAILS=js@sag-solutions.com \
+          OTEL_FLEET_DATABASE_URL=postgres://otelfleet:otelfleet@localhost:5432/otelfleet \
+          OTEL_FLEET_CLICKHOUSE_ADDR=localhost:9000 \
+          OTEL_FLEET_CLICKHOUSE_DATABASE=otel \
+          OTEL_FLEET_CLICKHOUSE_USER=otelfleet \
+          OTEL_FLEET_CLICKHOUSE_PASSWORD=otelfleet \
+          nohup /tmp/otel-fleet > /tmp/cp.log 2>&1 &
           # Poll the ops health endpoint (:9090); "/" on :8080 needs a web dir
           # we don't ship in CI, so it 404s and is not a readiness signal.
           for i in $(seq 1 30); do curl -sf localhost:9090/healthz >/dev/null 2>&1 && exit 0; sleep 2; done
@@ -86,8 +86,8 @@ jobs:
       - name: Run e2e smoke
         run: go test -tags=e2e ./test/e2e/... -v -timeout 180s
         env:
-          OTELFLEET_E2E_URL: http://localhost:8080
-          OTELFLEET_E2E_OTLP_HTTP: http://localhost:4318
+          OTEL_FLEET_E2E_URL: http://localhost:8080
+          OTEL_FLEET_E2E_OTLP_HTTP: http://localhost:4318
       - name: Diagnostics on failure
         if: failure()
         run: |
@@ -118,7 +118,7 @@ jobs:
       - name: Validate gateway config
         run: make -C collector validate
         env:
-          OTELFLEET_AUTH_ENDPOINT: localhost:9443
+          OTEL_FLEET_AUTH_ENDPOINT: localhost:9443
           CLICKHOUSE_ENDPOINT: tcp://localhost:9000?database=otel
 
   web:
@@ -148,50 +148,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
-      - run: helm lint deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet
+      - run: helm lint deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet
       - name: Template forwarding modes and KEDA autoscaling
         run: |
-          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet > /dev/null
-          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet > /dev/null
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set forwarding.mode=operator --set controlPlane.distributor=k8s > /dev/null
-          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set keda.enabled=true --set gateway.autoscaling.ingestRatePerReplica=5000 > /dev/null
-          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set gateway.service.type=LoadBalancer --set 'gateway.service.loadBalancerSourceRanges={10.0.0.0/8}' \
             --set gateway.ingestTLS.enabled=true --set gateway.ingestTLS.mtls=true \
             --set gateway.ingestTLS.secretName=gw-tls > /dev/null
-          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set controlPlane.tls.enabled=true --set controlPlane.tls.publicSecretName=cp-tls \
             --set controlPlane.tls.opampClientCASecret=opamp-ca \
             --set controlPlane.opamp.service.type=LoadBalancer \
             --set 'controlPlane.opamp.service.loadBalancerSourceRanges={198.51.100.0/24}' > /dev/null
-          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set controlPlane.rateLimit.enabled=true --set controlPlane.rateLimit.rps=25 \
             --set controlPlane.rateLimit.authBurst=8 --set controlPlane.rateLimit.maxRequestBodyBytes=1048576 \
-            | grep -q OTELFLEET_RATE_LIMIT_RPS
+            | grep -q OTEL_FLEET_RATE_LIMIT_RPS
           # Hardened defaults: nonroot securityContext on all workloads; a
           # gateway PDB (replicas=2) but none for the single-replica control plane.
-          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             | grep -q "runAsNonRoot: true"
-          test "$(helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             | grep -c 'kind: PodDisruptionBudget')" = "1"
-          test "$(helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set controlPlane.mode=split | grep -c 'kind: PodDisruptionBudget')" = "2"
           # Control-plane NetworkPolicy: off by default; renders with restrictions.
-          test "$(helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             | grep -c 'kind: NetworkPolicy')" = "0"
-          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set controlPlane.networkPolicy.enabled=true \
             --set 'controlPlane.networkPolicy.publicCIDRs={203.0.113.0/24}' \
             --set 'controlPlane.networkPolicy.internalNamespaces={monitoring}' | grep -q "kind: NetworkPolicy"
-      - run: helm lint deploy/charts/otelfleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
+      - run: helm lint deploy/charts/otel-fleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |
-          helm template a deploy/charts/otelfleet-agent \
+          helm template a deploy/charts/otel-fleet-agent \
             --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x --set region=eu > /dev/null
-          helm template a deploy/charts/otelfleet-agent \
+          helm template a deploy/charts/otel-fleet-agent \
             --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.existingSecret=s --set persistence.enabled=false > /dev/null
-          helm template a deploy/charts/otelfleet-agent \
+          helm template a deploy/charts/otel-fleet-agent \
             --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x \
             --set opamp.tls.clientCertSecret=mtls --set opamp.tls.serverName=idp \
             --set autoscaling.enabled=true --set networkPolicy.enabled=true \

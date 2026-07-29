@@ -163,7 +163,7 @@ const file_authservice_proto_rawDesc = "" +
 	"\x18rate_limit_items_per_sec\x18\x05 \x01(\rR\x14rateLimitItemsPerSec2t\n" +
 	"\vAuthService\x12e\n" +
 	"\x0eValidateAPIKey\x12(.otelfleet.auth.v1.ValidateAPIKeyRequest\x1a).otelfleet.auth.v1.ValidateAPIKeyResponseB\xdf\x01\n" +
-	"\x15com.otelfleet.auth.v1B\x10AuthserviceProtoP\x01ZNgithub.com/jansagurna/otelfleet/collector/extension/tenantauth/internal/authv1\xa2\x02\x03OAX\xaa\x02\x11Otelfleet.Auth.V1\xca\x02\x11Otelfleet\\Auth\\V1\xe2\x02\x1dOtelfleet\\Auth\\V1\\GPBMetadata\xea\x02\x13Otelfleet::Auth::V1b\x06proto3"
+	"\x15com.otelfleet.auth.v1B\x10AuthserviceProtoP\x01ZNgithub.com/sag-solutions/otel-fleet/collector/extension/tenantauth/internal/authv1\xa2\x02\x03OAX\xaa\x02\x11Otelfleet.Auth.V1\xca\x02\x11Otelfleet\\Auth\\V1\xe2\x02\x1dOtelfleet\\Auth\\V1\\GPBMetadata\xea\x02\x13Otelfleet::Auth::V1b\x06proto3"
 
 var (
 	file_authservice_proto_rawDescOnce sync.Once

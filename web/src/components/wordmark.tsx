@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 
 /**
- * The otelfleet wordmark: three ascending signal bars (logs/traces/metrics
+ * The otel-fleet wordmark: three ascending signal bars (logs/traces/metrics
  * pulse) plus the lowercase mono name with the fleet half in signal-amber.
  */
 export function Wordmark({ className, large = false }: { className?: string; large?: boolean }) {

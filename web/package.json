@@ -1,5 +1,5 @@
 {
-  "name": "otelfleet-web",
+  "name": "otel-fleet-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",

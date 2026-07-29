@@ -12,7 +12,7 @@ managed:
   enabled: true
   override:
     - file_option: go_package
-      value: github.com/jansagurna/otelfleet/collector/extension/tenantauth/internal/authv1
+      value: github.com/sag-solutions/otel-fleet/collector/extension/tenantauth/internal/authv1
 plugins:
   - local: protoc-gen-go
     out: internal/authv1

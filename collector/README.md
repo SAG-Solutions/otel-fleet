@@ -1,6 +1,6 @@
-# otelfleet collector distribution
+# otel-fleet collector distribution
 
-Custom OpenTelemetry Collector distribution for the otelfleet ingest tier
+Custom OpenTelemetry Collector distribution for the otel-fleet ingest tier
 (gateway) and the forwarding tier, built with the
 [OpenTelemetry Collector Builder (OCB)](https://opentelemetry.io/docs/collector/custom-collector/).
 
@@ -46,7 +46,7 @@ make -C collector docker     # docker build -f Dockerfile.collector (repo root c
 make -C collector proto      # regenerate tenantauth's AuthService stubs
 ```
 
-The binary lands in `collector/dist/otelfleet-collector` (gitignored).
+The binary lands in `collector/dist/otel-fleet-collector` (gitignored).
 
 The container image is built by `Dockerfile.collector` at the repo root
 (multi-stage: OCB in `golang:1.26`, runtime `distroless/static` running as
@@ -64,7 +64,7 @@ supervisor dials the control plane's OpAMP server
 per-customer bootstrap token (`Authorization: Bearer otm_bt_<prefix>_<secret>`),
 receives the full collector config as OpAMP remote config, runs the collector
 as a child process, reports health / effective config / remote-config status,
-persists the last-good config under `/var/lib/otelfleet-supervisor`, and
+persists the last-good config under `/var/lib/otel-fleet-supervisor`, and
 reverts to it locally when a pushed config crash-loops.
 
 - Image: `Dockerfile.supervisor` (repo root). The supervisor binary is copied
@@ -74,10 +74,10 @@ reverts to it locally when a pushed config crash-loops.
   like `Dockerfile.collector` (intentional duplication for now).
 - Supervisor config: `deploy/compose/supervisor.yaml`. The supervisor's own
   config supports confmap `${env:VAR}` expansion, which injects
-  `OTELFLEET_BOOTSTRAP_TOKEN` into the Authorization header.
+  `OTEL_FLEET_BOOTSTRAP_TOKEN` into the Authorization header.
 - Compose service: `edge-agent` in `deploy/compose/docker-compose.yaml`,
   behind the `edge` profile (it needs a real token):
-  `OTELFLEET_BOOTSTRAP_TOKEN=otm_bt_... docker compose --profile edge up -d edge-agent`.
+  `OTEL_FLEET_BOOTSTRAP_TOKEN=otm_bt_... docker compose --profile edge up -d edge-agent`.
 
 NOTE: the supervisor requires the managed collector to include the contrib
 `opamp` extension (it injects an `extensions: opamp:` block into every config

@@ -20,7 +20,7 @@ otherwise.
 
 ## Supported versions
 
-otelfleet is pre-1.0: **only the latest minor release** receives security
+otel-fleet is pre-1.0: **only the latest minor release** receives security
 fixes. Older releases will not be patched — upgrade to the newest `0.x` to
 stay supported.
 
@@ -36,8 +36,8 @@ Things the docs call out that deserve repeating here:
 - The internal listeners (gRPC `:9443`, ops `:9090`, OpAMP `:4320`) are
   **plaintext** — never expose them directly; put OpAMP behind TLS termination
   for edge agents.
-- `OTELFLEET_DEV_LOGIN=true` disables authentication in favor of a dev login —
+- `OTEL_FLEET_DEV_LOGIN=true` disables authentication in favor of a dev login —
   local use only.
-- `OTELFLEET_MASTER_KEY` protects secrets at rest (SSO client secrets,
+- `OTEL_FLEET_MASTER_KEY` protects secrets at rest (SSO client secrets,
   pipeline credentials); store it in a secret manager and never reuse the
   published demo key.

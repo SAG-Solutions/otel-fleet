@@ -1,4 +1,4 @@
-// Copyright The otelfleet Authors
+// Copyright The otel-fleet Authors
 // SPDX-License-Identifier: Apache-2.0
 
 package tenantquota
@@ -313,15 +313,15 @@ func TestQuotaTelemetry(t *testing.T) {
 		}
 	}
 
-	dec := sums["otelfleet_quota_decisions_total"]
-	require.NotNil(t, dec, "otelfleet_quota_decisions_total must be emitted")
+	dec := sums["otel_fleet_quota_decisions_total"]
+	require.NotNil(t, dec, "otel_fleet_quota_decisions_total must be emitted")
 	assert.Equal(t, int64(1), dec[encoded(
 		attribute.String("decision", "allowed"), attribute.String("tenant_id", "tenant-a"))])
 	assert.Equal(t, int64(1), dec[encoded(
 		attribute.String("decision", "rejected"), attribute.String("tenant_id", "tenant-a"))])
 
-	rej := sums["otelfleet_quota_rejected_items_total"]
-	require.NotNil(t, rej, "otelfleet_quota_rejected_items_total must be emitted")
+	rej := sums["otel_fleet_quota_rejected_items_total"]
+	require.NotNil(t, rej, "otel_fleet_quota_rejected_items_total must be emitted")
 	assert.Equal(t, int64(7), rej[encoded(
 		attribute.String("signal", "logs"), attribute.String("tenant_id", "tenant-a"))])
 }
