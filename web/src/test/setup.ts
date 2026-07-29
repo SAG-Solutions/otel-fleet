@@ -1,7 +1,13 @@
 import '@testing-library/jest-dom/vitest'
 import { afterEach } from 'vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { client } from '@/api/generated/client.gen'
+
+// Full-app renders go through an async router (route beforeLoad fetches /me,
+// then queries resolve) before content appears. On a loaded machine the
+// default 1000ms findBy/waitFor budget is too tight and yields empty-body
+// timeouts; give async queries more room so the suite is load-robust.
+configure({ asyncUtilTimeout: 5000 })
 
 // Node's Request needs an absolute URL; the app itself uses baseUrl '/'
 // behind the Vite proxy.

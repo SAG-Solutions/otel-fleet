@@ -33,5 +33,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // Each test file spins up a full jsdom environment; running as many in
+    // parallel as there are cores thrashes CPU on loaded machines/CI and
+    // starves React renders into timeouts. Cap parallelism and give slow
+    // renders headroom so the suite is deterministic under load.
+    maxWorkers: '50%',
+    testTimeout: 15000,
   },
 })
