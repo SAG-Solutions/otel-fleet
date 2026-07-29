@@ -33,7 +33,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{- define "otel-fleet-agent.image" -}}
-{{- printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.Version) -}}
 {{- end -}}
 
 {{/* Secret name holding the bootstrap token (existing or chart-managed). */}}

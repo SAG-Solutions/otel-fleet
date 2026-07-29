@@ -8,7 +8,7 @@ description: >
   land in a later release.
 type: application
 version: 0.5.2 # x-release-please-version
-appVersion: "0.5.2" # x-release-please-version
+appVersion: 0.5.2 # x-release-please-version
 kubeVersion: ">=1.27.0"
 home: https://github.com/sag-solutions/otel-fleet
 sources:

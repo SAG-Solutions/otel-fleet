@@ -3,7 +3,7 @@
 
 image:
   repository: ghcr.io/sag-solutions/otel-fleet-supervisor
-  tag: "" # defaults to the chart appVersion
+  tag: "" # defaults to the chart version
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 

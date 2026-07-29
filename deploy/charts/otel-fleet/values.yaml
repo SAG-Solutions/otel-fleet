@@ -7,11 +7,11 @@
 images:
   controlPlane:
     repository: ghcr.io/sag-solutions/otel-fleet
-    tag: ""            # defaults to .Chart.AppVersion
+    tag: ""            # defaults to the chart version
     pullPolicy: IfNotPresent
   collector:
     repository: ghcr.io/sag-solutions/otel-fleet-collector
-    tag: ""            # defaults to .Chart.AppVersion
+    tag: ""            # defaults to the chart version
     pullPolicy: IfNotPresent
 
 imagePullSecrets: []

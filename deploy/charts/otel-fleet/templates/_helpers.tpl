@@ -27,11 +27,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{- define "otel-fleet.controlPlaneImage" -}}
-{{- printf "%s:%s" .Values.images.controlPlane.repository (.Values.images.controlPlane.tag | default .Chart.AppVersion) -}}
+{{- printf "%s:%s" .Values.images.controlPlane.repository (.Values.images.controlPlane.tag | default .Chart.Version) -}}
 {{- end -}}
 
 {{- define "otel-fleet.collectorImage" -}}
-{{- printf "%s:%s" .Values.images.collector.repository (.Values.images.collector.tag | default .Chart.AppVersion) -}}
+{{- printf "%s:%s" .Values.images.collector.repository (.Values.images.collector.tag | default .Chart.Version) -}}
 {{- end -}}
 
 {{/* Service selector component for the API tier (http/grpc/ops). */}}
