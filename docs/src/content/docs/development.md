@@ -17,13 +17,13 @@ web/                 React SPA (Vite, TanStack Router/Query, generated client)
 deploy/compose/      dev + demo environments
 deploy/charts/       Helm chart
 deploy/clickhouse/   ClickHouse DDL (owned here, exporter runs create_schema:false)
-docs/                this site (MkDocs Material)
+docs/                this site (Astro Starlight)
 ```
 
 ## Prerequisites
 
-Go 1.26+, Node 24+ with pnpm, Docker + Compose. For the docs:
-[uv](https://docs.astral.sh/uv/) (`make docs-serve` uses `uvx`).
+Go 1.26+, Node 24+ with pnpm, Docker + Compose. The docs site under `docs/`
+is an Astro Starlight project and uses the same Node + pnpm toolchain.
 
 ## Make targets
 
@@ -38,7 +38,7 @@ Go 1.26+, Node 24+ with pnpm, Docker + Compose. For the docs:
 | `make gen-go` | oapi-codegen from `api/openapi.yaml` + buf for `proto/` |
 | `make gen-web` | Regenerate the TS client (`cd web && pnpm gen`) |
 | `make -C collector build/test/validate/docker/proto` | Collector distro tasks (see `collector/README.md`) |
-| `make docs-serve` / `make docs-build` | MkDocs live preview / strict build (needs uv) |
+| Docs | Astro Starlight project in `docs/` — `cd docs && pnpm install && pnpm dev` / `pnpm build` |
 
 Web workflow: `cd web && pnpm install && pnpm dev` (proxies API calls to
 `:8080`); `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`.
@@ -86,10 +86,12 @@ missing, mirroring the server's behavior).
 
 ## Docs site
 
-```sh
-make docs-serve   # live preview at :8000
-make docs-build   # strict build (what CI runs)
-```
+The docs are an [Astro Starlight](https://starlight.astro.build/) site under
+`docs/`, branded with SAG Solutions styling.
 
-Both use `uvx --with mkdocs-material mkdocs …`, so the only local dependency is
-[uv](https://docs.astral.sh/uv/).
+```sh
+cd docs
+pnpm install
+pnpm dev      # live preview at :4321
+pnpm build    # static build into docs/dist (what CI runs & deploys to Pages)
+```

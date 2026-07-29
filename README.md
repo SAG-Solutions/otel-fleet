@@ -113,7 +113,7 @@ proto/               internal gRPC contract (API-key validation)
 collector/           custom collector distro (OCB manifest + tenantauth/tenantstamp)
 web/                 React SPA
 deploy/              compose dev+demo envs, Helm chart, ClickHouse DDL
-docs/                documentation site (MkDocs Material)
+docs/                documentation site (Astro Starlight)
 ```
 
 ## Community

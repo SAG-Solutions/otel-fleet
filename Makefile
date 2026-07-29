@@ -36,15 +36,15 @@ gen-web:
 clean:
 	rm -rf bin collector/dist web/dist
 
-# --- docs (MkDocs Material) ---------------------------------------------------
-# Requires uv (https://docs.astral.sh/uv/); uvx runs mkdocs in an ephemeral env.
+# --- docs (Astro Starlight) ---------------------------------------------------
+# The docs site lives in docs/ (pnpm). See docs/README or astro.config.mjs.
 .PHONY: docs-serve docs-build
 
 docs-serve:
-	uvx --with mkdocs-material mkdocs serve
+	cd docs && pnpm install && pnpm dev
 
 docs-build:
-	uvx --with mkdocs-material mkdocs build --strict
+	cd docs && pnpm install --frozen-lockfile && pnpm build
 
 cli:
 	mkdir -p bin
