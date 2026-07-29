@@ -1,23 +1,45 @@
-name: release
+name: release-please
+
+# Automated releases. release-please watches Conventional Commits on main and
+# maintains a "release PR" (version bump + CHANGELOG + Chart.yaml versions).
+# Merging that PR tags vX.Y.Z, creates the GitHub Release, and — in the SAME
+# workflow run (so no PAT is needed to trigger downstream) — runs goreleaser,
+# builds/pushes the images and packages/signs the Helm charts.
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
 
 permissions:
-  contents: write   # goreleaser: create the GitHub release
-  packages: write   # push images + chart to GHCR
-  id-token: write   # cosign keyless signing
+  contents: write # release-please: create tags/releases; goreleaser: upload assets
+  packages: write # push images + charts to GHCR
+  pull-requests: write # release-please: maintain the release PR
+  id-token: write # cosign keyless signing
 
 env:
-  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  # GHCR requires a lowercase owner; the org is "SAG-Solutions".
+  REGISTRY: ghcr.io/sag-solutions
 
 jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   goreleaser:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
           fetch-depth: 0 # full history for the changelog
       - uses: actions/setup-go@v5
         with:
@@ -30,6 +52,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   images:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -43,6 +67,8 @@ jobs:
             dockerfile: Dockerfile.supervisor
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -53,7 +79,9 @@ jobs:
       - uses: sigstore/cosign-installer@v3
       - name: Resolve version from tag
         id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
       - name: Build and push (multi-arch)
         id: build
         uses: docker/build-push-action@v6
@@ -74,9 +102,13 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
 
   helm-chart:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
       - uses: azure/setup-helm@v4
       - uses: sigstore/cosign-installer@v3
       # Writes ~/.docker/config.json so BOTH `helm push` and `cosign sign`
@@ -90,14 +122,16 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Resolve version from tag
         id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
       - name: Verify chart versions match the tag
         run: |
           for chart in otel-fleet otel-fleet-agent; do
             chart_version=$(helm show chart "deploy/charts/$chart" | awk '/^version:/ {print $2}')
             if [ "$chart_version" != "${{ steps.version.outputs.version }}" ]; then
-              echo "::error::Chart $chart version ($chart_version) != tag version (${{ steps.version.outputs.version }})." \
-                   "Bump version/appVersion in deploy/charts/$chart/Chart.yaml before tagging (see RELEASING.md)."
+              echo "::error::Chart $chart version ($chart_version) != release version (${{ steps.version.outputs.version }})." \
+                   "release-please should bump deploy/charts/$chart/Chart.yaml — check the x-release-please-version annotations."
               exit 1
             fi
           done

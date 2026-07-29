@@ -91,6 +91,9 @@ changelog:
 release:
   draft: false
   prerelease: auto
+  # release-please creates the GitHub Release (with the changelog) when it tags;
+  # goreleaser only appends the built binaries/archives to it.
+  mode: append
   footer: |
     ---
 
