@@ -138,6 +138,16 @@ controlPlane:
     # per-agent token (e.g. wss://opamp.example.com/v1/opamp). Empty = offer
     # only the new auth header; agents keep their current endpoint.
     publicEndpoint: ""
+  # Ingress NetworkPolicy for the control-plane pods. The public listeners
+  # (HTTP :8080, OpAMP :4320) stay open unless publicCIDRs is set; the internal
+  # listeners (gRPC AuthService :9443, ops/metrics :9090) are restricted to
+  # same-namespace pods plus any extra namespaces/CIDRs. Requires a CNI that
+  # enforces NetworkPolicy.
+  networkPolicy:
+    enabled: false
+    publicCIDRs: []        # restrict HTTP :8080 + OpAMP :4320 (empty = anywhere)
+    internalNamespaces: [] # extra namespaces allowed to reach :9443 + :9090 (e.g. monitoring)
+    internalCIDRs: []      # extra CIDRs allowed to reach the internal listeners
   resources:
     requests: { cpu: 100m, memory: 128Mi }
     limits: { memory: 512Mi }

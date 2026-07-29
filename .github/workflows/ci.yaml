@@ -177,6 +177,13 @@ jobs:
             | grep -c 'kind: PodDisruptionBudget')" = "1"
           test "$(helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set controlPlane.mode=split | grep -c 'kind: PodDisruptionBudget')" = "2"
+          # Control-plane NetworkPolicy: off by default; renders with restrictions.
+          test "$(helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            | grep -c 'kind: NetworkPolicy')" = "0"
+          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set controlPlane.networkPolicy.enabled=true \
+            --set 'controlPlane.networkPolicy.publicCIDRs={203.0.113.0/24}' \
+            --set 'controlPlane.networkPolicy.internalNamespaces={monitoring}' | grep -q "kind: NetworkPolicy"
       - run: helm lint deploy/charts/otelfleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |

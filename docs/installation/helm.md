@@ -249,3 +249,27 @@ podDisruptionBudget:
 So the default single-replica `mode: all` gets a gateway PDB (replicas `2`) and
 no control-plane PDB; `mode: split` with `controlPlane.api.replicas > 1` adds a
 PDB for the API tier (never for the singleton OpAMP tier).
+
+### Control-plane NetworkPolicy
+
+An opt-in ingress `NetworkPolicy` locks the control plane's **internal**
+listeners — the gRPC AuthService (`:9443`, called by gateways) and ops/metrics
+(`:9090`, scraped by Prometheus) — to in-cluster sources, while leaving the
+**public** listeners (HTTP UI/API `:8080`, OpAMP `:4320`) reachable so browsers
+and edge agents can connect. Requires a CNI that enforces NetworkPolicy.
+
+```yaml
+controlPlane:
+  networkPolicy:
+    enabled: true
+    publicCIDRs: []                 # restrict :8080 + :4320 (empty = anywhere)
+    internalNamespaces: [monitoring] # extra namespaces for :9443 + :9090
+    internalCIDRs: []               # extra CIDRs for the internal listeners
+```
+
+Same-namespace pods can always reach the internal listeners (so a co-located
+gateway/forwarding and Prometheus work out of the box); `internalNamespaces`
+adds cross-namespace scrapers. To also IP-restrict the public listeners at the
+network layer, set `publicCIDRs` (complements the `LoadBalancer`
+`loadBalancerSourceRanges` allowlists). One policy covers all control-plane
+components in both `mode: all` and `mode: split`.
