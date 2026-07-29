@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/sag-solutions/otel-fleet/actions/workflows/ci.yaml/badge.svg)](https://github.com/sag-solutions/otel-fleet/actions/workflows/ci.yaml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-sag--solutions.github.io%2Fotel-fleet-8A2BE2)](https://sag-solutions.github.io/otel-fleet/)
+[![Docs](https://img.shields.io/badge/docs-otel--fleet-255bf5)](https://sag-solutions.github.io/otel-fleet/)
 
 **Self-hosted, multi-tenant OpenTelemetry collector fleet management.** Receive
 logs, traces and metrics from multiple customers via OTLP, attribute every
@@ -41,11 +41,11 @@ customer's own backends — managed through a web UI.
 |  |  |
 |---|---|
 | **Pipeline builder** — schema-driven form with a live, validated YAML preview | **Dashboard** — fleet-wide ingest and top customers by volume |
-| [![Pipeline builder](docs/assets/screenshots/pipeline-builder.png)](docs/assets/screenshots/pipeline-builder.png) | [![Dashboard](docs/assets/screenshots/dashboard.png)](docs/assets/screenshots/dashboard.png) |
+| [![Pipeline builder](docs/public/assets/screenshots/pipeline-builder.png)](docs/public/assets/screenshots/pipeline-builder.png) | [![Dashboard](docs/public/assets/screenshots/dashboard.png)](docs/public/assets/screenshots/dashboard.png) |
 | **Explore** — search a tenant's stored logs on the read path | **Explore** — root-span trace list with span and error counts |
-| [![Explore logs](docs/assets/screenshots/explore-logs.png)](docs/assets/screenshots/explore-logs.png) | [![Explore traces](docs/assets/screenshots/explore-traces.png)](docs/assets/screenshots/explore-traces.png) |
+| [![Explore logs](docs/public/assets/screenshots/explore-logs.png)](docs/public/assets/screenshots/explore-logs.png) | [![Explore traces](docs/public/assets/screenshots/explore-traces.png)](docs/public/assets/screenshots/explore-traces.png) |
 | **Fleet** — every collector managed over OpAMP, with config sync status |  |
-| [![Fleet](docs/assets/screenshots/fleet.png)](docs/assets/screenshots/fleet.png) |  |
+| [![Fleet](docs/public/assets/screenshots/fleet.png)](docs/public/assets/screenshots/fleet.png) |  |
 
 ## Architecture
 

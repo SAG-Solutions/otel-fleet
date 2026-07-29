@@ -1,12 +1,51 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import remarkMermaid from './src/lib/remark-mermaid.mjs';
+
+// Client-side mermaid renderer, injected on every page (bundled — no CDN, so it
+// works under a strict CSP / offline). Renders <pre class="mermaid"> blocks and
+// re-renders on Starlight's light/dark toggle and on client navigation.
+const mermaidClient = `
+import mermaid from 'mermaid';
+function currentTheme() {
+  return document.documentElement.dataset.theme === 'light' ? 'default' : 'dark';
+}
+async function renderMermaid() {
+  const blocks = document.querySelectorAll('pre.mermaid[data-mermaid]');
+  if (!blocks.length) return;
+  blocks.forEach((el) => {
+    if (el.dataset.src === undefined) el.dataset.src = el.textContent;
+    el.removeAttribute('data-processed');
+    el.innerHTML = el.dataset.src;
+  });
+  // 'loose' lets node labels use <br/> etc.; docs content is first-party/trusted.
+  mermaid.initialize({ startOnLoad: false, theme: currentTheme(), securityLevel: 'loose' });
+  await mermaid.run({ querySelector: 'pre.mermaid[data-mermaid]' });
+}
+document.addEventListener('astro:page-load', renderMermaid);
+new MutationObserver(renderMermaid).observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: ['data-theme'],
+});
+`;
 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://sag-solutions.github.io',
   base: '/otel-fleet',
+  markdown: {
+    remarkPlugins: [remarkMermaid],
+  },
   integrations: [
+    {
+      name: 'mermaid-client',
+      hooks: {
+        'astro:config:setup': ({ injectScript }) => {
+          injectScript('page', mermaidClient);
+        },
+      },
+    },
     starlight({
       title: 'otel-fleet',
       description:
