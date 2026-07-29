@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/jansagurna/otelfleet/internal/api/apigen"
 	"github.com/jansagurna/otelfleet/internal/auth"
@@ -25,6 +26,9 @@ type RouterDeps struct {
 	Server   *Server
 	Auth     *auth.Registry
 	Log      *slog.Logger
+	// Registry registers the request-denial counter (otelfleet_http_denied_total).
+	// May be nil (denials still log; the counter is simply absent).
+	Registry prometheus.Registerer
 }
 
 // NewRouter assembles the public HTTP surface: the REST API under /api/v1
@@ -32,6 +36,8 @@ type RouterDeps struct {
 // resolved at request time from the database + environment), and the SPA
 // fallback.
 func NewRouter(d RouterDeps) http.Handler {
+	secMetrics := newSecurityMetrics(d.Registry)
+
 	r := chi.NewRouter()
 	r.Use(chimw.RealIP)
 	r.Use(requestLogger(d.Log))
@@ -40,8 +46,8 @@ func NewRouter(d RouterDeps) http.Handler {
 	// layered onto the SSO endpoints below. Must sit behind RealIP.
 	var authLimit func(http.Handler) http.Handler
 	if d.Config.RateLimitEnabled {
-		r.Use(newIPRateLimiter(d.Config.RateLimitRPS, d.Config.RateLimitBurst).middleware())
-		authLimit = newIPRateLimiter(d.Config.AuthRateLimitRPS, d.Config.AuthRateLimitBurst).middleware()
+		r.Use(newIPRateLimiter(d.Config.RateLimitRPS, d.Config.RateLimitBurst).middleware(d.Log, secMetrics))
+		authLimit = newIPRateLimiter(d.Config.AuthRateLimitRPS, d.Config.AuthRateLimitBurst).middleware(d.Log, secMetrics)
 	}
 	r.Use(d.Sessions.Manager.LoadAndSave)
 
@@ -78,7 +84,11 @@ func NewRouter(d RouterDeps) http.Handler {
 			}
 			var forbidden forbiddenError
 			if errors.As(err, &forbidden) {
-				writeError(w, http.StatusForbidden, codeForbidden, forbidden.Error())
+				actor := "-"
+				if p, ok := auth.PrincipalFrom(r.Context()); ok {
+					actor = p.User.Email
+				}
+				denyRequest(w, r, d.Log, secMetrics, http.StatusForbidden, codeForbidden, forbidden.Error(), reasonTenantScope, actor)
 				return
 			}
 			d.Log.Error("handler failed", "method", r.Method, "path", r.URL.Path, "err", err)
@@ -89,7 +99,7 @@ func NewRouter(d RouterDeps) http.Handler {
 		if d.Config.MaxRequestBodyBytes > 0 {
 			g.Use(maxBodyBytes(d.Config.MaxRequestBodyBytes))
 		}
-		g.Use(Guard(d.Sessions, d.Store))
+		g.Use(Guard(d.Sessions, d.Store, d.Log, secMetrics))
 		g.Use(captureRawBody)
 		apigen.HandlerWithOptions(strict, apigen.ChiServerOptions{
 			BaseRouter: g,

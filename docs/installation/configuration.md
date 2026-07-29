@@ -56,6 +56,21 @@ chi's RealIP), so run behind a trusted proxy that sets them.
 Exceeded limits return `429` with a `Retry-After` header. In Helm set these
 under `controlPlane.rateLimit` (only keys you set are passed through).
 
+### Denial audit
+
+Every denied request (401 unauthenticated/unknown/disabled, 403 admin-only /
+CSRF / insufficient-role / tenant-scope, 429 rate-limited) is recorded two ways
+— never in the database, so unauthenticated floods can't grow persistent state:
+
+- A structured `WARN` log line `security: request denied` with `reason`,
+  `status`, `method`, `path`, `remote_ip`, and `actor` (the email when a
+  session was authenticated, else `-`). Ship these to your log backend and
+  alert on spikes.
+- A Prometheus counter `otelfleet_http_denied_total{reason}` on the ops
+  `/metrics` endpoint (`reason` is a small fixed set: `unauthenticated`,
+  `unknown_user`, `account_disabled`, `invalid_api_token`, `requires_admin`,
+  `insufficient_role`, `csrf`, `rate_limited`, `tenant_scope`).
+
 ## Authentication and authorization
 
 | Variable | Default | Description |

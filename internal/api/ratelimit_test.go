@@ -48,7 +48,7 @@ func TestIPRateLimiterCleanupEvictsIdle(t *testing.T) {
 }
 
 func TestRateLimitMiddleware429(t *testing.T) {
-	h := newIPRateLimiter(1, 2).middleware()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	h := newIPRateLimiter(1, 2).middleware(nil, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	codes := make([]int, 0, 3)

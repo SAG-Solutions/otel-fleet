@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 	"sync"
@@ -61,8 +62,9 @@ func (l *ipRateLimiter) cleanup(now time.Time) {
 }
 
 // middleware enforces the limit per client IP, answering 429 with a Retry-After
-// header when exceeded. It starts a background janitor to evict idle buckets.
-func (l *ipRateLimiter) middleware() func(http.Handler) http.Handler {
+// header when exceeded. It starts a background janitor to evict idle buckets
+// and records each throttle in the security audit log + denial counter.
+func (l *ipRateLimiter) middleware(log *slog.Logger, metrics *securityMetrics) func(http.Handler) http.Handler {
 	go func() {
 		t := time.NewTicker(l.ttl)
 		defer t.Stop()
@@ -74,7 +76,7 @@ func (l *ipRateLimiter) middleware() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !l.allow(clientIP(r), time.Now()) {
 				w.Header().Set("Retry-After", "1")
-				writeError(w, http.StatusTooManyRequests, codeRateLimited, "rate limit exceeded, slow down")
+				denyRequest(w, r, log, metrics, http.StatusTooManyRequests, codeRateLimited, "rate limit exceeded, slow down", reasonRateLimited, "")
 				return
 			}
 			next.ServeHTTP(w, r)

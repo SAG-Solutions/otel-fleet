@@ -212,6 +212,7 @@ func run(log *slog.Logger) error {
 				Server:   server,
 				Auth:     authRegistry,
 				Log:      log,
+				Registry: reg,
 			}),
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       30 * time.Second,

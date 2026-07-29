@@ -89,7 +89,7 @@ func guardEnv(t *testing.T) (*httptest.Server, *http.Client, map[string]uuid.UUI
 		_, _ = io.WriteString(w, sessions.CSRFToken(req.Context()))
 	})
 	r.Group(func(g chi.Router) {
-		g.Use(Guard(sessions, users))
+		g.Use(Guard(sessions, users, nil, nil))
 		ok := func(w http.ResponseWriter, req *http.Request) { _, _ = io.WriteString(w, "ok") }
 		// whoami echoes the resolved principal's tenant scope so tests can
 		// assert how grants map onto the request principal.

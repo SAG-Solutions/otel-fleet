@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -65,7 +66,7 @@ func isMutating(method string) bool {
 // require operator or admin (403). The resolved principal is attached to the
 // request context. The per-request user load doubles as the disabled check:
 // a disabled user's next request fails even if a session row survived.
-func Guard(sessions *auth.Sessions, users GuardStore) func(http.Handler) http.Handler {
+func Guard(sessions *auth.Sessions, users GuardStore, log *slog.Logger, metrics *securityMetrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if _, ok := publicPaths[r.URL.Path]; ok {
@@ -80,15 +81,15 @@ func Guard(sessions *auth.Sessions, users GuardStore) func(http.Handler) http.Ha
 			if looksLikeAPIToken(r.Header.Get("Authorization")) {
 				role, createdBy, ok := authenticateAPIToken(ctx, users, r.Header.Get("Authorization"))
 				if !ok {
-					writeError(w, http.StatusUnauthorized, codeUnauthorized, "invalid API token")
+					denyRequest(w, r, log, metrics, http.StatusUnauthorized, codeUnauthorized, "invalid API token", reasonInvalidToken, "")
 					return
 				}
 				if isAdminOnlyPath(r.URL.Path) && !authz.AtLeast(role, authz.RoleAdmin) {
-					writeError(w, http.StatusForbidden, codeForbidden, "requires admin role")
+					denyRequest(w, r, log, metrics, http.StatusForbidden, codeForbidden, "requires admin role", reasonRequiresAdmin, "api-token")
 					return
 				}
 				if isMutating(r.Method) && r.URL.Path != logoutPath && !authz.CanMutate(role) {
-					writeError(w, http.StatusForbidden, codeForbidden, "requires operator or admin role")
+					denyRequest(w, r, log, metrics, http.StatusForbidden, codeForbidden, "requires operator or admin role", reasonInsufficient, "api-token")
 					return
 				}
 				tokenUser := store.User{Role: role, Email: "api-token"}
@@ -103,12 +104,12 @@ func Guard(sessions *auth.Sessions, users GuardStore) func(http.Handler) http.Ha
 
 			userID, ok := sessions.UserID(ctx)
 			if !ok {
-				writeError(w, http.StatusUnauthorized, codeUnauthorized, "authentication required")
+				denyRequest(w, r, log, metrics, http.StatusUnauthorized, codeUnauthorized, "authentication required", reasonUnauthenticated, "")
 				return
 			}
 			user, err := users.GetUser(ctx, userID)
 			if errors.Is(err, store.ErrNotFound) {
-				writeError(w, http.StatusUnauthorized, codeUnauthorized, "unknown user")
+				denyRequest(w, r, log, metrics, http.StatusUnauthorized, codeUnauthorized, "unknown user", reasonUnknownUser, "")
 				return
 			}
 			if err != nil {
@@ -116,22 +117,22 @@ func Guard(sessions *auth.Sessions, users GuardStore) func(http.Handler) http.Ha
 				return
 			}
 			if user.DisabledAt != nil {
-				writeError(w, http.StatusUnauthorized, codeUnauthorized, "account disabled")
+				denyRequest(w, r, log, metrics, http.StatusUnauthorized, codeUnauthorized, "account disabled", reasonAccountDisabled, user.Email)
 				return
 			}
 
 			if isAdminOnlyPath(r.URL.Path) && !authz.AtLeast(user.Role, authz.RoleAdmin) {
-				writeError(w, http.StatusForbidden, codeForbidden, "requires admin role")
+				denyRequest(w, r, log, metrics, http.StatusForbidden, codeForbidden, "requires admin role", reasonRequiresAdmin, user.Email)
 				return
 			}
 
 			if isMutating(r.Method) {
 				if !sessions.ValidCSRF(ctx, r.Header.Get("X-CSRF-Token")) {
-					writeError(w, http.StatusForbidden, codeForbidden, "missing or invalid CSRF token")
+					denyRequest(w, r, log, metrics, http.StatusForbidden, codeForbidden, "missing or invalid CSRF token", reasonCSRF, user.Email)
 					return
 				}
 				if r.URL.Path != logoutPath && !authz.CanMutate(user.Role) {
-					writeError(w, http.StatusForbidden, codeForbidden, "requires operator or admin role")
+					denyRequest(w, r, log, metrics, http.StatusForbidden, codeForbidden, "requires operator or admin role", reasonInsufficient, user.Email)
 					return
 				}
 			}
