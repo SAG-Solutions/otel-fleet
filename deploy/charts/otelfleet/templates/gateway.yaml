@@ -57,10 +57,16 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: otelcol
           image: {{ include "otelfleet.collectorImage" . }}
           imagePullPolicy: {{ .Values.images.collector.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
           args:
             - --config=/etc/otelcol/config.yaml
             {{- if .Values.gateway.ingestTLS.enabled }}

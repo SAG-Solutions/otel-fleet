@@ -26,10 +26,16 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: otelcol
           image: {{ include "otelfleet.collectorImage" . }}
           imagePullPolicy: {{ .Values.images.collector.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
           args:
             - {{ printf "--config=http://%s-control-plane:9090/internal/v1/collector-config/forwarding" (include "otelfleet.fullname" .) | quote }}
           ports:

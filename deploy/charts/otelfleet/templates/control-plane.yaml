@@ -25,11 +25,17 @@ spec:
       {{- with $.Values.imagePullSecrets }}
       imagePullSecrets: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with $.Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ include "otelfleet.fullname" $ }}
       containers:
         - name: control-plane
           image: {{ include "otelfleet.controlPlaneImage" $ }}
           imagePullPolicy: {{ $.Values.images.controlPlane.pullPolicy }}
+          {{- with $.Values.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - { name: http, containerPort: 8080 }
             - { name: grpc, containerPort: 9443 }

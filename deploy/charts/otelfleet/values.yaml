@@ -16,6 +16,32 @@ images:
 
 imagePullSecrets: []
 
+# Security hardening applied to every otelfleet-managed workload (control
+# plane, gateway, forwarding). Defaults assume the distroless nonroot images
+# (uid/gid 65532). readOnlyRootFilesystem is left OFF because the collector's
+# file_storage queue and the control plane's `otelcol validate` write to disk;
+# enable it only with writable volumes mounted at those paths. Set either map
+# to {} to omit it entirely.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  # readOnlyRootFilesystem: true   # opt-in; needs writable volumes for /tmp + file_storage
+
+# PodDisruptionBudget for the control-plane and gateway deployments. Rendered
+# only for a workload with more than one replica (a PDB over a single replica
+# would block voluntary node drains).
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
 external:
   # postgres://user:pass@host:5432/otelfleet — or set existingSecret below.
   databaseUrl: ""

@@ -169,6 +169,14 @@ jobs:
             --set controlPlane.rateLimit.enabled=true --set controlPlane.rateLimit.rps=25 \
             --set controlPlane.rateLimit.authBurst=8 --set controlPlane.rateLimit.maxRequestBodyBytes=1048576 \
             | grep -q OTELFLEET_RATE_LIMIT_RPS
+          # Hardened defaults: nonroot securityContext on all workloads; a
+          # gateway PDB (replicas=2) but none for the single-replica control plane.
+          helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            | grep -q "runAsNonRoot: true"
+          test "$(helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            | grep -c 'kind: PodDisruptionBudget')" = "1"
+          test "$(helm template t deploy/charts/otelfleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set controlPlane.mode=split | grep -c 'kind: PodDisruptionBudget')" = "2"
       - run: helm lint deploy/charts/otelfleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |

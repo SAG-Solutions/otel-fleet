@@ -207,3 +207,45 @@ see the [configuration reference](configuration.md#secrets-encryption).
     Without the key the server runs, but saving an SSO provider or a pipeline
     with password fields fails with a clear error. Losing the key makes stored
     secrets unrecoverable — keep it in a secret manager.
+
+## Security hardening & availability
+
+Every otelfleet-managed workload (control plane, gateway, forwarding) ships a
+hardened `securityContext` by default, matching the distroless nonroot images
+(uid/gid 65532):
+
+```yaml
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  # readOnlyRootFilesystem: true   # opt-in — see below
+```
+
+`readOnlyRootFilesystem` is **off by default** because the collector's
+`file_storage` queue and the control plane's `otelcol validate` write to disk.
+Enable it only after mounting writable volumes at those paths (the gateway
+already mounts an `emptyDir` at `/var/lib/otelcol`). Set `podSecurityContext`
+or `securityContext` to `{}`/`null` to omit them (e.g. on a platform that
+injects its own).
+
+A **PodDisruptionBudget** is created for the control-plane and gateway
+deployments, but only when a workload has more than one replica — a budget over
+a single replica would block voluntary node drains. Tune with:
+
+```yaml
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+```
+
+So the default single-replica `mode: all` gets a gateway PDB (replicas `2`) and
+no control-plane PDB; `mode: split` with `controlPlane.api.replicas > 1` adds a
+PDB for the API tier (never for the singleton OpAMP tier).
