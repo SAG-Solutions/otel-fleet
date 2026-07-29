@@ -1,16 +1,19 @@
-# Single sign-on
+---
+title: "Single sign-on"
+description: "otel-fleet authenticates UI users via external identity providers. Providers are managed by admins in the UI (Settings \u2192 SSO) or via\u2026"
+---
 
 otel-fleet authenticates UI users via external identity providers. Providers are
 managed by admins in the UI (Settings → SSO) or via
 `/api/v1/settings/auth-providers`, stored in PostgreSQL with the client secret
 encrypted at rest.
 
-!!! important "Prerequisites"
-
-    - `OTEL_FLEET_MASTER_KEY` must be configured — client secrets are
-      AES-256-GCM-encrypted with it; saving a provider fails without it.
-    - `OTEL_FLEET_BASE_URL` must be the externally visible URL — redirect URIs
-      are derived from it.
+:::note[Prerequisites]
+- `OTEL_FLEET_MASTER_KEY` must be configured — client secrets are
+  AES-256-GCM-encrypted with it; saving a provider fails without it.
+- `OTEL_FLEET_BASE_URL` must be the externally visible URL — redirect URIs
+  are derived from it.
+:::
 
 ## Provider types
 
@@ -88,6 +91,6 @@ first.
 
 A single generic OIDC provider can be configured via `OTEL_FLEET_OIDC_*`
 environment variables (useful for bootstrap, before any admin exists) — see the
-[configuration reference](../installation/configuration.md#environment-defined-oidc-provider-bootstrap-fallback).
+[configuration reference](/otel-fleet/installation/configuration/#environment-defined-oidc-provider-bootstrap-fallback).
 It shows up under the name `oidc`; a database provider with the same name shadows
 it.

@@ -1,4 +1,7 @@
-# REST API
+---
+title: "REST API"
+description: "The API is OpenAPI-first: api/openapi.yaml is the source of truth, and both the Go server interfaces and the TypeScript client are generated from it (make\u2026"
+---
 
 The API is **OpenAPI-first**: [`api/openapi.yaml`](https://github.com/sag-solutions/otel-fleet/blob/main/api/openapi.yaml)
 is the source of truth, and both the Go server interfaces and the TypeScript

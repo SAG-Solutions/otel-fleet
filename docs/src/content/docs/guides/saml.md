@@ -1,7 +1,10 @@
-# SAML single sign-on
+---
+title: "SAML single sign-on"
+description: "otel-fleet can act as a SAML 2.0 Service Provider (SP) for SP-initiated Web Browser SSO, alongside OIDC/OAuth and GitHub. Use it for identity providers\u2026"
+---
 
 otel-fleet can act as a **SAML 2.0 Service Provider (SP)** for SP-initiated Web
-Browser SSO, alongside [OIDC/OAuth and GitHub](sso.md). Use it for identity
+Browser SSO, alongside [OIDC/OAuth and GitHub](/otel-fleet/guides/sso/). Use it for identity
 providers that speak SAML — Okta, Microsoft Entra ID, Auth0, OneLogin, Google
 Workspace, ADFS.
 
@@ -38,10 +41,10 @@ The provider appears on the login page as **Continue with <name>**. On success:
 - **email** — the assertion `NameID` (when it is an email) or a common email
   attribute (`email`, `mail`, or the SAML/OID email claim used by Entra ID).
 - **display name** — a `displayName`/`name` attribute when present.
-- The user is matched/created by email (like [invites](sso.md)); a new user
-  gets the `viewer` role. Set role and [customer access](sso.md) in
+- The user is matched/created by email (like [invites](/otel-fleet/guides/sso/)); a new user
+  gets the `viewer` role. Set role and [customer access](/otel-fleet/guides/sso/) in
   **Settings → Users** (or provision users ahead of time via
-  [SCIM](scim.md)).
+  [SCIM](/otel-fleet/guides/scim/)).
 
 The assertion's signature, validity window and audience are all verified before
 a session is created.
@@ -51,7 +54,8 @@ a session is created.
 - `OTEL_FLEET_BASE_URL` must be the externally reachable base URL — the ACS and
   metadata URLs the IdP posts back to are derived from it.
 
-!!! note
-    Encrypted assertions, signed AuthnRequests, and SAML Single Logout are not
-    implemented. SCIM ([provisioning](scim.md)) and SAML complement each other:
-    SCIM manages the user lifecycle, SAML logs the user in.
+:::note
+Encrypted assertions, signed AuthnRequests, and SAML Single Logout are not
+implemented. SCIM ([provisioning](/otel-fleet/guides/scim/)) and SAML complement each other:
+SCIM manages the user lifecycle, SAML logs the user in.
+:::

@@ -1,4 +1,7 @@
-# Development
+---
+title: "Development"
+description: "api/openapi.yaml REST contract \u2014 source of truth for Go + TS codegen cmd/otel-fleet control-plane binary (one process: REST/SPA, gRPC, ops, OpAMP)\u2026"
+---
 
 ## Repository layout
 

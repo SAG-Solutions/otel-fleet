@@ -1,4 +1,7 @@
-# Alerting & notifications
+---
+title: "Alerting & notifications"
+description: "otel-fleet can notify you when something needs attention \u2014 an agent goes offline, a config rollout fails, or a customer's ingest volume crosses a\u2026"
+---
 
 otel-fleet can notify you when something needs attention — an agent goes
 offline, a config rollout fails, or a customer's ingest volume crosses a

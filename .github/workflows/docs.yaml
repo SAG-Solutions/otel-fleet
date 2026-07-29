@@ -1,30 +1,53 @@
 name: docs
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yaml"
   pull_request:
     paths:
       - "docs/**"
-      - "mkdocs.yml"
       - ".github/workflows/docs.yaml"
-  push:
-    branches: [main]
+  workflow_dispatch:
 
+# Allow GITHUB_TOKEN to deploy to GitHub Pages.
 permissions:
   contents: read
+
+concurrency:
+  group: docs-pages
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - name: Build (strict)
-        run: uvx --with mkdocs-material mkdocs build --strict
-      - name: Upload site
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build Astro Starlight site
+        run: pnpm build
+      - name: Configure Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: docs/dist
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

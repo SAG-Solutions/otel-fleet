@@ -1,4 +1,7 @@
-# CLI & config-as-code
+---
+title: "CLI & config-as-code"
+description: "otel-fleetctl manages customers and pipelines from the command line and lets you treat them as declarative config in Git (GitOps). It talks to the\u2026"
+---
 
 `otel-fleetctl` manages customers and pipelines from the command line and lets
 you treat them as **declarative config** in Git (GitOps). It talks to the

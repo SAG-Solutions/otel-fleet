@@ -1,4 +1,7 @@
-# Sending data
+---
+title: "Sending data"
+description: "Customers send OpenTelemetry data (logs, traces, metrics) to the gateway over OTLP, authenticated with the customer's API key. otel-fleet validates the\u2026"
+---
 
 Customers send OpenTelemetry data (logs, traces, metrics) to the gateway over
 **OTLP**, authenticated with the customer's **API key**. otel-fleet validates the
@@ -66,7 +69,7 @@ service:
 ```
 
 For customer sites you can instead run an **edge agent** that otel-fleet manages
-remotely — see [Edge agents](edge-agents.md).
+remotely — see [Edge agents](/otel-fleet/guides/edge-agents/).
 
 ### A quick test with telemetrygen
 

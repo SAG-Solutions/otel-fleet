@@ -1,0 +1,141 @@
+/* SAG Solutions branding for the otel-fleet Starlight docs.
+   Palette (from sag-solutions.com):
+     primary       #255bf5
+     primary-soft  #6c92f8
+     navy          #002b5a
+     ink           #000916
+     yellow #ffcf00  orange #ff653b  teal #00bb9e  magenta #bb004e
+   Font: Red Hat Display (loaded via @fontsource in customCss). */
+
+:root {
+  --sag-primary: #255bf5;
+  --sag-primary-soft: #6c92f8;
+  --sag-navy: #002b5a;
+  --sag-ink: #000916;
+  --sag-yellow: #ffcf00;
+  --sag-orange: #ff653b;
+  --sag-teal: #00bb9e;
+  --sag-magenta: #bb004e;
+
+  /* Red Hat Display everywhere. */
+  --sl-font: 'Red Hat Display', system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+/* ---- Dark theme (Starlight default) --------------------------------- */
+:root,
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #10224f;
+  --sl-color-accent: #2f5df0;
+  --sl-color-accent-high: #c4d3fd;
+  --sl-color-text-accent: #6c92f8;
+
+  /* Navy-tinted neutral ramp anchored on the ink background. */
+  --sl-color-white: #f4f7ff;
+  --sl-color-gray-1: #e2e8f5;
+  --sl-color-gray-2: #c2cbe0;
+  --sl-color-gray-3: #8b96b3;
+  --sl-color-gray-4: #545e78;
+  --sl-color-gray-5: #333c54;
+  --sl-color-gray-6: #1a2238;
+  --sl-color-black: #000916;
+
+  --sl-color-bg: #000916;
+  --sl-color-bg-nav: #00122b;
+  --sl-color-bg-sidebar: #00122b;
+  --sl-color-hairline-shade: #16203a;
+}
+
+/* ---- Light theme ---------------------------------------------------- */
+:root[data-theme='light'] {
+  --sl-color-accent-low: #dbe4fd;
+  --sl-color-accent: #255bf5;
+  --sl-color-accent-high: #072a6e;
+  --sl-color-text-accent: #255bf5;
+
+  --sl-color-white: #000916;
+  --sl-color-gray-1: #0d1730;
+  --sl-color-gray-2: #26324c;
+  --sl-color-gray-3: #4b5670;
+  --sl-color-gray-4: #7b8499;
+  --sl-color-gray-5: #c3cad9;
+  --sl-color-gray-6: #e6eaf2;
+  --sl-color-gray-7: #f2f5fb;
+  --sl-color-black: #ffffff;
+
+  --sl-color-bg: #ffffff;
+  --sl-color-bg-nav: #ffffff;
+  --sl-color-bg-sidebar: #f6f8fd;
+  --sl-color-hairline-shade: #e6eaf2;
+}
+
+/* ---- Custom site title: SAG wordmark + product name ----------------- */
+.sag-sitetitle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--sl-color-text);
+}
+.sag-mark {
+  flex: none;
+  width: 1.95rem;
+  height: 1.95rem;
+  border-radius: 0.42rem;
+  background: var(--sag-primary);
+  color: #fff;
+  font-weight: 900;
+  font-size: 1.15rem;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+.sag-wordmark {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.sag-wordmark__word {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.28em;
+  color: var(--sag-primary);
+}
+.sag-wordmark__sub {
+  margin-top: 3px;
+  font-weight: 500;
+  font-size: 0.4rem;
+  letter-spacing: 0.52em;
+  color: var(--sl-color-gray-3);
+}
+.sag-product {
+  padding-left: 0.55rem;
+  margin-left: 0.15rem;
+  border-left: 1px solid var(--sl-color-gray-5);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--sl-color-text);
+}
+
+/* Keep the header compact on narrow viewports. */
+@media (max-width: 30rem) {
+  .sag-wordmark,
+  .sag-product {
+    display: none;
+  }
+}
+
+/* ---- Brand accents -------------------------------------------------- */
+.site-title,
+.content-panel h1,
+.sl-markdown-content h1,
+.sl-markdown-content h2 {
+  font-weight: 700;
+}
+
+/* Hero: brand gradient behind the product name on the landing page. */
+.hero h1 {
+  background: linear-gradient(92deg, var(--sag-primary), var(--sag-primary-soft));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

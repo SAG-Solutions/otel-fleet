@@ -1,4 +1,7 @@
-# Multi-tenancy
+---
+title: "Multi-tenancy"
+description: "otel-fleet's core promise: every datapoint that enters the system is attributed to exactly one tenant, and the attribution cannot be spoofed by the sender."
+---
 
 otel-fleet's core promise: every datapoint that enters the system is attributed to
 exactly one tenant, and the attribution cannot be spoofed by the sender.

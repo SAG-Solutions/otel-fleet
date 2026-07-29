@@ -1,25 +1,35 @@
-# otel-fleet
+---
+title: "otel-fleet"
+description: "Self-hosted, multi-tenant OpenTelemetry collector fleet management: receive logs, traces and metrics from multiple customers via OTLP, attribute every\u2026"
+hero:
+  title: otel-fleet
+  tagline: Self-hosted, multi-tenant OpenTelemetry collector fleet management for logs, traces and metrics.
+  actions:
+    - text: Quickstart
+      link: /otel-fleet/quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/SAG-Solutions/otel-fleet
+      icon: external
+      variant: minimal
+---
 
-Self-hosted, multi-tenant OpenTelemetry collector fleet management: receive logs,
-traces and metrics from multiple customers via OTLP, attribute every datapoint to a
-tenant, store it in ClickHouse and/or forward it to external backends — managed
-through a web UI.
+:::caution[Pre-1.0 software — read this before deploying]
+otel-fleet is under active development and **not yet ready for production use**.
+Honest limitations, as of today:
 
-!!! warning "Pre-1.0 software — read this before deploying"
-
-    otel-fleet is under active development and **not yet ready for production use**.
-    Honest limitations, as of today:
-
-    - **Single control-plane replica.** Edge-agent OpAMP WebSockets are
-      process-sticky; run exactly one control-plane replica until the
-      multi-replica story lands.
-    - **No TLS on internal listeners.** The control-plane gRPC (:9443), ops
-      (:9090) and OpAMP (:4320) listeners are plaintext — protect them at the
-      network layer (they must never be internet-facing except OpAMP behind
-      your own TLS termination).
-    - **Forwarding-config rollout requires a collector restart** in compose and
-      Helm `deployment` mode (`operator` mode patches the CR instead).
-    - Breaking changes between minor versions are possible before 1.0.
+- **Single control-plane replica.** Edge-agent OpAMP WebSockets are
+  process-sticky; run exactly one control-plane replica until the
+  multi-replica story lands.
+- **No TLS on internal listeners.** The control-plane gRPC (:9443), ops
+  (:9090) and OpAMP (:4320) listeners are plaintext — protect them at the
+  network layer (they must never be internet-facing except OpAMP behind
+  your own TLS termination).
+- **Forwarding-config rollout requires a collector restart** in compose and
+  Helm `deployment` mode (`operator` mode patches the CR instead).
+- Breaking changes between minor versions are possible before 1.0.
+:::
 
 ## What it does
 
@@ -90,13 +100,13 @@ server for edge agents (`:4320`). The collectors are a custom OpenTelemetry
 Collector distribution (built with OCB) that adds two components: the `tenantauth`
 server authenticator and the `tenantstamp` processor.
 
-Read the [architecture deep-dive](architecture.md) for the two-tier reasoning,
+Read the [architecture deep-dive](/otel-fleet/architecture/) for the two-tier reasoning,
 the metric naming contract, and known limitations.
 
 ## Where to go next
 
-- [Quickstart](quickstart.md) — running locally in about five minutes.
-- [Helm installation](installation/helm.md) — Kubernetes deployment.
-- [Configuration reference](installation/configuration.md) — every `OTEL_FLEET_*`
+- [Quickstart](/otel-fleet/quickstart/) — running locally in about five minutes.
+- [Helm installation](/otel-fleet/installation/helm/) — Kubernetes deployment.
+- [Configuration reference](/otel-fleet/installation/configuration/) — every `OTEL_FLEET_*`
   environment variable.
-- [Guides](guides/multi-tenancy.md) — multi-tenancy, pipelines, edge agents, SSO.
+- [Guides](/otel-fleet/guides/multi-tenancy/) — multi-tenancy, pipelines, edge agents, SSO.

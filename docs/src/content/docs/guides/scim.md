@@ -1,4 +1,7 @@
-# SCIM provisioning
+---
+title: "SCIM provisioning"
+description: "otel-fleet exposes a SCIM 2.0 (RFC 7643/7644) Users endpoint so an identity provider (Okta, Microsoft Entra ID, OneLogin, \u2026) can create, update and\u2026"
+---
 
 otel-fleet exposes a **SCIM 2.0** (RFC 7643/7644) `Users` endpoint so an
 identity provider (Okta, Microsoft Entra ID, OneLogin, …) can create, update
@@ -6,8 +9,8 @@ and deprovision console users automatically — no manual invites.
 
 SCIM manages the user **lifecycle**; it does not set roles or tenant scope. A
 provisioned user gets the configured default role (`viewer`, least privilege);
-an admin then sets the role and [customer access](sso.md) in
-**Settings → Users**. This pairs with [SSO](sso.md): SCIM allow-lists and
+an admin then sets the role and [customer access](/otel-fleet/guides/sso/) in
+**Settings → Users**. This pairs with [SSO](/otel-fleet/guides/sso/): SCIM allow-lists and
 deprovisions the account, SSO logs the user in.
 
 ## Endpoint & authentication
@@ -74,6 +77,7 @@ curl -H "Authorization: Bearer $TOKEN" -X DELETE "$BASE/Users/<id>"
 - `OTEL_FLEET_SCIM_DEFAULT_ROLE` — role for newly provisioned users
   (default `viewer`; `operator`/`admin` also accepted).
 
-!!! note
-    Group-based role/tenant-scope mapping (SCIM `Groups`) is not yet
-    implemented — assign role and customer access per user in the UI.
+:::note
+Group-based role/tenant-scope mapping (SCIM `Groups`) is not yet
+implemented — assign role and customer access per user in the UI.
+:::

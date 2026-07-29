@@ -1,4 +1,7 @@
-# Quickstart
+---
+title: "Quickstart"
+description: "Two ways to get a running otel-fleet in about five minutes:"
+---
 
 Two ways to get a running otel-fleet in about five minutes:
 
@@ -21,12 +24,12 @@ This starts PostgreSQL, ClickHouse, VictoriaMetrics, vmagent, the control plane
 (as a container, with the web UI and collector binary baked in), the ingest
 gateway, and the forwarding tier.
 
-!!! note
-
-    The demo uses the same host ports as the development environment
-    (8080, 4317/4318, 4320, 5432, 8123/9000, 8428) — stop `make dev-up` /
-    `make run` first. The `OTEL_FLEET_MASTER_KEY` in the demo file is a
-    **published sample**; never reuse it outside a demo.
+:::note
+The demo uses the same host ports as the development environment
+(8080, 4317/4318, 4320, 5432, 8123/9000, 8428) — stop `make dev-up` /
+`make run` first. The `OTEL_FLEET_MASTER_KEY` in the demo file is a
+**published sample**; never reuse it outside a demo.
+:::
 
 1. Open <http://localhost:8080>. Dev login is enabled — sign in with any email
    address.
@@ -112,8 +115,8 @@ ClickHouse; an invalid key shows up as refused requests.
 
 ## Next steps
 
-- [Build a forwarding pipeline](guides/pipelines.md) to route a customer's data to
+- [Build a forwarding pipeline](/otel-fleet/guides/pipelines/) to route a customer's data to
   an external OTLP backend.
-- [Enroll an edge agent](guides/edge-agents.md) with a bootstrap token.
-- [Configure SSO](guides/sso.md) and invite your team.
-- [Deploy on Kubernetes](installation/helm.md).
+- [Enroll an edge agent](/otel-fleet/guides/edge-agents/) with a bootstrap token.
+- [Configure SSO](/otel-fleet/guides/sso/) and invite your team.
+- [Deploy on Kubernetes](/otel-fleet/installation/helm/).

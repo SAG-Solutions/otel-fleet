@@ -1,8 +1,11 @@
-# Metered billing
+---
+title: "Metered billing"
+description: "The Billing page (admin only) turns per-customer ingest usage into a priced monthly statement, on top of the same ClickHouse usage aggregates as the Costs\u2026"
+---
 
 The **Billing** page (admin only) turns per-customer ingest usage into a priced
 monthly statement, on top of the same ClickHouse usage aggregates as the
-[Costs](../index.md) page.
+[Costs](/otel-fleet/) page.
 
 ## Pricing
 
@@ -40,8 +43,9 @@ downloads the statement for import into a billing system or spreadsheet.
 - `GET /api/v1/billing/statement?month=YYYY-MM` — the priced statement for a
   calendar month (admin). Amounts are returned in micro-units.
 
-!!! note
-    Billing reads the same 90-day ClickHouse usage aggregates as Costs, so
-    statements are available for roughly the trailing quarter. Per-customer
-    price overrides and invoice numbering are not implemented — this is usage
-    metering, not a full billing system.
+:::note
+Billing reads the same 90-day ClickHouse usage aggregates as Costs, so
+statements are available for roughly the trailing quarter. Per-customer
+price overrides and invoice numbering are not implemented — this is usage
+metering, not a full billing system.
+:::

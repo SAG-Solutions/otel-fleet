@@ -1,4 +1,7 @@
-# Design: Multi-region & data residency
+---
+title: "Design: Multi-region & data residency"
+description: "Status: proposed \u00b7 Author: platform \u00b7 Supersedes: nothing \u00b7 Audience: engineering (not part of the user-facing docs nav)."
+---
 
 Status: **proposed** · Author: platform · Supersedes: nothing · Audience:
 engineering (not part of the user-facing docs nav).

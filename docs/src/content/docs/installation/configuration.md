@@ -1,4 +1,7 @@
-# Configuration reference
+---
+title: "Configuration reference"
+description: "The control plane is configured entirely through environment variables, all prefixed OTEL_FLEET_. Source of truth: internal/config/config.go."
+---
 
 The control plane is configured entirely through environment variables, all
 prefixed `OTEL_FLEET_`. Source of truth: `internal/config/config.go`.
@@ -82,7 +85,7 @@ CSRF / insufficient-role / tenant-scope, 429 rate-limited) is recorded two ways
 ### Environment-defined OIDC provider (bootstrap fallback)
 
 SSO providers are normally managed in the UI (Settings → SSO, stored encrypted in
-PostgreSQL — see the [SSO guide](../guides/sso.md)). A single generic OIDC
+PostgreSQL — see the [SSO guide](/otel-fleet/guides/sso/)). A single generic OIDC
 provider can additionally be configured via the environment; it appears on the
 login page under the URL name `oidc` and is shadowed by a database provider with
 the same name:
@@ -131,4 +134,4 @@ files and chart:
 | `CLICKHOUSE_ENDPOINT` | gateway collector | ClickHouse exporter DSN, e.g. `tcp://clickhouse:9000?database=otel&username=...&password=...`. |
 | `OTEL_FLEET_VM_REMOTE_WRITE` | gateway collector | Prometheus remote-write URL for ingest counters (default `http://victoriametrics:8428/api/v1/write`). |
 | `OTEL_FLEET_FORWARD_ENDPOINT` | gateway collector | Forwarding-tier OTLP endpoint (default `forwarding:4317`). |
-| `OTEL_FLEET_BOOTSTRAP_TOKEN` | edge agent (supervisor) | Per-customer enrollment token, injected into the OpAMP `Authorization` header. See [Edge agents](../guides/edge-agents.md). |
+| `OTEL_FLEET_BOOTSTRAP_TOKEN` | edge agent (supervisor) | Per-customer enrollment token, injected into the OpAMP `Authorization` header. See [Edge agents](/otel-fleet/guides/edge-agents/). |

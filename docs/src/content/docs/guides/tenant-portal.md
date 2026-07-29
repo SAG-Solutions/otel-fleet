@@ -1,4 +1,7 @@
-# Tenant self-service portal
+---
+title: "Tenant self-service portal"
+description: "otel-fleet has two faces of the same console:"
+---
 
 otel-fleet has two faces of the same console:
 

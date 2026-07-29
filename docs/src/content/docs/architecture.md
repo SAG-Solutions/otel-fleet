@@ -1,4 +1,7 @@
-# Architecture
+---
+title: "Architecture"
+description: "flowchart TB subgraph edge[\"Customer site\"] sdk[\"Apps / SDKs\"] agent[\"Edge agent: OpAMP supervisor<br/>+ otel-fleet collector\"] sdk -.-> agent end"
+---
 
 ## The pieces
 
