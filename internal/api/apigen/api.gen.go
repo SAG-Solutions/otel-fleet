@@ -90,6 +90,7 @@ func (e AlertComparison) Valid() bool {
 const (
 	ErrorLogs   AlertMetric = "error_logs"
 	IngestItems AlertMetric = "ingest_items"
+	Promql      AlertMetric = "promql"
 )
 
 // Valid indicates whether the value is a known member of the AlertMetric enum.
@@ -98,6 +99,8 @@ func (e AlertMetric) Valid() bool {
 	case ErrorLogs:
 		return true
 	case IngestItems:
+		return true
+	case Promql:
 		return true
 	default:
 		return false
@@ -602,7 +605,7 @@ type AgentUpdate struct {
 // AlertComparison below fires when the value is under the threshold (e.g. ingest dropped); above when over it.
 type AlertComparison string
 
-// AlertMetric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
+// AlertMetric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs; promql = evaluate `query` against VictoriaMetrics (cluster/infra-wide, customerId must be null).
 type AlertMetric string
 
 // AlertRule defines model for AlertRule.
@@ -619,10 +622,13 @@ type AlertRule struct {
 	Enabled    bool                `json:"enabled"`
 	Id         openapi_types.UUID  `json:"id"`
 
-	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
-	Metric    AlertMetric `json:"metric"`
-	Name      string      `json:"name"`
-	Threshold float32     `json:"threshold"`
+	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs; promql = evaluate `query` against VictoriaMetrics (cluster/infra-wide, customerId must be null).
+	Metric AlertMetric `json:"metric"`
+	Name   string      `json:"name"`
+
+	// Query PromQL query (metric == promql only).
+	Query     *string `json:"query,omitempty"`
+	Threshold float32 `json:"threshold"`
 
 	// WindowSeconds Evaluation window in seconds (>= 60).
 	WindowSeconds int `json:"windowSeconds"`
@@ -637,11 +643,14 @@ type AlertRuleCreate struct {
 	CustomerId *openapi_types.UUID `json:"customerId,omitempty"`
 	Enabled    *bool               `json:"enabled,omitempty"`
 
-	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
-	Metric        AlertMetric `json:"metric"`
-	Name          string      `json:"name"`
-	Threshold     float32     `json:"threshold"`
-	WindowSeconds int         `json:"windowSeconds"`
+	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs; promql = evaluate `query` against VictoriaMetrics (cluster/infra-wide, customerId must be null).
+	Metric AlertMetric `json:"metric"`
+	Name   string      `json:"name"`
+
+	// Query Required when metric == promql.
+	Query         *string `json:"query,omitempty"`
+	Threshold     float32 `json:"threshold"`
+	WindowSeconds int     `json:"windowSeconds"`
 }
 
 // AlertRuleUpdate defines model for AlertRuleUpdate.
@@ -652,9 +661,10 @@ type AlertRuleUpdate struct {
 	Comparison *AlertComparison `json:"comparison,omitempty"`
 	Enabled    *bool            `json:"enabled,omitempty"`
 
-	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
+	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs; promql = evaluate `query` against VictoriaMetrics (cluster/infra-wide, customerId must be null).
 	Metric        *AlertMetric `json:"metric,omitempty"`
 	Name          *string      `json:"name,omitempty"`
+	Query         *string      `json:"query,omitempty"`
 	Threshold     *float32     `json:"threshold,omitempty"`
 	WindowSeconds *int         `json:"windowSeconds,omitempty"`
 }

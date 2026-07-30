@@ -50,9 +50,19 @@ type Notifier interface {
 	SendToChannels(ctx context.Context, channels []store.Webhook, p webhooks.Payload)
 }
 
+// PromQLSource evaluates an instant PromQL query against the metrics store
+// (VictoriaMetrics). It returns the single scalar value and whether the query
+// produced a result (empty result = no data, not a breach). Used for
+// cluster/infra-wide alert rules (metric == promql). May be nil when no metrics
+// store is configured — such rules are then skipped.
+type PromQLSource interface {
+	Query(ctx context.Context, query string) (value float64, ok bool, err error)
+}
+
 // Service evaluates alert rules on an interval.
 type Service struct {
 	source   MetricSource
+	promql   PromQLSource
 	store    Store
 	notifier Notifier
 	interval time.Duration
@@ -62,12 +72,13 @@ type Service struct {
 	firing map[string]bool // ruleID|customerID -> currently breaching
 }
 
-// New wires the evaluator. interval is the tick period (e.g. 60s).
-func New(source MetricSource, st Store, notifier Notifier, interval time.Duration, log *slog.Logger) *Service {
+// New wires the evaluator. interval is the tick period (e.g. 60s). promql may
+// be nil (PromQL rules are then skipped with a warning).
+func New(source MetricSource, promql PromQLSource, st Store, notifier Notifier, interval time.Duration, log *slog.Logger) *Service {
 	if interval <= 0 {
 		interval = time.Minute
 	}
-	return &Service{source: source, store: st, notifier: notifier, interval: interval, log: log, firing: map[string]bool{}}
+	return &Service{source: source, promql: promql, store: st, notifier: notifier, interval: interval, log: log, firing: map[string]bool{}}
 }
 
 // Run evaluates once shortly after startup, then every interval, until ctx is
@@ -136,6 +147,10 @@ func (s *Service) Evaluate(ctx context.Context, now time.Time) error {
 func (s *Service) evalRule(ctx context.Context, now time.Time, rule store.AlertRule, refs []store.CustomerRef,
 	byClientID map[string]store.CustomerRef, byID map[uuid.UUID]store.CustomerRef, byHookID map[uuid.UUID]store.Webhook) error {
 
+	if rule.Metric == store.AlertMetricPromQL {
+		return s.evalPromQL(ctx, now, rule, byHookID)
+	}
+
 	since := now.Add(-time.Duration(rule.WindowSeconds) * time.Second).UTC()
 	perTenant, err := s.source.Metric(ctx, rule.Metric, since)
 	if err != nil {
@@ -186,6 +201,53 @@ func (s *Service) evalRule(ctx context.Context, now time.Time, rule store.AlertR
 				},
 			})
 		}
+	}
+	return nil
+}
+
+// evalPromQL handles a cluster/infra-wide PromQL rule: run the query against
+// the metrics store, compare the scalar result to the threshold, and fire once
+// on transition. An empty/absent result is treated as "no data" (not a breach)
+// so a transiently-unavailable metric doesn't flap.
+func (s *Service) evalPromQL(ctx context.Context, now time.Time, rule store.AlertRule, byHookID map[uuid.UUID]store.Webhook) error {
+	if s.promql == nil {
+		s.log.Warn("alerting: promql rule skipped, no metrics store configured", "rule", rule.Name)
+		return nil
+	}
+	value, ok, err := s.promql.Query(ctx, rule.Query)
+	if err != nil {
+		return err
+	}
+	breached := ok && breach(rule.Comparison, value, rule.Threshold)
+	key := rule.ID.String() + "|promql"
+
+	s.mu.Lock()
+	was := s.firing[key]
+	s.firing[key] = breached
+	s.mu.Unlock()
+
+	if breached == was {
+		return nil // no transition
+	}
+	event := webhooks.AlertResolved
+	if breached {
+		event = webhooks.AlertFiring
+	}
+	s.log.Info("alerting: transition", "rule", rule.Name, "metric", "promql", "query", rule.Query, "value", value, "threshold", rule.Threshold, "firing", breached)
+	channels := s.channelsFor(rule, byHookID)
+	if len(channels) > 0 {
+		s.notifier.SendToChannels(ctx, channels, webhooks.Payload{
+			Event:      event,
+			OccurredAt: now.UTC(),
+			Detail: map[string]any{
+				"rule":       rule.Name,
+				"metric":     "promql",
+				"query":      rule.Query,
+				"comparison": rule.Comparison,
+				"threshold":  rule.Threshold,
+				"observed":   value,
+			},
+		})
 	}
 	return nil
 }

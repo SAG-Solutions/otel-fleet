@@ -533,9 +533,9 @@ export type BillingStatement = {
 };
 
 /**
- * ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs.
+ * ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs; promql = evaluate `query` against VictoriaMetrics (cluster/infra-wide, customerId must be null).
  */
-export type AlertMetric = 'ingest_items' | 'error_logs';
+export type AlertMetric = 'ingest_items' | 'error_logs' | 'promql';
 
 /**
  * below fires when the value is under the threshold (e.g. ingest dropped); above when over it.
@@ -546,6 +546,10 @@ export type AlertRule = {
     id: string;
     name: string;
     metric: AlertMetric;
+    /**
+     * PromQL query (metric == promql only).
+     */
+    query?: string | null;
     comparison: AlertComparison;
     threshold: number;
     /**
@@ -567,6 +571,10 @@ export type AlertRule = {
 export type AlertRuleCreate = {
     name: string;
     metric: AlertMetric;
+    /**
+     * Required when metric == promql.
+     */
+    query?: string;
     comparison: AlertComparison;
     threshold: number;
     windowSeconds: number;
@@ -578,6 +586,7 @@ export type AlertRuleCreate = {
 export type AlertRuleUpdate = {
     name?: string;
     metric?: AlertMetric;
+    query?: string;
     comparison?: AlertComparison;
     threshold?: number;
     windowSeconds?: number;

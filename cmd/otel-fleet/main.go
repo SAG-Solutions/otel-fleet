@@ -170,7 +170,7 @@ func run(log *slog.Logger) error {
 	webhookDispatcher := webhooks.New(st, cipher, log)
 	opampSrv.Handler().SetEventSink(webhookDispatcher)
 	retentionSvc := retention.New(chConn, st, cfg.RetentionInterval, log)
-	alertingSvc := alerting.New(alerting.NewClickHouseSource(chConn), st, webhookDispatcher, time.Minute, log)
+	alertingSvc := alerting.New(alerting.NewClickHouseSource(chConn), alerting.NewVMPromQLSource(cfg.VictoriaMetricsURL), st, webhookDispatcher, time.Minute, log)
 
 	// Login provider registry: database providers + the OTEL_FLEET_OIDC_* env
 	// provider, resolved per request under /auth/{name}/...

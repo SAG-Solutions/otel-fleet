@@ -1909,8 +1909,11 @@ components:
 
     AlertMetric:
       type: string
-      enum: [ingest_items, error_logs]
-      description: "ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs."
+      enum: [ingest_items, error_logs, promql]
+      description: >-
+        ingest_items = sum of ingested items; error_logs = count of
+        severity>=ERROR logs; promql = evaluate `query` against VictoriaMetrics
+        (cluster/infra-wide, customerId must be null).
 
     AlertComparison:
       type: string
@@ -1924,6 +1927,7 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         metric: { $ref: "#/components/schemas/AlertMetric" }
+        query: { type: string, nullable: true, description: "PromQL query (metric == promql only)." }
         comparison: { $ref: "#/components/schemas/AlertComparison" }
         threshold: { type: number }
         windowSeconds: { type: integer, description: Evaluation window in seconds (>= 60). }
@@ -1941,6 +1945,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         metric: { $ref: "#/components/schemas/AlertMetric" }
+        query: { type: string, description: "Required when metric == promql." }
         comparison: { $ref: "#/components/schemas/AlertComparison" }
         threshold: { type: number }
         windowSeconds: { type: integer, minimum: 60 }
@@ -1955,6 +1960,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         metric: { $ref: "#/components/schemas/AlertMetric" }
+        query: { type: string }
         comparison: { $ref: "#/components/schemas/AlertComparison" }
         threshold: { type: number }
         windowSeconds: { type: integer, minimum: 60 }

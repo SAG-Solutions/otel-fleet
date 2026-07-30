@@ -347,6 +347,15 @@ func TestIntegrationAlertRules(t *testing.T) {
 	if _, err := testPG.GetAlertRule(ctx, r.ID); err != nil {
 		t.Fatalf("GetAlertRule: %v", err)
 	}
+	// A cluster-wide PromQL rule (migration 0015: query column + CHECK).
+	pq, err := testPG.CreateAlertRule(ctx, NewAlertRule{
+		ID: uuid.New(), Name: "node cpu " + uniq(), Metric: AlertMetricPromQL,
+		Query: `avg(node_cpu_usage)`, Comparison: AlertComparisonAbove, Threshold: 0.8,
+		WindowSeconds: 60, ChannelIDs: []uuid.UUID{ch}, Enabled: true,
+	}, auditEntry("alertrule.create", "alert_rule", "pq"))
+	if err != nil || pq.Query != `avg(node_cpu_usage)` || pq.CustomerID != nil {
+		t.Fatalf("CreatePromQLAlertRule: %+v err=%v", pq, err)
+	}
 	if _, err := testPG.ListAlertRules(ctx); err != nil {
 		t.Fatalf("ListAlertRules: %v", err)
 	}

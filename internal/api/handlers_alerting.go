@@ -16,7 +16,7 @@ func toAlertRule(r store.AlertRule) apigen.AlertRule {
 	if channels == nil {
 		channels = []uuid.UUID{}
 	}
-	return apigen.AlertRule{
+	out := apigen.AlertRule{
 		Id:            r.ID,
 		Name:          r.Name,
 		Metric:        apigen.AlertMetric(r.Metric),
@@ -28,10 +28,15 @@ func toAlertRule(r store.AlertRule) apigen.AlertRule {
 		Enabled:       r.Enabled,
 		CreatedAt:     r.CreatedAt,
 	}
+	if r.Query != "" {
+		q := r.Query
+		out.Query = &q
+	}
+	return out
 }
 
 func validAlertMetric(m string) bool {
-	return m == store.AlertMetricIngestItems || m == store.AlertMetricErrorLogs
+	return m == store.AlertMetricIngestItems || m == store.AlertMetricErrorLogs || m == store.AlertMetricPromQL
 }
 
 func validAlertComparison(c string) bool {
@@ -62,10 +67,25 @@ func (s *Server) CreateAlertRule(ctx context.Context, request apigen.CreateAlert
 	if b.WindowSeconds < 60 {
 		return apigen.CreateAlertRule400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: "windowSeconds must be >= 60"}}, nil
 	}
+	query := ""
+	if b.Query != nil {
+		query = *b.Query
+	}
+	if metric == store.AlertMetricPromQL {
+		if query == "" {
+			return apigen.CreateAlertRule400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: "promql metric requires a query"}}, nil
+		}
+		if b.CustomerId != nil {
+			return apigen.CreateAlertRule400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: "promql rules are cluster-wide; customerId must be null"}}, nil
+		}
+	} else {
+		query = "" // non-promql rules carry no query
+	}
 	nr := store.NewAlertRule{
 		ID:            uuid.New(),
 		Name:          b.Name,
 		Metric:        metric,
+		Query:         query,
 		Comparison:    comparison,
 		Threshold:     float64(b.Threshold),
 		WindowSeconds: b.WindowSeconds,
@@ -93,7 +113,7 @@ func (s *Server) CreateAlertRule(ctx context.Context, request apigen.CreateAlert
 
 func (s *Server) UpdateAlertRule(ctx context.Context, request apigen.UpdateAlertRuleRequestObject) (apigen.UpdateAlertRuleResponseObject, error) {
 	b := request.Body
-	upd := store.AlertRuleUpdate{Name: b.Name, WindowSeconds: b.WindowSeconds, Enabled: b.Enabled}
+	upd := store.AlertRuleUpdate{Name: b.Name, Query: b.Query, WindowSeconds: b.WindowSeconds, Enabled: b.Enabled}
 	if b.Metric != nil {
 		m := string(*b.Metric)
 		if !validAlertMetric(m) {

@@ -148,6 +148,7 @@ type BillingSettingsUpdate struct {
 const (
 	AlertMetricIngestItems = "ingest_items"
 	AlertMetricErrorLogs   = "error_logs"
+	AlertMetricPromQL      = "promql"
 	AlertComparisonBelow   = "below"
 	AlertComparisonAbove   = "above"
 )
@@ -157,6 +158,7 @@ type AlertRule struct {
 	ID            uuid.UUID
 	Name          string
 	Metric        string
+	Query         string // PromQL query when Metric == promql
 	Comparison    string
 	Threshold     float64
 	WindowSeconds int
@@ -171,6 +173,7 @@ type NewAlertRule struct {
 	ID            uuid.UUID
 	Name          string
 	Metric        string
+	Query         string
 	Comparison    string
 	Threshold     float64
 	WindowSeconds int
@@ -184,6 +187,7 @@ type NewAlertRule struct {
 type AlertRuleUpdate struct {
 	Name          *string
 	Metric        *string
+	Query         *string
 	Comparison    *string
 	Threshold     *float64
 	WindowSeconds *int
