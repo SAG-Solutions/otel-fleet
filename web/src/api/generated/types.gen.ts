@@ -138,6 +138,10 @@ export type CatalogComponent = {
     description: string;
     docsUrl?: string | null;
     /**
+     * Logo/glyph key the UI maps to a bundled asset
+     */
+    icon?: string | null;
+    /**
      * JSON Schema (draft 2020-12) for the component's config; drives the builder form.
      */
     schema: {
@@ -147,6 +151,28 @@ export type CatalogComponent = {
      * Sensible default config used when the component is added.
      */
     defaults?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * A backend-branded one-click exporter: adds the underlying exporterType with defaults pre-filled for that backend.
+ *
+ */
+export type CatalogPreset = {
+    id: string;
+    displayName: string;
+    description: string;
+    icon: string;
+    /**
+     * Underlying collector exporter this instantiates
+     */
+    exporterType: string;
+    docsUrl?: string | null;
+    /**
+     * Pre-filled config for the underlying exporter.
+     */
+    defaults: {
         [key: string]: unknown;
     };
 };
@@ -1218,6 +1244,10 @@ export type GetComponentCatalogResponses = {
     200: {
         processors: Array<CatalogComponent>;
         exporters: Array<CatalogComponent>;
+        /**
+         * Backend-branded, one-click exporter starting points.
+         */
+        presets: Array<CatalogPreset>;
     };
 };
 

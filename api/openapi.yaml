@@ -293,7 +293,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [processors, exporters]
+                required: [processors, exporters, presets]
                 properties:
                   processors:
                     type: array
@@ -301,6 +301,10 @@ paths:
                   exporters:
                     type: array
                     items: { $ref: "#/components/schemas/CatalogComponent" }
+                  presets:
+                    type: array
+                    description: Backend-branded, one-click exporter starting points.
+                    items: { $ref: "#/components/schemas/CatalogPreset" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/pipelines:
@@ -1511,6 +1515,7 @@ components:
         displayName: { type: string, example: Batch }
         description: { type: string }
         docsUrl: { type: string, nullable: true }
+        icon: { type: string, nullable: true, description: Logo/glyph key the UI maps to a bundled asset }
         schema:
           type: object
           additionalProperties: true
@@ -1519,6 +1524,24 @@ components:
           type: object
           additionalProperties: true
           description: Sensible default config used when the component is added.
+
+    CatalogPreset:
+      type: object
+      required: [id, displayName, description, icon, exporterType, defaults]
+      description: >
+        A backend-branded one-click exporter: adds the underlying exporterType
+        with defaults pre-filled for that backend.
+      properties:
+        id: { type: string, example: grafana-loki }
+        displayName: { type: string, example: Grafana Loki }
+        description: { type: string }
+        icon: { type: string, example: loki }
+        exporterType: { type: string, description: Underlying collector exporter this instantiates }
+        docsUrl: { type: string, nullable: true }
+        defaults:
+          type: object
+          additionalProperties: true
+          description: Pre-filled config for the underlying exporter.
 
     PipelineGraph:
       type: object

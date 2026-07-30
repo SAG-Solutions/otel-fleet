@@ -914,7 +914,10 @@ type CatalogComponent struct {
 	Description string                  `json:"description"`
 	DisplayName string                  `json:"displayName"`
 	DocsUrl     *string                 `json:"docsUrl,omitempty"`
-	Kind        CatalogComponentKind    `json:"kind"`
+
+	// Icon Logo/glyph key the UI maps to a bundled asset
+	Icon *string              `json:"icon,omitempty"`
+	Kind CatalogComponentKind `json:"kind"`
 
 	// Schema JSON Schema (draft 2020-12) for the component's config; drives the builder form.
 	Schema map[string]interface{} `json:"schema"`
@@ -925,6 +928,20 @@ type CatalogComponent struct {
 
 // CatalogComponentKind defines model for CatalogComponent.Kind.
 type CatalogComponentKind string
+
+// CatalogPreset A backend-branded one-click exporter: adds the underlying exporterType with defaults pre-filled for that backend.
+type CatalogPreset struct {
+	// Defaults Pre-filled config for the underlying exporter.
+	Defaults    map[string]interface{} `json:"defaults"`
+	Description string                 `json:"description"`
+	DisplayName string                 `json:"displayName"`
+	DocsUrl     *string                `json:"docsUrl,omitempty"`
+
+	// ExporterType Underlying collector exporter this instantiates
+	ExporterType string `json:"exporterType"`
+	Icon         string `json:"icon"`
+	Id           string `json:"id"`
+}
 
 // Customer defines model for Customer.
 type Customer struct {
@@ -5044,7 +5061,10 @@ type GetComponentCatalogResponseObject interface {
 }
 
 type GetComponentCatalog200JSONResponse struct {
-	Exporters  []CatalogComponent `json:"exporters"`
+	Exporters []CatalogComponent `json:"exporters"`
+
+	// Presets Backend-branded, one-click exporter starting points.
+	Presets    []CatalogPreset    `json:"presets"`
 	Processors []CatalogComponent `json:"processors"`
 }
 

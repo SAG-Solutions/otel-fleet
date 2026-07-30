@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -149,12 +150,33 @@ func (s *Server) GetComponentCatalog(ctx context.Context, _ apigen.GetComponentC
 				docs := c.DocsURL
 				item.DocsUrl = &docs
 			}
+			if c.Icon != "" {
+				icon := c.Icon
+				item.Icon = &icon
+			}
 			if kind == catalog.KindProcessor {
 				resp.Processors = append(resp.Processors, item)
 			} else {
 				resp.Exporters = append(resp.Exporters, item)
 			}
 		}
+	}
+	for _, p := range catalog.Presets() {
+		var defaults map[string]any
+		_ = json.Unmarshal([]byte(p.DefaultsJSON), &defaults)
+		preset := apigen.CatalogPreset{
+			Id:           p.ID,
+			DisplayName:  p.DisplayName,
+			Description:  p.Description,
+			Icon:         p.Icon,
+			ExporterType: p.ExporterType,
+			Defaults:     defaults,
+		}
+		if p.DocsURL != "" {
+			docs := p.DocsURL
+			preset.DocsUrl = &docs
+		}
+		resp.Presets = append(resp.Presets, preset)
 	}
 	return resp, nil
 }

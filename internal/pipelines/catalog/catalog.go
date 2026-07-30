@@ -26,6 +26,9 @@ type Component struct {
 	DisplayName string
 	Description string
 	DocsURL     string
+	// Icon is a stable key the web UI maps to a bundled logo/glyph (e.g.
+	// "elasticsearch", "datadog", "kafka"); empty falls back to a generic icon.
+	Icon string
 	// SchemaJSON is the JSON Schema (draft 2020-12) for the component config.
 	SchemaJSON string
 	// DefaultsJSON is the default config applied when the component is added.
@@ -144,6 +147,108 @@ func byKind(kind string) []*Component {
 
 // All returns every catalog component.
 func All() []*Component { return all }
+
+// Preset is a one-click, backend-branded exporter starting point: it adds an
+// underlying collector exporter (ExporterType) with its config pre-filled for a
+// specific backend. Presets are UI sugar — the rendered pipeline is just the
+// underlying exporter with these defaults.
+type Preset struct {
+	ID           string // stable id, e.g. "grafana-loki"
+	DisplayName  string // "Grafana Loki"
+	Description  string
+	Icon         string // logo key the web UI maps to a bundled asset
+	ExporterType string // the real collector exporter this instantiates
+	DocsURL      string
+	// DefaultsJSON is the pre-filled config for this backend; it must validate
+	// against the ExporterType's schema (guarded by the catalog test).
+	DefaultsJSON string
+}
+
+// Presets returns the curated backend presets in display order.
+func Presets() []Preset { return presets }
+
+// presets: Grafana stack, Jaeger and generic OTLP reuse the always-present
+// otlp/otlphttp/prometheusremotewrite exporters; the rest map to their
+// dedicated exporters compiled into the distro.
+var presets = []Preset{
+	{
+		ID: "grafana-loki", DisplayName: "Grafana Loki", Icon: "loki",
+		Description:  "Ship logs to Loki via its native OTLP endpoint.",
+		ExporterType: "otlphttp",
+		DocsURL:      "https://grafana.com/docs/loki/latest/send-data/otel/",
+		DefaultsJSON: `{"endpoint": "https://loki.example.com:3100/otlp", "compression": "gzip"}`,
+	},
+	{
+		ID: "grafana-tempo", DisplayName: "Grafana Tempo", Icon: "tempo",
+		Description:  "Send traces to Tempo over OTLP gRPC.",
+		ExporterType: "otlp",
+		DocsURL:      "https://grafana.com/docs/tempo/latest/configuration/otel-collector/",
+		DefaultsJSON: `{"endpoint": "tempo.example.com:4317", "tls": {"insecure": false}, "compression": "gzip"}`,
+	},
+	{
+		ID: "grafana-mimir", DisplayName: "Grafana Mimir / Prometheus", Icon: "prometheus",
+		Description:  "Remote-write metrics to Mimir or any Prometheus-compatible store.",
+		ExporterType: "prometheusremotewrite",
+		DocsURL:      "https://grafana.com/docs/mimir/latest/references/http-api/#remote-write",
+		DefaultsJSON: `{"endpoint": "https://mimir.example.com/api/v1/push"}`,
+	},
+	{
+		ID: "grafana-cloud", DisplayName: "Grafana Cloud (OTLP)", Icon: "grafana",
+		Description:  "Send logs, traces and metrics to Grafana Cloud's OTLP gateway (Basic auth).",
+		ExporterType: "otlphttp",
+		DocsURL:      "https://grafana.com/docs/grafana-cloud/send-data/otlp/",
+		DefaultsJSON: `{"endpoint": "https://otlp-gateway-prod-eu-west-0.grafana.net/otlp", "compression": "gzip", "headers": {"Authorization": "Basic <base64 instanceID:token>"}}`,
+	},
+	{
+		ID: "jaeger", DisplayName: "Jaeger", Icon: "jaeger",
+		Description:  "Send traces to Jaeger's OTLP collector endpoint.",
+		ExporterType: "otlp",
+		DocsURL:      "https://www.jaegertracing.io/docs/latest/deployment/#collector",
+		DefaultsJSON: `{"endpoint": "jaeger-collector.example.com:4317", "tls": {"insecure": false}}`,
+	},
+	{
+		ID: "otlp-generic", DisplayName: "Generic OTLP/HTTP", Icon: "otlp",
+		Description:  "Any OTLP/HTTP backend.",
+		ExporterType: "otlphttp",
+		DocsURL:      "https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/otlphttpexporter",
+		DefaultsJSON: `{"endpoint": "https://backend.example.com:4318", "compression": "gzip"}`,
+	},
+	{
+		ID: "elasticsearch", DisplayName: "Elasticsearch", Icon: "elasticsearch",
+		Description:  "Index logs, traces and metrics in Elasticsearch.",
+		ExporterType: "elasticsearch",
+		DocsURL:      "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter",
+		DefaultsJSON: `{"endpoints": ["https://elasticsearch.example.com:9200"]}`,
+	},
+	{
+		ID: "datadog", DisplayName: "Datadog", Icon: "datadog",
+		Description:  "Forward telemetry to Datadog.",
+		ExporterType: "datadog",
+		DocsURL:      "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/datadogexporter",
+		DefaultsJSON: `{"api": {"site": "datadoghq.eu", "key": ""}}`,
+	},
+	{
+		ID: "kafka", DisplayName: "Kafka", Icon: "kafka",
+		Description:  "Publish telemetry to a Kafka topic.",
+		ExporterType: "kafka",
+		DocsURL:      "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/kafkaexporter",
+		DefaultsJSON: `{"brokers": ["kafka.example.com:9092"], "encoding": "otlp_proto"}`,
+	},
+	{
+		ID: "aws-s3", DisplayName: "AWS S3", Icon: "awss3",
+		Description:  "Archive telemetry to an S3 bucket.",
+		ExporterType: "awss3",
+		DocsURL:      "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter",
+		DefaultsJSON: `{"s3uploader": {"s3_bucket": "", "region": "eu-central-1", "s3_prefix": "otel"}}`,
+	},
+	{
+		ID: "splunk-hec", DisplayName: "Splunk HEC", Icon: "splunk",
+		Description:  "Send telemetry to Splunk's HTTP Event Collector.",
+		ExporterType: "splunk_hec",
+		DocsURL:      "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/splunkhecexporter",
+		DefaultsJSON: `{"endpoint": "https://splunk.example.com:8088/services/collector", "token": ""}`,
+	},
+}
 
 // Common schema fragments.
 const (
@@ -488,5 +593,123 @@ var all = []*Component{
 			}
 		}`,
 		DefaultsJSON: `{"path": "/var/lib/otelcol/export.json", "format": "json"}`,
+	},
+	{
+		Type:        "elasticsearch",
+		Kind:        KindExporter,
+		DisplayName: "Elasticsearch",
+		Description: "Writes logs, traces and metrics to Elasticsearch data streams.",
+		DocsURL:     "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter",
+		Icon:        "elasticsearch",
+		SchemaJSON: `{
+			"type": "object",
+			"additionalProperties": true,
+			"required": ["endpoints"],
+			"properties": {
+				"endpoints": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "description": "Elasticsearch URLs, e.g. https://es:9200."},
+				"api_key": {"type": "string", "format": "password"},
+				"user": {"type": "string"},
+				"password": {"type": "string", "format": "password"},
+				"logs_index": {"type": "string"},
+				"traces_index": {"type": "string"},
+				"tls": ` + tlsSchema + `,
+				"retry_on_failure": ` + retryOnFailureSchema + `
+			}
+		}`,
+		DefaultsJSON: `{"endpoints": ["https://elasticsearch:9200"]}`,
+	},
+	{
+		Type:        "datadog",
+		Kind:        KindExporter,
+		DisplayName: "Datadog",
+		Description: "Sends telemetry to Datadog. Requires an API key and site.",
+		DocsURL:     "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/datadogexporter",
+		Icon:        "datadog",
+		SchemaJSON: `{
+			"type": "object",
+			"additionalProperties": true,
+			"required": ["api"],
+			"properties": {
+				"api": {
+					"type": "object",
+					"additionalProperties": true,
+					"required": ["key"],
+					"properties": {
+						"key": {"type": "string", "format": "password"},
+						"site": {"type": "string", "description": "e.g. datadoghq.com or datadoghq.eu."}
+					}
+				}
+			}
+		}`,
+		DefaultsJSON: `{"api": {"site": "datadoghq.com", "key": ""}}`,
+	},
+	{
+		Type:        "kafka",
+		Kind:        KindExporter,
+		DisplayName: "Kafka",
+		Description: "Publishes telemetry to Kafka topics (OTLP proto by default).",
+		DocsURL:     "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/kafkaexporter",
+		Icon:        "kafka",
+		SchemaJSON: `{
+			"type": "object",
+			"additionalProperties": true,
+			"required": ["brokers"],
+			"properties": {
+				"brokers": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "description": "host:port broker list."},
+				"topic": {"type": "string"},
+				"encoding": {"type": "string"},
+				"tls": ` + tlsSchema + `,
+				"retry_on_failure": ` + retryOnFailureSchema + `
+			}
+		}`,
+		DefaultsJSON: `{"brokers": ["kafka:9092"], "encoding": "otlp_proto"}`,
+	},
+	{
+		Type:        "awss3",
+		Kind:        KindExporter,
+		DisplayName: "AWS S3",
+		Description: "Archives telemetry to an S3 bucket (data lake / cold storage).",
+		DocsURL:     "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter",
+		Icon:        "awss3",
+		SchemaJSON: `{
+			"type": "object",
+			"additionalProperties": true,
+			"required": ["s3uploader"],
+			"properties": {
+				"s3uploader": {
+					"type": "object",
+					"additionalProperties": true,
+					"required": ["s3_bucket", "region"],
+					"properties": {
+						"s3_bucket": {"type": "string"},
+						"region": {"type": "string", "minLength": 1},
+						"s3_prefix": {"type": "string"}
+					}
+				}
+			}
+		}`,
+		DefaultsJSON: `{"s3uploader": {"s3_bucket": "", "region": "eu-central-1", "s3_prefix": "otel"}}`,
+	},
+	{
+		Type:        "splunk_hec",
+		Kind:        KindExporter,
+		DisplayName: "Splunk HEC",
+		Description: "Sends telemetry to Splunk via the HTTP Event Collector.",
+		DocsURL:     "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/splunkhecexporter",
+		Icon:        "splunk",
+		SchemaJSON: `{
+			"type": "object",
+			"additionalProperties": true,
+			"required": ["token", "endpoint"],
+			"properties": {
+				"token": {"type": "string", "format": "password"},
+				"endpoint": {"type": "string", "minLength": 1, "description": "e.g. https://splunk:8088/services/collector."},
+				"source": {"type": "string"},
+				"index": {"type": "string"},
+				"tls": ` + tlsSchema + `,
+				"retry_on_failure": ` + retryOnFailureSchema + `
+			}
+		}`,
+		DefaultsJSON: `{"endpoint": "https://splunk:8088/services/collector", "token": ""}`,
 	},
 }
