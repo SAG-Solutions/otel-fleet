@@ -212,12 +212,15 @@ describe('/settings?tab=alert-rules', () => {
     // Human-readable conditions.
     expect(screen.getByText('Ingest items below 999999 over 5m')).toBeInTheDocument()
     expect(screen.getByText('Error logs above 50 over 5m')).toBeInTheDocument()
+    // A PromQL rule shows its query as the condition (cluster-wide, no window).
+    expect(screen.getByText('cpu-hot')).toBeInTheDocument()
+    expect(screen.getByText('PromQL: avg(node_cpu_usage) above 0.8')).toBeInTheDocument()
     // Scope: null → All customers, else the customer name.
-    expect(screen.getByText('All customers')).toBeInTheDocument()
+    expect(screen.getAllByText('All customers').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('ACME Corp')).toBeInTheDocument()
     // Channel counts (singular/plural).
     expect(screen.getByText('1 channel')).toBeInTheDocument()
-    expect(screen.getByText('0 channels')).toBeInTheDocument()
+    expect(screen.getAllByText('0 channels').length).toBeGreaterThanOrEqual(1)
     // Enabled toggles reflect each rule's state.
     expect(screen.getByRole('switch', { name: 'ingest-drop enabled' })).toBeChecked()
     expect(screen.getByRole('switch', { name: 'error-spike enabled' })).not.toBeChecked()
@@ -243,6 +246,32 @@ describe('/settings?tab=alert-rules', () => {
     expect(within(scope).getByRole('option', { name: 'ACME Corp' })).toBeInTheDocument()
     // Channels come from the notification channels (webhooks) list.
     expect(within(dialog).getByText('pagerduty-bridge')).toBeInTheDocument()
+  })
+
+  it('reveals the PromQL query field and hides customer scope / window when the PromQL metric is chosen', async () => {
+    const user = userEvent.setup()
+    renderApp('/settings?tab=alert-rules')
+    await user.click(await screen.findByRole('button', { name: /new rule/i }))
+    const dialog = await screen.findByRole('dialog')
+    // Default (ingest_items): scope + window shown, no query field.
+    expect(within(dialog).getByLabelText('Customer scope')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Window')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('PromQL query')).not.toBeInTheDocument()
+
+    // Switch to PromQL.
+    await user.selectOptions(within(dialog).getByLabelText('Metric'), 'promql')
+
+    // Query field appears; customer scope + window disappear; cluster-wide hint shows.
+    expect(within(dialog).getByLabelText('PromQL query')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Customer scope')).not.toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Window')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('PromQL rules are cluster-wide.')).toBeInTheDocument()
+
+    // Submitting with a name + threshold but an empty query is blocked with an inline error.
+    await user.type(within(dialog).getByLabelText('Name'), 'cpu-hot')
+    await user.type(within(dialog).getByLabelText('Threshold'), '0.8')
+    await user.click(within(dialog).getByRole('button', { name: /create rule/i }))
+    expect(within(dialog).getByText('Enter a PromQL query')).toBeInTheDocument()
   })
 })
 

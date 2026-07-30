@@ -73,11 +73,11 @@ when the value crosses the threshold.
 
 | Field | Meaning |
 |---|---|
-| **Metric** | `ingest_items` — total records (logs + spans + metric points) ingested. `error_logs` — count of log records with severity ≥ `ERROR`. |
+| **Metric** | `ingest_items` — total records (logs + spans + metric points) ingested. `error_logs` — count of log records with severity ≥ `ERROR`. `promql` — evaluate an arbitrary PromQL query against VictoriaMetrics (see below). |
 | **Comparison** | `below` fires when the observed value is **less than** the threshold (e.g. ingest stopped). `above` fires when it is **greater than** the threshold (e.g. error spike). |
 | **Threshold** | The numeric boundary. |
-| **Window** | The rolling look-back (minimum 60 s). The metric is summed/counted over `now − window … now`. |
-| **Scope** | A single customer, or **All customers** — in which case the rule is evaluated independently per customer and fires per customer. |
+| **Window** | The rolling look-back (minimum 60 s). The metric is summed/counted over `now − window … now`. Ignored for `promql` (the query carries its own range). |
+| **Scope** | A single customer, or **All customers** — in which case the rule is evaluated independently per customer and fires per customer. `promql` rules are always cluster-wide (no customer scope). |
 | **Channels** | Which notification channels receive the firing/resolved notification. |
 | **Enabled** | Toggle without deleting. |
 
@@ -98,6 +98,26 @@ webhook dispatcher. Every minute it:
 Because firing state is in memory, a control-plane restart may re-notify an
 already-breaching rule once. Deleting or disabling a rule while it is firing
 does **not** send a resolved notification.
+
+### PromQL rules (infrastructure alerting)
+
+A `promql` rule runs an instant PromQL **query** against VictoriaMetrics each
+tick and compares the returned scalar to the threshold — the same engine and
+channels, over cluster/infra metrics instead of per-tenant ClickHouse
+aggregates. This makes otel-fleet's own alerting a lightweight replacement for
+vmalert/Alertmanager on top of the [cluster monitoring](../installation/helm/)
+bundle, with no extra service to run.
+
+- The query should aggregate to a **single value** (e.g. `avg(...)`,
+  `sum(...)`, `max(...)`); if it returns a vector, the first sample is used.
+- An **empty result is treated as "no data"**, not a breach — a transiently
+  missing metric won't flap the alert.
+- `customerId` must be null and `query` must be non-empty (enforced on create).
+
+Example: `sum(rate(otel_fleet_http_denied_total[5m]))` **above** `10` → alerts
+when denied requests spike; `avg(k8s_node_cpu_utilization)` **above** `0.85` →
+node CPU saturation. Requires VictoriaMetrics reachable from the control plane
+(`OTEL_FLEET_VICTORIAMETRICS_URL`).
 
 ### Examples
 

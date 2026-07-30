@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,10 +43,12 @@ import type { AlertComparison, AlertMetric, AlertRule } from '@/api/generated'
 const METRICS: { value: AlertMetric; label: string }[] = [
   { value: 'ingest_items', label: 'Ingest items' },
   { value: 'error_logs', label: 'Error logs' },
+  { value: 'promql', label: 'PromQL (VictoriaMetrics)' },
 ]
 const METRIC_LABEL: Record<AlertMetric, string> = {
   ingest_items: 'Ingest items',
   error_logs: 'Error logs',
+  promql: 'PromQL',
 }
 
 const COMPARISONS: { value: AlertComparison; label: string }[] = [
@@ -65,6 +68,9 @@ function windowLabel(seconds: number): string {
 }
 
 function conditionText(rule: AlertRule): string {
+  if (rule.metric === 'promql') {
+    return `PromQL: ${rule.query ?? ''} ${rule.comparison} ${rule.threshold}`
+  }
   return `${METRIC_LABEL[rule.metric]} ${rule.comparison} ${rule.threshold} over ${windowLabel(rule.windowSeconds)}`
 }
 
@@ -158,7 +164,16 @@ export function AlertRulesTab() {
                       <span className="font-medium text-ink">{rule.name}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-[13px] text-ink-2">{conditionText(rule)}</span>
+                      <span
+                        className={
+                          rule.metric === 'promql'
+                            ? 'block max-w-[22rem] truncate font-mono text-[12px] text-ink-2'
+                            : 'text-[13px] text-ink-2'
+                        }
+                        title={rule.metric === 'promql' ? conditionText(rule) : undefined}
+                      >
+                        {conditionText(rule)}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={rule.customerId ? 'accent' : 'neutral'}>
@@ -252,6 +267,7 @@ function AlertRuleDialog({
   const editing = rule !== null
   const [name, setName] = useState('')
   const [metric, setMetric] = useState<AlertMetric>('ingest_items')
+  const [query, setQuery] = useState('')
   const [comparison, setComparison] = useState<AlertComparison>('below')
   const [threshold, setThreshold] = useState('')
   const [windowSeconds, setWindowSeconds] = useState(300)
@@ -269,6 +285,7 @@ function AlertRuleDialog({
   if (open && seededFor !== key) {
     setName(rule?.name ?? '')
     setMetric(rule?.metric ?? 'ingest_items')
+    setQuery(rule?.query ?? '')
     setComparison(rule?.comparison ?? 'below')
     setThreshold(rule ? String(rule.threshold) : '')
     setWindowSeconds(rule?.windowSeconds ?? 300)
@@ -301,6 +318,8 @@ function AlertRuleDialog({
 
   const pending = create.isPending || update.isPending
 
+  const isPromql = metric === 'promql'
+
   const submit = () => {
     setError(null)
     const thresholdValue = Number(threshold)
@@ -308,7 +327,14 @@ function AlertRuleDialog({
       setError('Enter a numeric threshold')
       return
     }
-    if (windowSeconds < 60) {
+    if (isPromql && query.trim() === '') {
+      setError('Enter a PromQL query')
+      return
+    }
+    // PromQL rules are cluster-wide and the window is irrelevant, but the API
+    // still requires windowSeconds >= 60 on create — send the minimum.
+    const effectiveWindow = isPromql ? 60 : windowSeconds
+    if (effectiveWindow < 60) {
       setError('The window must be at least 1 minute')
       return
     }
@@ -319,9 +345,10 @@ function AlertRuleDialog({
         body: {
           name,
           metric,
+          query: isPromql ? query.trim() : undefined,
           comparison,
           threshold: thresholdValue,
-          windowSeconds,
+          windowSeconds: effectiveWindow,
           channelIds,
           enabled,
         },
@@ -331,10 +358,11 @@ function AlertRuleDialog({
         body: {
           name,
           metric,
+          query: isPromql ? query.trim() : undefined,
           comparison,
           threshold: thresholdValue,
-          windowSeconds,
-          customerId: customerId || null,
+          windowSeconds: effectiveWindow,
+          customerId: isPromql ? null : customerId || null,
           channelIds,
           enabled,
         },
@@ -398,40 +426,64 @@ function AlertRuleDialog({
                 onChange={(e) => setThreshold(e.target.value)}
               />
             </div>
+            {!isPromql && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="ar-window">Window</Label>
+                <Select
+                  id="ar-window"
+                  value={String(windowSeconds)}
+                  onChange={(e) => setWindowSeconds(Number(e.target.value))}
+                >
+                  {WINDOWS.map((w) => (
+                    <option key={w.value} value={w.value}>
+                      {w.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+          </div>
+          {isPromql && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ar-window">Window</Label>
+              <Label htmlFor="ar-query">PromQL query</Label>
+              <Textarea
+                id="ar-query"
+                rows={3}
+                className="font-mono text-[12px]"
+                placeholder="avg(node_cpu_usage)"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <p className="text-[11px] text-ink-3">
+                A PromQL expression evaluated against VictoriaMetrics that should aggregate to a
+                single value, e.g. <code>avg(node_cpu_usage)</code> or{' '}
+                <code>sum(rate(otel_fleet_http_denied_total[5m]))</code>.
+              </p>
+            </div>
+          )}
+          {isPromql ? (
+            <p className="text-[11px] text-ink-3">PromQL rules are cluster-wide.</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ar-scope">Customer scope</Label>
               <Select
-                id="ar-window"
-                value={String(windowSeconds)}
-                onChange={(e) => setWindowSeconds(Number(e.target.value))}
+                id="ar-scope"
+                value={customerId}
+                disabled={editing || customersQuery.isPending}
+                onChange={(e) => setCustomerId(e.target.value)}
               >
-                {WINDOWS.map((w) => (
-                  <option key={w.value} value={w.value}>
-                    {w.label}
+                <option value="">All customers</option>
+                {customersQuery.data?.customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
                   </option>
                 ))}
               </Select>
+              {editing && (
+                <p className="text-[11px] text-ink-3">Scope can't be changed after creation.</p>
+              )}
             </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="ar-scope">Customer scope</Label>
-            <Select
-              id="ar-scope"
-              value={customerId}
-              disabled={editing || customersQuery.isPending}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              <option value="">All customers</option>
-              {customersQuery.data?.customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-            {editing && (
-              <p className="text-[11px] text-ink-3">Scope can't be changed after creation.</p>
-            )}
-          </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label>Notification channels</Label>
             {webhooksQuery.isPending ? (

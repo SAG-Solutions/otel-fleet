@@ -330,6 +330,19 @@ export const testAlertRules: AlertRule[] = [
     enabled: false,
     createdAt: '2026-07-13T09:00:00Z',
   },
+  {
+    id: '4f2c7a1e-0000-4000-8000-000000000073',
+    name: 'cpu-hot',
+    metric: 'promql',
+    query: 'avg(node_cpu_usage)',
+    comparison: 'above',
+    threshold: 0.8,
+    windowSeconds: 60,
+    customerId: null,
+    channelIds: [],
+    enabled: true,
+    createdAt: '2026-07-14T09:00:00Z',
+  },
 ]
 
 export const testBillingSettings: BillingSettings = {
