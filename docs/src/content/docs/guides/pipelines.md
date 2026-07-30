@@ -20,15 +20,36 @@ The two classes are rendered by isolated renderers; a customer can have both.
 
 ## Component catalog
 
-The builder offers a curated catalog (12 components; `GET /api/v1/catalog/components`),
-each backed by a JSON Schema that drives the form and validation:
+The builder offers a curated catalog (`GET /api/v1/catalog/components`), each
+backed by a JSON Schema that drives the form and validation:
 
 - **Processors:** Batch, Memory Limiter, Filter, Transform, Attributes, Resource
 - **Exporters:** OTLP (gRPC), OTLP (HTTP), Debug, ClickHouse,
-  Prometheus Remote Write, File
+  Prometheus Remote Write, File, Elasticsearch, Datadog, Kafka, AWS S3,
+  Splunk HEC
 
 Receivers are not part of the graph — the renderer provides them (routing
 connector input on the forwarding tier; an OTLP receiver on edge agents).
+
+### Backend presets
+
+"Add exporter" opens a gallery of **backend presets** — one click drops in the
+right exporter with its endpoint/auth fields pre-filled for a specific backend,
+each with its logo:
+
+| Preset | Underlying exporter |
+|---|---|
+| Grafana Loki | OTLP (HTTP) → Loki's OTLP endpoint |
+| Grafana Tempo, Jaeger | OTLP (gRPC) |
+| Grafana Mimir / Prometheus | Prometheus Remote Write |
+| Grafana Cloud (OTLP) | OTLP (HTTP) + Basic auth header |
+| Elasticsearch, Datadog, Kafka, AWS S3, Splunk HEC | their dedicated exporters |
+
+A preset is pure convenience: the rendered pipeline is just the underlying
+exporter with the pre-filled config, so you can tweak every field afterwards.
+The "All exporters" tab in the same dialog adds any raw exporter. Exporters can
+only target backends whose exporter is compiled into the collector distro
+(`collector/builder-config.yaml`).
 
 ## Versioning and rollout
 

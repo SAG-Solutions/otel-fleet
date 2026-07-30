@@ -3,6 +3,8 @@ import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { useDraftStore } from '@/features/pipelines/draft-store'
 import { nodeFromCatalog, type NodeSection } from '@/features/pipelines/graph'
 import { anchorDomId } from '@/features/pipelines/error-path'
+import { BackendIcon, hasBackendIcon } from '@/features/pipelines/backend-icons'
+import { ExporterGallery } from '@/features/pipelines/exporter-gallery'
 import { SchemaForm, type JsonSchema } from '@/features/pipelines/schema-form'
 import { SIGNAL_COLOR, SIGNAL_LABEL, SIGNALS } from '@/lib/chart-theme'
 import { useTheme } from '@/lib/theme'
@@ -16,11 +18,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { CatalogComponent, GraphNode } from '@/api/generated'
+import type { CatalogComponent, CatalogPreset, GraphNode } from '@/api/generated'
 
 export interface Catalog {
   processors: CatalogComponent[]
   exporters: CatalogComponent[]
+  presets: CatalogPreset[]
 }
 
 /**
@@ -44,6 +47,7 @@ export function PipelineBuilder({ catalog, readOnly }: { catalog: Catalog; readO
         title="Exporters"
         subtitle="At least one destination is required."
         components={catalog.exporters}
+        presets={catalog.presets}
         readOnly={readOnly}
       />
     </div>
@@ -161,12 +165,14 @@ function NodeSectionCard({
   title,
   subtitle,
   components,
+  presets,
   readOnly,
 }: {
   section: NodeSection
   title: string
   subtitle: string
   components: CatalogComponent[]
+  presets?: CatalogPreset[]
   readOnly: boolean
 }) {
   const nodes = useDraftStore((s) => s.graph[section])
@@ -179,7 +185,12 @@ function NodeSectionCard({
           <h3 className="text-[13px] font-semibold text-ink">{title}</h3>
           <p className="text-xs text-ink-2">{subtitle}</p>
         </div>
-        {!readOnly && <AddNodeMenu section={section} components={components} />}
+        {!readOnly &&
+          (section === 'exporters' ? (
+            <ExporterGallery presets={presets ?? []} exporters={components} />
+          ) : (
+            <AddNodeMenu section={section} components={components} />
+          ))}
       </div>
 
       {nodes.length === 0 ? (
@@ -238,6 +249,9 @@ function NodeCard({
       <header className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
         {section === 'processors' && (
           <span className="font-mono text-[11px] text-ink-3 tabular-nums">{index + 1}.</span>
+        )}
+        {hasBackendIcon(component?.icon) && (
+          <BackendIcon name={component?.icon} className="size-4 text-ink-2" />
         )}
         <span className="text-[13px] font-semibold text-ink">{label}</span>
         <code className="font-mono text-[11px] text-ink-3">{node.type}</code>

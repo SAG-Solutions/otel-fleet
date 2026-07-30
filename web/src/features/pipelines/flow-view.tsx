@@ -32,6 +32,8 @@ import {
   SignalsCard,
   type Catalog,
 } from '@/features/pipelines/builder'
+import { BackendIcon, hasBackendIcon } from '@/features/pipelines/backend-icons'
+import { ExporterGallery } from '@/features/pipelines/exporter-gallery'
 import { useDraftValidation } from '@/features/pipelines/preview-panel'
 import { SchemaForm, type JsonSchema } from '@/features/pipelines/schema-form'
 import { SIGNAL_COLOR, SIGNAL_LABEL } from '@/lib/chart-theme'
@@ -59,6 +61,7 @@ interface ComponentNodeData extends Record<string, unknown> {
   index: number
   label: string
   typeId: string
+  icon: string | null
   name: string | null
   summary: string[]
   invalid: boolean
@@ -122,9 +125,9 @@ export default function PipelineGraphView({
               components={catalog.processors}
               onAdded={(index) => setSelected({ section: 'processors', index })}
             />
-            <AddNodeMenu
-              section="exporters"
-              components={catalog.exporters}
+            <ExporterGallery
+              presets={catalog.presets}
+              exporters={catalog.exporters}
               onAdded={(index) => setSelected({ section: 'exporters', index })}
             />
           </>
@@ -187,10 +190,13 @@ function FlowCanvas({
   const reorderNodes = useDraftStore((s) => s.reorderNodes)
   const { getNodes, fitView } = useReactFlow()
 
-  const labelByType = useMemo(
+  const metaByType = useMemo(
     () =>
       new Map(
-        [...catalog.processors, ...catalog.exporters].map((c) => [c.type, c.displayName]),
+        [...catalog.processors, ...catalog.exporters].map((c) => [
+          c.type,
+          { label: c.displayName, icon: c.icon ?? null },
+        ]),
       ),
     [catalog],
   )
@@ -208,6 +214,7 @@ function FlowCanvas({
         }
       }
       const node = graph[spec.section!][spec.index!]!
+      const meta = metaByType.get(node.type)
       return {
         id: spec.id,
         type: 'component' as const,
@@ -216,8 +223,9 @@ function FlowCanvas({
         data: {
           section: spec.section!,
           index: spec.index!,
-          label: labelByType.get(node.type) ?? node.type,
+          label: meta?.label ?? node.type,
           typeId: node.type,
+          icon: meta?.icon ?? null,
           name: node.name ?? null,
           summary: configSummary(node.config),
           invalid: invalidIds.has(spec.id),
@@ -225,7 +233,7 @@ function FlowCanvas({
         },
       }
     })
-  }, [graph, labelByType, invalidIds, selected, readOnly])
+  }, [graph, metaByType, invalidIds, selected, readOnly])
 
   const edges = useMemo<Edge[]>(
     () =>
@@ -359,7 +367,11 @@ function ComponentNode({ data }: NodeProps<ComponentFlowNode>) {
       )}
     >
       <div className="flex items-center gap-1.5">
-        <Icon aria-hidden className="size-3.5 shrink-0 text-ink-3" />
+        {hasBackendIcon(data.icon) ? (
+          <BackendIcon name={data.icon} className="size-3.5 shrink-0 text-ink-3" />
+        ) : (
+          <Icon aria-hidden className="size-3.5 shrink-0 text-ink-3" />
+        )}
         <span className="min-w-0 truncate text-[13px] font-semibold text-ink">{data.label}</span>
         {data.section === 'processors' && (
           <span className="ml-auto font-mono text-[10px] text-ink-3 tabular-nums">
@@ -425,6 +437,9 @@ function NodeEditorPanel({
       className="flex min-w-0 flex-col rounded-lg border border-line bg-surface xl:sticky xl:top-6"
     >
       <header className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+        {hasBackendIcon(component?.icon) && (
+          <BackendIcon name={component?.icon} className="size-4 shrink-0 text-ink-2" />
+        )}
         <div className="min-w-0">
           <h3 className="truncate text-[13px] font-semibold text-ink">{label}</h3>
           <code className="font-mono text-[11px] text-ink-3">{node.type}</code>

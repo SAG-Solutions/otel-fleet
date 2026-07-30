@@ -393,7 +393,7 @@ function EditorTab({ pipeline }: { pipeline: PipelineDetail }) {
               </div>
             ) : (
               <PipelineBuilder
-                catalog={catalog ?? { processors: [], exporters: [] }}
+                catalog={catalog ?? { processors: [], exporters: [], presets: [] }}
                 readOnly={!canEdit}
               />
             )}
@@ -424,7 +424,7 @@ function EditorTab({ pipeline }: { pipeline: PipelineDetail }) {
           ) : (
             <Suspense fallback={<Skeleton className="h-[32rem] w-full" />}>
               <PipelineGraphView
-                catalog={catalog ?? { processors: [], exporters: [] }}
+                catalog={catalog ?? { processors: [], exporters: [], presets: [] }}
                 readOnly={!canEdit}
                 targetClass={pipeline.targetClass}
                 saveErrors={saveErrors}

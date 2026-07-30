@@ -1,4 +1,4 @@
-import type { CatalogComponent, GraphNode, PipelineGraph, Signal } from '@/api/generated'
+import type { CatalogComponent, CatalogPreset, GraphNode, PipelineGraph, Signal } from '@/api/generated'
 
 /** Sections of the graph that hold ordered component nodes. */
 export type NodeSection = 'processors' | 'exporters'
@@ -12,6 +12,16 @@ function clone<T>(value: T): T {
 /** Instantiate a node from a catalog entry, seeded with its defaults. */
 export function nodeFromCatalog(component: CatalogComponent): GraphNode {
   return { type: component.type, config: clone(component.defaults ?? {}) }
+}
+
+/**
+ * Instantiate an exporter node from a backend preset: the underlying
+ * exporter type with the preset's pre-filled config. Mirrors
+ * {@link nodeFromCatalog}'s defaults-cloning so preset and raw-catalog nodes
+ * are seeded identically.
+ */
+export function nodeFromPreset(preset: CatalogPreset): GraphNode {
+  return { type: preset.exporterType, config: clone(preset.defaults ?? {}) }
 }
 
 /**
