@@ -244,12 +244,19 @@ cluster-monitoring resources.
 
 ### Dashboards and alerting
 
-The metrics land in VictoriaMetrics, which speaks the Prometheus query API — so
-point **Grafana** at it as a Prometheus datasource (URL
-`http://<victoriametrics>:8428`) and import your preferred Kubernetes
-dashboards; the receivers emit standard OpenTelemetry `k8s.*` / `system.*` /
-`container.*` metrics (dots become `_` after remote-write, e.g.
-`k8s_node_cpu_utilization`). For alerting you don't need Alertmanager: create
+The metrics land in VictoriaMetrics, which speaks the Prometheus query API. Two
+ways to see them:
+
+- **Built into otel-fleet** — the admin **Infrastructure** page charts node
+  CPU/memory, pods per namespace, container restarts and top pods by CPU
+  directly (PromQL against VictoriaMetrics), plus an ad-hoc PromQL panel. No
+  extra tool required.
+- **Grafana** (optional) — point it at VictoriaMetrics as a Prometheus
+  datasource (URL `http://<victoriametrics>:8428`) and import your preferred
+  Kubernetes dashboards.
+
+The receivers emit standard OpenTelemetry `k8s.*` / `system.*` / `container.*`
+metrics (dots become `_` after remote-write, e.g. `k8s_node_cpu_utilization`). For alerting you don't need Alertmanager: create
 **PromQL alert rules** in otel-fleet (Settings → Alert rules, metric `promql`)
 that query the same VictoriaMetrics and fire to your notification channels —
 see the [alerting guide](../guides/alerting/). Grafana stays an optional

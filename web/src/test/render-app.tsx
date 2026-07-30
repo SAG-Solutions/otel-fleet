@@ -18,6 +18,7 @@ import type {
   Customer,
   LogRecord,
   Me,
+  MetricSeries,
   Span,
   StatsOverview,
   TraceSummary,
@@ -390,6 +391,23 @@ const testThroughput = {
   })),
 }
 
+export const testMetricSeries: MetricSeries[] = [
+  {
+    labels: { k8s_node_name: 'node-a' },
+    points: [
+      { ts: '2026-07-15T07:00:00Z', value: 0.42 },
+      { ts: '2026-07-15T07:15:00Z', value: 0.55 },
+    ],
+  },
+  {
+    labels: { k8s_node_name: 'node-b' },
+    points: [
+      { ts: '2026-07-15T07:00:00Z', value: 0.31 },
+      { ts: '2026-07-15T07:15:00Z', value: 0.6 },
+    ],
+  },
+]
+
 export const testOverview: StatsOverview = {
   activeCustomers: 3,
   totals: { logs: 864_000, traces: 432_000, metrics: 216_000 },
@@ -465,9 +483,12 @@ function json(data: unknown): Response {
 }
 
 /** Route-matching fetch stub for the endpoints the pages use. */
-export function stubApi(overrides: { me?: Me; customers?: Customer[] } = {}): void {
+export function stubApi(
+  overrides: { me?: Me; customers?: Customer[]; metricSeries?: MetricSeries[] } = {},
+): void {
   const me = overrides.me ?? testMe
   const customers = overrides.customers ?? [testCustomer, testCustomer2]
+  const metricSeries = overrides.metricSeries ?? testMetricSeries
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
@@ -523,6 +544,8 @@ export function stubApi(overrides: { me?: Me; customers?: Customer[] } = {}): vo
           return json(testBillingSettings)
         case '/api/v1/billing/statement':
           return json(testBillingStatement)
+        case '/api/v1/metrics/query_range':
+          return json({ series: metricSeries })
         default:
           return new Response(JSON.stringify({ code: 'not_found', message: 'not found' }), {
             status: 404,
