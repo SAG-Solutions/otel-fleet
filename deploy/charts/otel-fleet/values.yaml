@@ -220,6 +220,29 @@ keda:
   pollingInterval: 30
   cooldownPeriod: 300
 
+# Opt-in cluster-monitoring bundle: an OpenTelemetry-native alternative to
+# kube-prometheus-stack's metrics collection. Two collectors (both running the
+# otel-fleet collector distro) remote-write to external.victoriaMetrics:
+#   - a DaemonSet (per node): hostmetrics (~node-exporter) + kubeletstats
+#     (~cAdvisor), reading the host filesystem read-only at /hostfs.
+#   - a singleton Deployment: k8s_cluster (~kube-state-metrics) + a prometheus
+#     receiver that scrapes pods carrying prometheus.io/{scrape,port,path}.
+# A dedicated ServiceAccount + ClusterRole grant the read access these need.
+clusterMonitoring:
+  enabled: false
+  node:
+    # kubeletstats scrapes the local kubelet over HTTPS; kubelet serving certs
+    # are typically self-signed, so verification is skipped by default. Set
+    # false if your kubelet presents a cert trusted by the pod's CA bundle.
+    kubeletInsecureSkipVerify: true
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 300Mi }
+  cluster:
+    resources:
+      requests: { cpu: 200m, memory: 256Mi }
+      limits: { memory: 512Mi }
+
 serviceAccount:
   create: true
   annotations: {}

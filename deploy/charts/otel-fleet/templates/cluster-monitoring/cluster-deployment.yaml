@@ -1,0 +1,79 @@
+{{- if .Values.clusterMonitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-cluster
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-cluster
+data:
+  config.yaml: |
+{{ .Files.Get "files/otelcol-cluster.yaml" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-cluster
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-cluster
+spec:
+  # Singleton: k8s_cluster and the prometheus scrape server must not be
+  # duplicated (double-counted cluster metrics).
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "otel-fleet.selector" . | nindent 6 }}
+      app.kubernetes.io/component: cluster-monitoring-cluster
+  template:
+    metadata:
+      labels:
+        {{- include "otel-fleet.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster-monitoring-cluster
+      annotations:
+        checksum/config: {{ .Files.Get "files/otelcol-cluster.yaml" | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "otel-fleet.fullname" . }}-cluster-monitoring
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: otelcol
+          image: {{ include "otel-fleet.collectorImage" . }}
+          imagePullPolicy: {{ .Values.images.collector.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          args:
+            - --config=/etc/otelcol/config.yaml
+          env:
+            - name: OTEL_FLEET_VM_REMOTE_WRITE
+              value: {{ .Values.external.victoriaMetrics.remoteWriteUrl | quote }}
+            - name: GOMEMLIMIT
+              value: "450MiB"
+          ports:
+            - { name: telemetry, containerPort: 8888 }
+            - { name: health, containerPort: 13133 }
+          readinessProbe:
+            httpGet: { path: /, port: health }
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: { path: /, port: health }
+            initialDelaySeconds: 10
+          volumeMounts:
+            - { name: config, mountPath: /etc/otelcol, readOnly: true }
+          resources: {{- toYaml .Values.clusterMonitoring.cluster.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "otel-fleet.fullname" . }}-cluster
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

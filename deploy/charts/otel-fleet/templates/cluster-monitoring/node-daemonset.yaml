@@ -1,0 +1,90 @@
+{{- if .Values.clusterMonitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-cluster-node
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-node
+data:
+  config.yaml: |
+{{ .Files.Get "files/otelcol-cluster-node.yaml" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-cluster-node
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-node
+spec:
+  selector:
+    matchLabels:
+      {{- include "otel-fleet.selector" . | nindent 6 }}
+      app.kubernetes.io/component: cluster-monitoring-node
+  template:
+    metadata:
+      labels:
+        {{- include "otel-fleet.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster-monitoring-node
+      annotations:
+        # Roll the pods when the node collector config changes.
+        checksum/config: {{ .Files.Get "files/otelcol-cluster-node.yaml" | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "otel-fleet.fullname" . }}-cluster-monitoring
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: otelcol
+          image: {{ include "otel-fleet.collectorImage" . }}
+          imagePullPolicy: {{ .Values.images.collector.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          args:
+            - --config=/etc/otelcol/config.yaml
+          env:
+            # The node this pod runs on — kubeletstats scrapes it and resource
+            # stamps it; hostmetrics has no k8s context otherwise.
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: OTEL_FLEET_VM_REMOTE_WRITE
+              value: {{ .Values.external.victoriaMetrics.remoteWriteUrl | quote }}
+            - name: OTEL_FLEET_KUBELET_INSECURE_SKIP_VERIFY
+              value: {{ .Values.clusterMonitoring.node.kubeletInsecureSkipVerify | quote }}
+            - name: GOMEMLIMIT
+              value: "300MiB"
+          ports:
+            - { name: telemetry, containerPort: 8888 }
+            - { name: health, containerPort: 13133 }
+          readinessProbe:
+            httpGet: { path: /, port: health }
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: { path: /, port: health }
+            initialDelaySeconds: 10
+          volumeMounts:
+            - { name: config, mountPath: /etc/otelcol, readOnly: true }
+            # Host root, read-only, for the hostmetrics scrapers (root_path=/hostfs).
+            - { name: hostfs, mountPath: /hostfs, readOnly: true, mountPropagation: HostToContainer }
+          resources: {{- toYaml .Values.clusterMonitoring.node.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "otel-fleet.fullname" . }}-cluster-node
+        - name: hostfs
+          hostPath:
+            path: /
+      tolerations:
+        # node-exporter semantics: run on every node, including control-plane.
+        - operator: Exists
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -189,6 +189,59 @@ the per-request API key. Ingest auth already requires a valid API key regardless
 of TLS; every request is refused otherwise. (The gateway→control-plane gRPC hop
 supports mTLS independently — see `controlPlane.tls`.)
 
+## Cluster monitoring (kube-prometheus-stack alternative)
+
+An opt-in, OpenTelemetry-native replacement for kube-prometheus-stack's metrics
+collection — no node-exporter, kube-state-metrics, cAdvisor sidecar or embedded
+Prometheus server. Two collectors (both the otel-fleet collector distro) gather
+cluster metrics and **remote-write them to your existing VictoriaMetrics**
+(`external.victoriaMetrics.remoteWriteUrl`), so they show up alongside the
+collector self-telemetry that already powers the throughput charts.
+
+```yaml
+clusterMonitoring:
+  enabled: true
+external:
+  victoriaMetrics:
+    remoteWriteUrl: http://victoriametrics.monitoring:8428/api/v1/write
+```
+
+Enabling it renders:
+
+| Workload | Receivers | Replaces |
+| --- | --- | --- |
+| DaemonSet (per node) | `hostmetrics` (CPU/mem/disk/filesystem/network/load) + `kubeletstats` scraping the local kubelet | node-exporter + cAdvisor |
+| Deployment (singleton) | `k8s_cluster` + a `prometheus` receiver with Kubernetes service discovery | kube-state-metrics + Prometheus scrape |
+
+Both share a dedicated `ServiceAccount` + `ClusterRole` + `ClusterRoleBinding`
+granting the read access the receivers need (nodes, nodes/stats, nodes/proxy,
+pods, services, endpoints, namespaces, resourcequotas, events, plus the
+apps/batch/autoscaling workload objects `k8s_cluster` counts).
+
+The node DaemonSet mounts the host filesystem **read-only** at `/hostfs`
+(`hostmetrics` `root_path`) and scrapes only its own node's kubelet at
+`https://$K8S_NODE_NAME:10250` with `auth_type: serviceAccount`. Kubelet serving
+certs are usually self-signed, so verification is skipped by default; set
+`clusterMonitoring.node.kubeletInsecureSkipVerify: false` if your kubelet
+presents a cert trusted by the pod's CA bundle.
+
+The singleton collector's `prometheus` receiver honours the standard pod
+annotations, so annotated workloads are scraped automatically:
+
+```yaml
+metadata:
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9102"
+    prometheus.io/path: /metrics   # optional, defaults to /metrics
+```
+
+Tune resource requests/limits under `clusterMonitoring.node.resources` and
+`clusterMonitoring.cluster.resources`. The collectors inherit the chart's
+hardened `podSecurityContext`/`securityContext`. Left disabled
+(`clusterMonitoring.enabled: false`, the default) the chart emits **zero**
+cluster-monitoring resources.
+
 ## Secrets encryption (`OTEL_FLEET_MASTER_KEY`)
 
 The control plane needs `OTEL_FLEET_MASTER_KEY` (base64, 32 bytes —

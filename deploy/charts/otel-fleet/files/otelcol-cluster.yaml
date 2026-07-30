@@ -1,0 +1,103 @@
+# otel-fleet cluster-monitoring — cluster-level collector (singleton Deployment).
+#
+# An OpenTelemetry-native replacement for kube-state-metrics plus a Prometheus
+# scrape server. Exactly one replica; remote-writes to VictoriaMetrics.
+#   - k8s_cluster ~= kube-state-metrics (cluster object metrics: pods, nodes,
+#                    deployments, daemonsets, jobs, resource quotas, …).
+#   - prometheus  scrapes pods carrying the standard prometheus.io/{scrape,port,
+#                    path} annotations via Kubernetes service discovery.
+# Runs the otel-fleet collector distro (collector/builder-config.yaml).
+#
+# NOTE: the relabel replacements use $$ so the collector confmap resolver passes
+# a literal $ through to the Prometheus regex engine ($$1 -> $1).
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  # kube-state-metrics equivalent.
+  k8s_cluster:
+    collection_interval: 30s
+    node_conditions_to_report: [Ready, MemoryPressure, DiskPressure, PIDPressure]
+    allocatable_types_to_report: [cpu, memory, ephemeral-storage, pods]
+  # Scrape workloads that opt in with prometheus.io/scrape: "true" annotations.
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: kubernetes-pods
+          scrape_interval: 30s
+          kubernetes_sd_configs:
+            - role: pod
+          relabel_configs:
+            # Keep only pods annotated prometheus.io/scrape: "true".
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              action: keep
+              regex: "true"
+            # Honour prometheus.io/path (default /metrics).
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              action: replace
+              target_label: __metrics_path__
+              regex: (.+)
+            # Honour prometheus.io/port: rewrite the address to host:port.
+            - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+              action: replace
+              regex: ([^:]+)(?::\d+)?;(\d+)
+              replacement: $$1:$$2
+              target_label: __address__
+            # Surface pod labels and identity as metric labels.
+            - action: labelmap
+              regex: __meta_kubernetes_pod_label_(.+)
+            - source_labels: [__meta_kubernetes_namespace]
+              action: replace
+              target_label: namespace
+            - source_labels: [__meta_kubernetes_pod_name]
+              action: replace
+              target_label: pod
+            - source_labels: [__meta_kubernetes_pod_node_name]
+              action: replace
+              target_label: node
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  # Enrich scraped pod metrics with k8s metadata (namespace/pod/deployment).
+  k8sattributes:
+    auth_type: serviceAccount
+    passthrough: false
+    extract:
+      metadata:
+        - k8s.namespace.name
+        - k8s.pod.name
+        - k8s.pod.uid
+        - k8s.deployment.name
+        - k8s.node.name
+  batch:
+    send_batch_size: 8192
+    timeout: 5s
+
+exporters:
+  prometheusremotewrite:
+    endpoint: ${env:OTEL_FLEET_VM_REMOTE_WRITE:-http://victoriametrics:8428/api/v1/write}
+    resource_to_telemetry_conversion:
+      enabled: true # k8s resource attributes become metric labels
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [k8s_cluster, prometheus]
+      processors: [memory_limiter, k8sattributes, batch]
+      exporters: [prometheusremotewrite]
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888

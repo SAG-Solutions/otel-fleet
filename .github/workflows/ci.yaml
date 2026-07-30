@@ -34,7 +34,7 @@ jobs:
           POSTGRES_DB: otel_fleet_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U otel-fleet"
+          --health-cmd "pg_isready -U otelfleet"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
@@ -184,6 +184,19 @@ jobs:
             --set controlPlane.networkPolicy.enabled=true \
             --set 'controlPlane.networkPolicy.publicCIDRs={203.0.113.0/24}' \
             --set 'controlPlane.networkPolicy.internalNamespaces={monitoring}' | grep -q "kind: NetworkPolicy"
+          # Cluster-monitoring bundle: off by default (zero DaemonSets / RBAC);
+          # opt-in renders the per-node DaemonSet, the singleton Deployment and
+          # the shared ServiceAccount + ClusterRole + ClusterRoleBinding.
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            | grep -c 'kind: DaemonSet')" = "0"
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            | grep -c 'kind: ClusterRoleBinding')" = "0"
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true | grep -c 'kind: DaemonSet')" = "1"
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true | grep -q "kind: ClusterRole"
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true | grep -q "otel-fleet-cluster-monitoring"
       - run: helm lint deploy/charts/otel-fleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |

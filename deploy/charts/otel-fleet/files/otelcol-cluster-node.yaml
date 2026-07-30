@@ -1,0 +1,90 @@
+# otel-fleet cluster-monitoring — per-node collector (DaemonSet).
+#
+# An OpenTelemetry-native replacement for node-exporter + cAdvisor: one instance
+# per node scrapes the LOCAL node only and remote-writes to VictoriaMetrics.
+#   - hostmetrics  ~= node-exporter (CPU/mem/disk/filesystem/network/load), reads
+#                     the host filesystem mounted read-only at /hostfs.
+#   - kubeletstats ~= cAdvisor (node/pod/container metrics) from the local
+#                     kubelet at https://$K8S_NODE_NAME:10250 (serviceAccount auth).
+# Runs the otel-fleet collector distro (collector/builder-config.yaml).
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  # node-exporter equivalent. root_path points the scrapers at the host root
+  # bind-mounted read-only at /hostfs (see the DaemonSet volumeMounts).
+  hostmetrics:
+    collection_interval: 30s
+    root_path: /hostfs
+    scrapers:
+      cpu: {}
+      memory: {}
+      disk: {}
+      filesystem: {}
+      network: {}
+      load: {}
+  # cAdvisor equivalent: scrape only THIS node's kubelet. auth_type
+  # serviceAccount uses the pod's mounted token; insecure_skip_verify is on by
+  # default (the kubelet serving cert is usually self-signed) — toggle via
+  # clusterMonitoring.node.kubeletInsecureSkipVerify.
+  kubeletstats:
+    collection_interval: 20s
+    auth_type: serviceAccount
+    endpoint: https://${env:K8S_NODE_NAME}:10250
+    insecure_skip_verify: ${env:OTEL_FLEET_KUBELET_INSECURE_SKIP_VERIFY}
+    metric_groups: [node, pod, container, volume]
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  # Stamp the node name onto every metric (hostmetrics has no k8s context).
+  resource:
+    attributes:
+      - key: k8s.node.name
+        value: ${env:K8S_NODE_NAME}
+        action: upsert
+  # Enrich the local node's pod/container metrics with k8s metadata. The node
+  # filter limits the informer to pods on this node (one watch per node).
+  k8sattributes:
+    auth_type: serviceAccount
+    passthrough: false
+    filter:
+      node_from_env_var: K8S_NODE_NAME
+    extract:
+      metadata:
+        - k8s.namespace.name
+        - k8s.pod.name
+        - k8s.pod.uid
+        - k8s.deployment.name
+        - k8s.node.name
+  batch:
+    send_batch_size: 8192
+    timeout: 5s
+
+exporters:
+  prometheusremotewrite:
+    endpoint: ${env:OTEL_FLEET_VM_REMOTE_WRITE:-http://victoriametrics:8428/api/v1/write}
+    resource_to_telemetry_conversion:
+      enabled: true # resource attributes (k8s.node.name, …) become metric labels
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [hostmetrics, kubeletstats]
+      processors: [memory_limiter, resource, k8sattributes, batch]
+      exporters: [prometheusremotewrite]
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
