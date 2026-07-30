@@ -470,6 +470,21 @@ export type Span = {
     };
 };
 
+export type MetricPoint = {
+    ts: string;
+    value: number;
+};
+
+export type MetricSeries = {
+    /**
+     * PromQL result label set (e.g. {node, namespace, pod}).
+     */
+    labels: {
+        [key: string]: string;
+    };
+    points: Array<MetricPoint>;
+};
+
 export type CustomerCost = {
     customerId: string;
     name: string;
@@ -2501,6 +2516,53 @@ export type GetCostStatsResponses = {
 };
 
 export type GetCostStatsResponse = GetCostStatsResponses[keyof GetCostStatsResponses];
+
+export type QueryMetricsRangeData = {
+    body?: never;
+    path?: never;
+    query: {
+        query: string;
+        start: string;
+        end: string;
+        /**
+         * Go duration, e.g. 60s.
+         */
+        step: string;
+    };
+    url: '/api/v1/metrics/query_range';
+};
+
+export type QueryMetricsRangeErrors = {
+    /**
+     * Validation error
+     */
+    400: Error;
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+    /**
+     * An upstream store (VictoriaMetrics/ClickHouse) is unavailable
+     */
+    503: Error;
+};
+
+export type QueryMetricsRangeError = QueryMetricsRangeErrors[keyof QueryMetricsRangeErrors];
+
+export type QueryMetricsRangeResponses = {
+    /**
+     * Matrix result
+     */
+    200: {
+        series: Array<MetricSeries>;
+    };
+};
+
+export type QueryMetricsRangeResponse = QueryMetricsRangeResponses[keyof QueryMetricsRangeResponses];
 
 export type GetBillingStatementData = {
     body?: never;

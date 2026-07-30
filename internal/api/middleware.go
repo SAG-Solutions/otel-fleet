@@ -34,6 +34,7 @@ var adminPathPrefixes = []string{
 	"/api/v1/settings/billing",
 	"/api/v1/billing",
 	"/api/v1/audit",
+	"/api/v1/metrics",
 }
 
 func isAdminOnlyPath(path string) bool {

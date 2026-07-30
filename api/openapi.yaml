@@ -1020,6 +1020,38 @@ paths:
                     items: { $ref: "#/components/schemas/CustomerCost" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /api/v1/metrics/query_range:
+    get:
+      tags: [stats]
+      operationId: queryMetricsRange
+      summary: Proxy a range PromQL query to VictoriaMetrics (admin only)
+      description: >
+        Runs an instant-vector PromQL query over [start,end] at step against
+        VictoriaMetrics and returns the matrix. Admin-only — it can read every
+        metric, including per-tenant self-telemetry. Powers the infrastructure
+        metrics view over the cluster-monitoring bundle.
+      parameters:
+        - { name: query, in: query, required: true, schema: { type: string, minLength: 1 } }
+        - { name: start, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: end, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: step, in: query, required: true, schema: { type: string, pattern: "^[0-9]+(ns|us|ms|s|m|h)$" }, description: "Go duration, e.g. 60s." }
+      responses:
+        "200":
+          description: Matrix result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [series]
+                properties:
+                  series:
+                    type: array
+                    items: { $ref: "#/components/schemas/MetricSeries" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailable" }
+
   /api/v1/billing/statement:
     get:
       tags: [billing]
@@ -1346,6 +1378,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     Conflict:
       description: Conflict
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UpstreamUnavailable:
+      description: An upstream store (VictoriaMetrics/ClickHouse) is unavailable
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -1841,6 +1878,25 @@ components:
         attributes:
           type: object
           additionalProperties: { type: string }
+
+    MetricPoint:
+      type: object
+      required: [ts, value]
+      properties:
+        ts: { type: string, format: date-time }
+        value: { type: number }
+
+    MetricSeries:
+      type: object
+      required: [labels, points]
+      properties:
+        labels:
+          type: object
+          additionalProperties: { type: string }
+          description: PromQL result label set (e.g. {node, namespace, pod}).
+        points:
+          type: array
+          items: { $ref: "#/components/schemas/MetricPoint" }
 
     CustomerCost:
       type: object

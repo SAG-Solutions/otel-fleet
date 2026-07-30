@@ -1041,6 +1041,19 @@ type Me struct {
 	ScopedCustomerIds *[]openapi_types.UUID `json:"scopedCustomerIds,omitempty"`
 }
 
+// MetricPoint defines model for MetricPoint.
+type MetricPoint struct {
+	Ts    time.Time `json:"ts"`
+	Value float32   `json:"value"`
+}
+
+// MetricSeries defines model for MetricSeries.
+type MetricSeries struct {
+	// Labels PromQL result label set (e.g. {node, namespace, pod}).
+	Labels map[string]string `json:"labels"`
+	Points []MetricPoint     `json:"points"`
+}
+
 // Pipeline defines model for Pipeline.
 type Pipeline struct {
 	ActiveVersion *int               `json:"activeVersion,omitempty"`
@@ -1333,6 +1346,9 @@ type NotFound = Error
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
+// UpstreamUnavailable defines model for UpstreamUnavailable.
+type UpstreamUnavailable = Error
+
 // ListAgentsParams defines parameters for ListAgents.
 type ListAgentsParams struct {
 	Class      *ListAgentsParamsClass `form:"class,omitempty" json:"class,omitempty"`
@@ -1461,6 +1477,16 @@ type QueryTracesParams struct {
 	ErrorsOnly    *bool      `form:"errorsOnly,omitempty" json:"errorsOnly,omitempty"`
 	Limit         *int       `form:"limit,omitempty" json:"limit,omitempty"`
 	Before        *time.Time `form:"before,omitempty" json:"before,omitempty"`
+}
+
+// QueryMetricsRangeParams defines parameters for QueryMetricsRange.
+type QueryMetricsRangeParams struct {
+	Query string    `form:"query" json:"query"`
+	Start time.Time `form:"start" json:"start"`
+	End   time.Time `form:"end" json:"end"`
+
+	// Step Go duration, e.g. 60s.
+	Step string `form:"step" json:"step"`
 }
 
 // ValidatePipelineJSONBody defines parameters for ValidatePipeline.
@@ -1673,6 +1699,9 @@ type ServerInterface interface {
 	// Current session user, role and CSRF token
 	// (GET /api/v1/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// Proxy a range PromQL query to VictoriaMetrics (admin only)
+	// (GET /api/v1/metrics/query_range)
+	QueryMetricsRange(w http.ResponseWriter, r *http.Request, params QueryMetricsRangeParams)
 	// List all pipelines across customers
 	// (GET /api/v1/pipelines)
 	ListPipelines(w http.ResponseWriter, r *http.Request)
@@ -1961,6 +1990,12 @@ func (_ Unimplemented) GetTrace(w http.ResponseWriter, r *http.Request, customer
 // Current session user, role and CSRF token
 // (GET /api/v1/me)
 func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Proxy a range PromQL query to VictoriaMetrics (admin only)
+// (GET /api/v1/metrics/query_range)
+func (_ Unimplemented) QueryMetricsRange(w http.ResponseWriter, r *http.Request, params QueryMetricsRangeParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3349,6 +3384,78 @@ func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request)
 	handler.ServeHTTP(w, r)
 }
 
+// QueryMetricsRange operation middleware
+func (siw *ServerInterfaceWrapper) QueryMetricsRange(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params QueryMetricsRangeParams
+
+	// ------------- Required query parameter "query" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "query", r.URL.Query(), &params.Query, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "query"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "query", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "start" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "start", r.URL.Query(), &params.Start, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "start"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "start", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "end" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "end", r.URL.Query(), &params.End, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "end"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "end", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "step" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "step", r.URL.Query(), &params.Step, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "step"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "step", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.QueryMetricsRange(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListPipelines operation middleware
 func (siw *ServerInterfaceWrapper) ListPipelines(w http.ResponseWriter, r *http.Request) {
 
@@ -4333,6 +4440,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/v1/me", wrapper.GetMe)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/metrics/query_range", wrapper.QueryMetricsRange)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/pipelines", wrapper.ListPipelines)
 	})
 	r.Group(func(r chi.Router) {
@@ -4444,6 +4554,8 @@ type ForbiddenJSONResponse Error
 type NotFoundJSONResponse Error
 
 type UnauthorizedJSONResponse Error
+
+type UpstreamUnavailableJSONResponse Error
 
 type ListAgentsRequestObject struct {
 	Params ListAgentsParams
@@ -6138,6 +6250,88 @@ func (response GetMe401JSONResponse) VisitGetMeResponse(w http.ResponseWriter) e
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryMetricsRangeRequestObject struct {
+	Params QueryMetricsRangeParams
+}
+
+type QueryMetricsRangeResponseObject interface {
+	VisitQueryMetricsRangeResponse(w http.ResponseWriter) error
+}
+
+type QueryMetricsRange200JSONResponse struct {
+	Series []MetricSeries `json:"series"`
+}
+
+func (response QueryMetricsRange200JSONResponse) VisitQueryMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryMetricsRange400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response QueryMetricsRange400JSONResponse) VisitQueryMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryMetricsRange401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response QueryMetricsRange401JSONResponse) VisitQueryMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryMetricsRange403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response QueryMetricsRange403JSONResponse) VisitQueryMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryMetricsRange503JSONResponse struct {
+	UpstreamUnavailableJSONResponse
+}
+
+func (response QueryMetricsRange503JSONResponse) VisitQueryMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8223,6 +8417,9 @@ type StrictServerInterface interface {
 	// Current session user, role and CSRF token
 	// (GET /api/v1/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// Proxy a range PromQL query to VictoriaMetrics (admin only)
+	// (GET /api/v1/metrics/query_range)
+	QueryMetricsRange(ctx context.Context, request QueryMetricsRangeRequestObject) (QueryMetricsRangeResponseObject, error)
 	// List all pipelines across customers
 	// (GET /api/v1/pipelines)
 	ListPipelines(ctx context.Context, request ListPipelinesRequestObject) (ListPipelinesResponseObject, error)
@@ -9196,6 +9393,32 @@ func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMeResponseObject); ok {
 		if err := validResponse.VisitGetMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// QueryMetricsRange operation middleware
+func (sh *strictHandler) QueryMetricsRange(w http.ResponseWriter, r *http.Request, params QueryMetricsRangeParams) {
+	var request QueryMetricsRangeRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.QueryMetricsRange(ctx, request.(QueryMetricsRangeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "QueryMetricsRange")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(QueryMetricsRangeResponseObject); ok {
+		if err := validResponse.VisitQueryMetricsRangeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
