@@ -24,7 +24,7 @@ prefixed `OTEL_FLEET_`. Source of truth: `internal/config/config.go`.
 | `OTEL_FLEET_HTTP_ADDR` | `:8080` | REST API + embedded web UI. |
 | `OTEL_FLEET_GRPC_ADDR` | `:9443` | Internal gRPC (`otelfleet.auth.v1.AuthService`) used by gateway collectors to validate API keys. Plaintext — keep it cluster-internal. |
 | `OTEL_FLEET_OPS_ADDR` | `:9090` | Ops listener: `/metrics`, `/healthz`, `/readyz`, and `GET /internal/v1/collector-config/forwarding` (the rendered forwarding-tier config). Plaintext — keep it cluster-internal. |
-| `OTEL_FLEET_ROLE` | `all` | Process role: `all` (everything, single process), `api` (HTTP + gRPC + ops, scale to N), or `opamp` (OpAMP WebSockets + edge-config listener + webhooks + retention, singleton). See Helm `controlPlane.mode`. |
+| `OTEL_FLEET_ROLE` | `all` | Process role: `all` (everything, single process), `api` (HTTP + gRPC + ops, scale to N), or `opamp` (OpAMP WebSockets + edge-config listener + webhooks + retention). The `opamp` role is HA-capable — run multiple replicas; the retention sweep and alert evaluator self-elect a single leader via a Postgres advisory lock. See Helm `controlPlane.mode`. |
 | `OTEL_FLEET_OPAMP_ADDR` | `:4320` | OpAMP WebSocket server (`/v1/opamp`) for edge agents. Plaintext `ws://` — terminate TLS in front for internet exposure. |
 | `OTEL_FLEET_TLS_CERT_FILE` / `_KEY_FILE` | _(empty)_ | PEM cert+key for the public listeners — HTTPS on :8080 and wss:// OpAMP on :4320. Empty = plaintext (terminate TLS at an ingress). |
 | `OTEL_FLEET_GRPC_TLS_CERT_FILE` / `_KEY_FILE` | _(empty)_ | PEM cert+key for the internal gRPC AuthService (:9443). |

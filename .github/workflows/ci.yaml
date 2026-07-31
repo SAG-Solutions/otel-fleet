@@ -41,7 +41,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go test -tags=integration ./internal/store/...
+      - run: go test -tags=integration ./internal/store/... ./internal/leader/...
         env:
           OTEL_FLEET_TEST_DATABASE_URL: postgres://otelfleet:otelfleet@localhost:5432/otel_fleet_test
 
@@ -179,6 +179,10 @@ jobs:
             | grep -c 'kind: PodDisruptionBudget')" = "1"
           test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set controlPlane.mode=split | grep -c 'kind: PodDisruptionBudget')" = "2"
+          # OpAMP tier is HA-capable: raising opamp.replicas scales the Deployment
+          # and adds its PDB (singleton workers stay leader-elected in-process).
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set controlPlane.mode=split --set controlPlane.opamp.replicas=3 | grep -c 'kind: PodDisruptionBudget')" = "3"
           # Control-plane NetworkPolicy: off by default; renders with restrictions.
           test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             | grep -c 'kind: NetworkPolicy')" = "0"

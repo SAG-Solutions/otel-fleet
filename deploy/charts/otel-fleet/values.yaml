@@ -67,10 +67,11 @@ external:
     remoteWriteUrl: "http://victoriametrics:8428/api/v1/write"
 
 controlPlane:
-  # all:   one deployment runs every role (simplest; OpAMP is a SPOF).
-  # split: a stateless API tier (HTTP + gRPC, scale to api.replicas) plus a
-  #        singleton OpAMP tier (WebSockets + background workers). Recommended
-  #        for production — the request path is no longer a single replica.
+  # all:   one deployment runs every role (simplest; single replica).
+  # split: a stateless API tier (HTTP + gRPC, scale to api.replicas) plus an
+  #        OpAMP tier (WebSockets + background workers, scale to opamp.replicas —
+  #        HA via advisory-lock leader election for the singleton workers).
+  #        Recommended for production.
   mode: all
   replicas: 1          # mode=all only: single combined replica
   api:
@@ -140,6 +141,12 @@ controlPlane:
   # the opentelemetry-operator and forwarding.mode=operator).
   distributor: publish
   opamp:
+    # mode=split only: OpAMP tier replica count. Safe to raise above 1 for HA —
+    # each replica owns its own agent WebSockets, every replica gets edge-config
+    # NOTIFYs (broadcast LISTEN) and pushes to its own agents, and the fleet-wide
+    # singletons (retention sweep, alert evaluator) run on exactly one replica
+    # via PostgreSQL advisory-lock leader election, failing over automatically.
+    replicas: 1
     service:
       # How edge agents (customer networks!) reach the OpAMP endpoint.
       type: ClusterIP   # set LoadBalancer or wire an ingress/gateway for production

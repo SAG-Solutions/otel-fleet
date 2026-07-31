@@ -1,6 +1,6 @@
 {{- $roles := list (dict "role" "all" "component" "control-plane" "replicas" .Values.controlPlane.replicas) }}
 {{- if eq .Values.controlPlane.mode "split" }}
-{{- $roles = list (dict "role" "api" "component" "api" "replicas" .Values.controlPlane.api.replicas) (dict "role" "opamp" "component" "opamp" "replicas" 1) }}
+{{- $roles = list (dict "role" "api" "component" "api" "replicas" .Values.controlPlane.api.replicas) (dict "role" "opamp" "component" "opamp" "replicas" .Values.controlPlane.opamp.replicas) }}
 {{- end }}
 {{- range $r := $roles }}
 apiVersion: apps/v1

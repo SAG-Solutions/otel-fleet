@@ -97,15 +97,37 @@ gateways run slim — that pipeline just needs a full-image collector to run.
 
 ## Control plane
 
+Two topologies, selected by `controlPlane.mode`:
+
 ```yaml
 controlPlane:
-  replicas: 1   # keep 1: OpAMP WebSockets are process-sticky
+  mode: all      # one deployment runs every role (simplest; single replica)
+  replicas: 1
 ```
 
-:::caution[Single replica, for now]
-Edge-agent OpAMP connections are stateful WebSockets bound to one process.
-Run **exactly one** control-plane replica until the multi-replica story
-(an OpAMP gateway) lands.
+```yaml
+controlPlane:
+  mode: split    # production: separate the request tier from the OpAMP tier
+  api:
+    replicas: 3  # stateless HTTP + gRPC — scale freely behind the Service
+  opamp:
+    replicas: 2  # HA OpAMP tier (see below)
+```
+
+`mode: all` is the simplest deployment: a single pod runs the API, the OpAMP
+WebSocket server, and the background workers. `mode: split` separates the
+**stateless API tier** (scale `api.replicas` freely) from the **OpAMP tier**.
+
+:::tip[The OpAMP tier is HA]
+Raise `opamp.replicas` above 1 for availability. Each replica owns the
+edge-agent WebSockets that land on it (via the OpAMP Service), and every
+replica receives edge-config change notifications (Postgres broadcast
+`LISTEN`/`NOTIFY`) and pushes to its own connected agents — no sticky sessions
+required. The two fleet-wide singleton workers — the **retention sweep** and the
+**alert evaluator** — run on exactly one replica at a time via PostgreSQL
+advisory-lock **leader election**, failing over automatically if that replica
+dies. So there are no duplicate alerts or double retention sweeps, and no single
+point of failure.
 :::
 
 ### Exposing OpAMP to edge agents
@@ -363,7 +385,8 @@ podDisruptionBudget:
 
 So the default single-replica `mode: all` gets a gateway PDB (replicas `2`) and
 no control-plane PDB; `mode: split` with `controlPlane.api.replicas > 1` adds a
-PDB for the API tier (never for the singleton OpAMP tier).
+PDB for the API tier, and `controlPlane.opamp.replicas > 1` adds one for the
+OpAMP tier too.
 
 ### Control-plane NetworkPolicy
 

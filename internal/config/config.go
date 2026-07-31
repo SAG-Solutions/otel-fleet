@@ -38,8 +38,10 @@ type Config struct {
 	// Role selects which listeners/workers this process runs:
 	//   all   — everything in one process (default; dev and small deployments)
 	//   api   — stateless request tier: HTTP + internal gRPC + ops (scale to N)
-	//   opamp — singleton worker tier: OpAMP WebSockets + edge-config listener +
-	//           webhook dispatcher + retention sweep + ops
+	//   opamp — worker tier: OpAMP WebSockets + edge-config listener +
+	//           webhook dispatcher + retention sweep + ops. Scales to N: the
+	//           fleet-wide singletons (retention, alerting) self-elect one
+	//           leader via a Postgres advisory lock (see internal/leader).
 	Role string
 
 	HTTPAddr  string
@@ -226,7 +228,8 @@ func Load() (*Config, error) {
 func (c *Config) RunsAPI() bool { return c.Role == "all" || c.Role == "api" }
 
 // RunsOpAMP reports whether this process runs the OpAMP server and the
-// singleton background workers (edge-config listener, webhooks, retention).
+// background workers (edge-config listener, webhooks, retention, alerting).
+// The tier scales horizontally; leader-elected workers guard the singletons.
 func (c *Config) RunsOpAMP() bool { return c.Role == "all" || c.Role == "opamp" }
 
 // IsAdminEmail reports whether email is listed in OTEL_FLEET_ADMIN_EMAILS.

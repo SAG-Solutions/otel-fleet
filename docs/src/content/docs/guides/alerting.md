@@ -83,8 +83,10 @@ when the value crosses the threshold.
 
 ### How evaluation works
 
-The evaluator runs on the singleton (`opamp`) tier, alongside retention and the
-webhook dispatcher. Every minute it:
+The evaluator runs on the `opamp` tier, alongside retention and the webhook
+dispatcher. With multiple OpAMP replicas it runs on exactly one at a time
+(PostgreSQL advisory-lock leader election), so alerts never fire twice. Every
+minute the leader:
 
 1. Loads all enabled rules.
 2. For each rule, computes the metric per in-scope customer over the window

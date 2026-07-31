@@ -32,6 +32,7 @@ import (
 	"github.com/sag-solutions/otel-fleet/internal/crypto"
 	"github.com/sag-solutions/otel-fleet/internal/ingestauth"
 	"github.com/sag-solutions/otel-fleet/internal/ingestauth/authv1"
+	"github.com/sag-solutions/otel-fleet/internal/leader"
 	"github.com/sag-solutions/otel-fleet/internal/opamp"
 	"github.com/sag-solutions/otel-fleet/internal/pgnotify"
 	"github.com/sag-solutions/otel-fleet/internal/pipelines"
@@ -287,16 +288,20 @@ func run(log *slog.Logger) error {
 			return nil
 		})
 		g.Go(func() error {
-			webhookDispatcher.Run(gctx) // drains the fleet-event queue
+			webhookDispatcher.Run(gctx) // drains the fleet-event queue (per-replica)
 			return nil
 		})
+		// The retention sweep and the alerting evaluator are fleet-wide (not
+		// connection-scoped): with multiple opamp replicas each would double-run,
+		// duplicating ClickHouse delete mutations / audit rows and, worse,
+		// duplicating alert notifications. Guard each behind a PostgreSQL
+		// advisory-lock leader so exactly one replica runs it, with automatic
+		// failover if that replica dies.
 		g.Go(func() error {
-			retentionSvc.Run(gctx) // per-customer retention sweep (singleton tier)
-			return nil
+			return leader.New(pool, "retention", log).Run(gctx, retentionSvc.Run)
 		})
 		g.Go(func() error {
-			alertingSvc.Run(gctx) // metric-threshold alert evaluation (singleton tier)
-			return nil
+			return leader.New(pool, "alerting", log).Run(gctx, alertingSvc.Run)
 		})
 	}
 

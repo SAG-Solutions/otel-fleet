@@ -2,11 +2,11 @@
 {{- /*
 Control-plane roles mirror the deployments rendered by control-plane.yaml.
 A PDB is emitted only for a workload with >1 replica — a budget over a single
-replica would block voluntary node drains (the singleton opamp tier included).
+replica would block voluntary node drains (a single-replica opamp tier included).
 */}}
 {{- $roles := list (dict "component" "control-plane" "replicas" .Values.controlPlane.replicas) }}
 {{- if eq .Values.controlPlane.mode "split" }}
-{{- $roles = list (dict "component" "api" "replicas" .Values.controlPlane.api.replicas) (dict "component" "opamp" "replicas" 1) }}
+{{- $roles = list (dict "component" "api" "replicas" .Values.controlPlane.api.replicas) (dict "component" "opamp" "replicas" .Values.controlPlane.opamp.replicas) }}
 {{- end }}
 {{- if .Values.gateway.enabled }}
 {{- $roles = append $roles (dict "component" "gateway" "replicas" .Values.gateway.replicas) }}
