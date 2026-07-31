@@ -203,7 +203,26 @@ func slackMessage(p Payload) map[string]any {
 		lines = append(lines, fmt.Sprintf("*%s:* %v", k, p.Detail[k]))
 	}
 	lines = append(lines, fmt.Sprintf("_%s_", p.OccurredAt.Format(time.RFC3339)))
-	return map[string]any{"text": strings.Join(lines, "\n")}
+	text := strings.Join(lines, "\n")
+	// Colour the message by alert severity (Slack attachment left-bar).
+	if sev, ok := p.Detail["severity"].(string); ok && sev != "" {
+		return map[string]any{"attachments": []map[string]any{{"color": severityColor(sev), "text": text, "mrkdwn_in": []string{"text"}}}}
+	}
+	return map[string]any{"text": text}
+}
+
+// severityColor maps an alert severity to a Slack attachment colour.
+func severityColor(severity string) string {
+	switch severity {
+	case store.AlertSeverityCritical:
+		return "#bb004e" // danger
+	case store.AlertSeverityWarning:
+		return "#ffcf00"
+	case store.AlertSeverityInfo:
+		return "#255bf5"
+	default:
+		return "#6c92f8"
+	}
 }
 
 // slackTitle maps an event type to an emoji + human title.

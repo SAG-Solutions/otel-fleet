@@ -253,6 +253,31 @@ func TestSlackChannelFormatsMessageAndSkipsSignature(t *testing.T) {
 	}
 }
 
+func TestSlackMessageColorsBySeverity(t *testing.T) {
+	// An alert payload with a severity renders as a coloured Slack attachment.
+	msg := slackMessage(Payload{
+		Event:      AlertFiring,
+		OccurredAt: time.Unix(0, 0).UTC(),
+		Detail:     map[string]any{"severity": store.AlertSeverityCritical, "rule": "cpu hot"},
+	})
+	atts, ok := msg["attachments"].([]map[string]any)
+	if !ok || len(atts) != 1 {
+		t.Fatalf("expected one attachment, got %#v", msg)
+	}
+	if atts[0]["color"] != severityColor(store.AlertSeverityCritical) {
+		t.Errorf("attachment color = %v, want critical color", atts[0]["color"])
+	}
+	text, _ := atts[0]["text"].(string)
+	if !strings.Contains(text, "cpu hot") || !strings.Contains(text, "Alert firing") {
+		t.Errorf("attachment text missing rule/title: %q", text)
+	}
+	// A payload without severity stays a plain {text} message.
+	plain := slackMessage(Payload{Event: "test", OccurredAt: time.Unix(0, 0).UTC()})
+	if _, ok := plain["text"].(string); !ok {
+		t.Errorf("non-severity message should be plain text, got %#v", plain)
+	}
+}
+
 func TestBuildPayloadEnrichesFromStore(t *testing.T) {
 	name := "edge-1"
 	cname := "ACME"

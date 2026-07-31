@@ -203,6 +203,7 @@ func (s *Service) evalRule(ctx context.Context, now time.Time, rule store.AlertR
 				OccurredAt: now.UTC(),
 				Detail: map[string]any{
 					"rule":          rule.Name,
+					"severity":      rule.Severity,
 					"customer":      ref.Name,
 					"metric":        rule.Metric,
 					"comparison":    rule.Comparison,
@@ -252,6 +253,7 @@ func (s *Service) evalPromQL(ctx context.Context, now time.Time, rule store.Aler
 			OccurredAt: now.UTC(),
 			Detail: map[string]any{
 				"rule":       rule.Name,
+				"severity":   rule.Severity,
 				"metric":     "promql",
 				"query":      rule.Query,
 				"comparison": rule.Comparison,

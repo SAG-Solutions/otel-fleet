@@ -557,6 +557,11 @@ export type AlertMetric = 'ingest_items' | 'error_logs' | 'promql';
  */
 export type AlertComparison = 'below' | 'above';
 
+/**
+ * Carried into the notification payload; colours Slack messages.
+ */
+export type AlertSeverity = 'info' | 'warning' | 'critical';
+
 export type AlertRule = {
     id: string;
     name: string;
@@ -571,6 +576,7 @@ export type AlertRule = {
      * Evaluation window in seconds (>= 60).
      */
     windowSeconds: number;
+    severity: AlertSeverity;
     /**
      * null = every active customer
      */
@@ -593,6 +599,7 @@ export type AlertRuleCreate = {
     comparison: AlertComparison;
     threshold: number;
     windowSeconds: number;
+    severity?: AlertSeverity;
     customerId?: string | null;
     channelIds?: Array<string>;
     enabled?: boolean;
@@ -605,6 +612,7 @@ export type AlertRuleUpdate = {
     comparison?: AlertComparison;
     threshold?: number;
     windowSeconds?: number;
+    severity?: AlertSeverity;
     channelIds?: Array<string>;
     enabled?: boolean;
 };

@@ -12,12 +12,12 @@ import (
 	"github.com/sag-solutions/otel-fleet/internal/audit"
 )
 
-const alertRuleCols = `id, name, metric, query, comparison, threshold, window_seconds, customer_id, channel_ids, enabled, created_at, updated_at`
+const alertRuleCols = `id, name, metric, query, comparison, threshold, window_seconds, severity, customer_id, channel_ids, enabled, created_at, updated_at`
 
 func scanAlertRule(row pgx.Row) (AlertRule, error) {
 	var r AlertRule
 	err := row.Scan(&r.ID, &r.Name, &r.Metric, &r.Query, &r.Comparison, &r.Threshold, &r.WindowSeconds,
-		&r.CustomerID, &r.ChannelIDs, &r.Enabled, &r.CreatedAt, &r.UpdatedAt)
+		&r.Severity, &r.CustomerID, &r.ChannelIDs, &r.Enabled, &r.CreatedAt, &r.UpdatedAt)
 	return r, err
 }
 
@@ -64,14 +64,17 @@ func (s *PG) CreateAlertRule(ctx context.Context, r NewAlertRule, entries []audi
 	if channels == nil {
 		channels = []uuid.UUID{}
 	}
+	if r.Severity == "" {
+		r.Severity = AlertSeverityWarning
+	}
 	var out AlertRule
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
 		var err error
 		out, err = scanAlertRule(tx.QueryRow(ctx, `
-			INSERT INTO alert_rules (id, name, metric, query, comparison, threshold, window_seconds, customer_id, channel_ids, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			INSERT INTO alert_rules (id, name, metric, query, comparison, threshold, window_seconds, severity, customer_id, channel_ids, enabled)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			RETURNING `+alertRuleCols,
-			r.ID, r.Name, r.Metric, r.Query, r.Comparison, r.Threshold, r.WindowSeconds, r.CustomerID, channels, r.Enabled))
+			r.ID, r.Name, r.Metric, r.Query, r.Comparison, r.Threshold, r.WindowSeconds, r.Severity, r.CustomerID, channels, r.Enabled))
 		if isForeignKeyViolation(err, "alert_rules_customer_id_fkey") {
 			return ErrNotFound
 		}
@@ -100,10 +103,11 @@ func (s *PG) UpdateAlertRule(ctx context.Context, id uuid.UUID, upd AlertRuleUpd
 			    channel_ids    = COALESCE($7, channel_ids),
 			    enabled        = COALESCE($8, enabled),
 			    query          = COALESCE($9, query),
+			    severity       = COALESCE($10, severity),
 			    updated_at     = now()
 			WHERE id = $1
 			RETURNING `+alertRuleCols,
-			id, upd.Name, upd.Metric, upd.Comparison, upd.Threshold, upd.WindowSeconds, upd.ChannelIDs, upd.Enabled, upd.Query))
+			id, upd.Name, upd.Metric, upd.Comparison, upd.Threshold, upd.WindowSeconds, upd.ChannelIDs, upd.Enabled, upd.Query, upd.Severity))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

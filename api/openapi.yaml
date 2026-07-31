@@ -2062,9 +2062,14 @@ components:
       enum: [below, above]
       description: "below fires when the value is under the threshold (e.g. ingest dropped); above when over it."
 
+    AlertSeverity:
+      type: string
+      enum: [info, warning, critical]
+      description: "Carried into the notification payload; colours Slack messages."
+
     AlertRule:
       type: object
-      required: [id, name, metric, comparison, threshold, windowSeconds, channelIds, enabled, createdAt]
+      required: [id, name, metric, comparison, threshold, windowSeconds, severity, channelIds, enabled, createdAt]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -2073,6 +2078,7 @@ components:
         comparison: { $ref: "#/components/schemas/AlertComparison" }
         threshold: { type: number }
         windowSeconds: { type: integer, description: Evaluation window in seconds (>= 60). }
+        severity: { $ref: "#/components/schemas/AlertSeverity" }
         customerId: { type: string, format: uuid, nullable: true, description: null = every active customer }
         channelIds:
           type: array
@@ -2091,6 +2097,7 @@ components:
         comparison: { $ref: "#/components/schemas/AlertComparison" }
         threshold: { type: number }
         windowSeconds: { type: integer, minimum: 60 }
+        severity: { allOf: [{ $ref: "#/components/schemas/AlertSeverity" }], default: warning }
         customerId: { type: string, format: uuid, nullable: true }
         channelIds:
           type: array
@@ -2106,6 +2113,7 @@ components:
         comparison: { $ref: "#/components/schemas/AlertComparison" }
         threshold: { type: number }
         windowSeconds: { type: integer, minimum: 60 }
+        severity: { $ref: "#/components/schemas/AlertSeverity" }
         channelIds:
           type: array
           items: { type: string, format: uuid }

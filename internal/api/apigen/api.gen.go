@@ -107,6 +107,27 @@ func (e AlertMetric) Valid() bool {
 	}
 }
 
+// Defines values for AlertSeverity.
+const (
+	Critical AlertSeverity = "critical"
+	Info     AlertSeverity = "info"
+	Warning  AlertSeverity = "warning"
+)
+
+// Valid indicates whether the value is a known member of the AlertSeverity enum.
+func (e AlertSeverity) Valid() bool {
+	switch e {
+	case Critical:
+		return true
+	case Info:
+		return true
+	case Warning:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AuditEntryActorType.
 const (
 	AuditEntryActorTypeAgent  AuditEntryActorType = "agent"
@@ -627,8 +648,11 @@ type AlertRule struct {
 	Name   string      `json:"name"`
 
 	// Query PromQL query (metric == promql only).
-	Query     *string `json:"query,omitempty"`
-	Threshold float32 `json:"threshold"`
+	Query *string `json:"query,omitempty"`
+
+	// Severity Carried into the notification payload; colours Slack messages.
+	Severity  AlertSeverity `json:"severity"`
+	Threshold float32       `json:"threshold"`
 
 	// WindowSeconds Evaluation window in seconds (>= 60).
 	WindowSeconds int `json:"windowSeconds"`
@@ -648,9 +672,10 @@ type AlertRuleCreate struct {
 	Name   string      `json:"name"`
 
 	// Query Required when metric == promql.
-	Query         *string `json:"query,omitempty"`
-	Threshold     float32 `json:"threshold"`
-	WindowSeconds int     `json:"windowSeconds"`
+	Query         *string        `json:"query,omitempty"`
+	Severity      *AlertSeverity `json:"severity,omitempty"`
+	Threshold     float32        `json:"threshold"`
+	WindowSeconds int            `json:"windowSeconds"`
 }
 
 // AlertRuleUpdate defines model for AlertRuleUpdate.
@@ -662,12 +687,18 @@ type AlertRuleUpdate struct {
 	Enabled    *bool            `json:"enabled,omitempty"`
 
 	// Metric ingest_items = sum of ingested items; error_logs = count of severity>=ERROR logs; promql = evaluate `query` against VictoriaMetrics (cluster/infra-wide, customerId must be null).
-	Metric        *AlertMetric `json:"metric,omitempty"`
-	Name          *string      `json:"name,omitempty"`
-	Query         *string      `json:"query,omitempty"`
-	Threshold     *float32     `json:"threshold,omitempty"`
-	WindowSeconds *int         `json:"windowSeconds,omitempty"`
+	Metric *AlertMetric `json:"metric,omitempty"`
+	Name   *string      `json:"name,omitempty"`
+	Query  *string      `json:"query,omitempty"`
+
+	// Severity Carried into the notification payload; colours Slack messages.
+	Severity      *AlertSeverity `json:"severity,omitempty"`
+	Threshold     *float32       `json:"threshold,omitempty"`
+	WindowSeconds *int           `json:"windowSeconds,omitempty"`
 }
+
+// AlertSeverity Carried into the notification payload; colours Slack messages.
+type AlertSeverity string
 
 // ApiKey defines model for ApiKey.
 type ApiKey struct {

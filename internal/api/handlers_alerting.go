@@ -23,6 +23,7 @@ func toAlertRule(r store.AlertRule) apigen.AlertRule {
 		Comparison:    apigen.AlertComparison(r.Comparison),
 		Threshold:     float32(r.Threshold),
 		WindowSeconds: r.WindowSeconds,
+		Severity:      apigen.AlertSeverity(r.Severity),
 		CustomerId:    r.CustomerID,
 		ChannelIds:    channels,
 		Enabled:       r.Enabled,
@@ -81,6 +82,13 @@ func (s *Server) CreateAlertRule(ctx context.Context, request apigen.CreateAlert
 	} else {
 		query = "" // non-promql rules carry no query
 	}
+	severity := store.AlertSeverityWarning
+	if b.Severity != nil {
+		if !b.Severity.Valid() {
+			return apigen.CreateAlertRule400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: "invalid severity"}}, nil
+		}
+		severity = string(*b.Severity)
+	}
 	nr := store.NewAlertRule{
 		ID:            uuid.New(),
 		Name:          b.Name,
@@ -89,6 +97,7 @@ func (s *Server) CreateAlertRule(ctx context.Context, request apigen.CreateAlert
 		Comparison:    comparison,
 		Threshold:     float64(b.Threshold),
 		WindowSeconds: b.WindowSeconds,
+		Severity:      severity,
 		CustomerID:    b.CustomerId,
 		Enabled:       b.Enabled == nil || *b.Enabled,
 	}
@@ -114,6 +123,13 @@ func (s *Server) CreateAlertRule(ctx context.Context, request apigen.CreateAlert
 func (s *Server) UpdateAlertRule(ctx context.Context, request apigen.UpdateAlertRuleRequestObject) (apigen.UpdateAlertRuleResponseObject, error) {
 	b := request.Body
 	upd := store.AlertRuleUpdate{Name: b.Name, Query: b.Query, WindowSeconds: b.WindowSeconds, Enabled: b.Enabled}
+	if b.Severity != nil {
+		if !b.Severity.Valid() {
+			return apigen.UpdateAlertRule400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: "invalid severity"}}, nil
+		}
+		sv := string(*b.Severity)
+		upd.Severity = &sv
+	}
 	if b.Metric != nil {
 		m := string(*b.Metric)
 		if !validAlertMetric(m) {

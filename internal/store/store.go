@@ -151,6 +151,9 @@ const (
 	AlertMetricPromQL      = "promql"
 	AlertComparisonBelow   = "below"
 	AlertComparisonAbove   = "above"
+	AlertSeverityInfo      = "info"
+	AlertSeverityWarning   = "warning"
+	AlertSeverityCritical  = "critical"
 )
 
 // AlertRule is a metric-threshold alert. CustomerID nil = all active customers.
@@ -162,6 +165,7 @@ type AlertRule struct {
 	Comparison    string
 	Threshold     float64
 	WindowSeconds int
+	Severity      string
 	CustomerID    *uuid.UUID
 	ChannelIDs    []uuid.UUID
 	Enabled       bool
@@ -177,6 +181,7 @@ type NewAlertRule struct {
 	Comparison    string
 	Threshold     float64
 	WindowSeconds int
+	Severity      string
 	CustomerID    *uuid.UUID
 	ChannelIDs    []uuid.UUID
 	Enabled       bool
@@ -191,6 +196,7 @@ type AlertRuleUpdate struct {
 	Comparison    *string
 	Threshold     *float64
 	WindowSeconds *int
+	Severity      *string
 	ChannelIDs    []uuid.UUID
 	Enabled       *bool
 }

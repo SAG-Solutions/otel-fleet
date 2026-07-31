@@ -351,10 +351,14 @@ func TestIntegrationAlertRules(t *testing.T) {
 	pq, err := testPG.CreateAlertRule(ctx, NewAlertRule{
 		ID: uuid.New(), Name: "node cpu " + uniq(), Metric: AlertMetricPromQL,
 		Query: `avg(node_cpu_usage)`, Comparison: AlertComparisonAbove, Threshold: 0.8,
-		WindowSeconds: 60, ChannelIDs: []uuid.UUID{ch}, Enabled: true,
+		WindowSeconds: 60, Severity: AlertSeverityCritical, ChannelIDs: []uuid.UUID{ch}, Enabled: true,
 	}, auditEntry("alertrule.create", "alert_rule", "pq"))
-	if err != nil || pq.Query != `avg(node_cpu_usage)` || pq.CustomerID != nil {
+	if err != nil || pq.Query != `avg(node_cpu_usage)` || pq.CustomerID != nil || pq.Severity != AlertSeverityCritical {
 		t.Fatalf("CreatePromQLAlertRule: %+v err=%v", pq, err)
+	}
+	// The first rule omitted severity → store defaults it to 'warning'.
+	if r.Severity != AlertSeverityWarning {
+		t.Fatalf("default severity = %q, want warning", r.Severity)
 	}
 	if _, err := testPG.ListAlertRules(ctx); err != nil {
 		t.Fatalf("ListAlertRules: %v", err)
