@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { activatePipelineVersion, createAlertRule, createApiKey, createApiToken, createAuthProviderConfig, createBootstrapToken, createCustomer, createMaintenanceWindow, createPipeline, createPipelineVersion, createWebhook, deleteAgent, deleteAlertRule, deleteAuthProviderConfig, deleteCustomer, deleteMaintenanceWindow, deletePipeline, deleteUser, deleteWebhook, devLogin, getAgent, getAgentConfig, getBillingSettings, getBillingStatement, getComponentCatalog, getCostStats, getCustomer, getCustomerThroughput, getMe, getPipeline, getPipelineStageStats, getPipelineVersion, getStatsOverview, getTrace, inviteUser, listAgentEvents, listAgents, listAlertRules, listApiKeys, listApiTokens, listAuditLog, listAuthProviderConfigs, listAuthProviders, listBootstrapTokens, listCustomerPipelines, listCustomers, listMaintenanceWindows, listPipelines, listUsers, listWebhooks, logout, type Options, queryLogs, queryMetricsRange, queryTraces, revokeApiKey, revokeApiToken, revokeBootstrapToken, syncAgent, testAuthProviderConfig, testWebhook, updateAgent, updateAlertRule, updateAuthProviderConfig, updateBillingSettings, updateCustomer, updateUser, updateWebhook, validatePipeline } from '../sdk.gen';
-import type { ActivatePipelineVersionData, ActivatePipelineVersionError, ActivatePipelineVersionResponse, CreateAlertRuleData, CreateAlertRuleError, CreateAlertRuleResponse, CreateApiKeyData, CreateApiKeyError, CreateApiKeyResponse, CreateApiTokenData, CreateApiTokenError, CreateApiTokenResponse, CreateAuthProviderConfigData, CreateAuthProviderConfigError, CreateAuthProviderConfigResponse, CreateBootstrapTokenData, CreateBootstrapTokenError, CreateBootstrapTokenResponse, CreateCustomerData, CreateCustomerError, CreateCustomerResponse, CreateMaintenanceWindowData, CreateMaintenanceWindowError, CreateMaintenanceWindowResponse, CreatePipelineData, CreatePipelineError, CreatePipelineResponse, CreatePipelineVersionData, CreatePipelineVersionError, CreatePipelineVersionResponse, CreateWebhookData, CreateWebhookError, CreateWebhookResponse, DeleteAgentData, DeleteAgentError, DeleteAgentResponse, DeleteAlertRuleData, DeleteAlertRuleError, DeleteAlertRuleResponse, DeleteAuthProviderConfigData, DeleteAuthProviderConfigError, DeleteAuthProviderConfigResponse, DeleteCustomerData, DeleteCustomerError, DeleteCustomerResponse, DeleteMaintenanceWindowData, DeleteMaintenanceWindowError, DeleteMaintenanceWindowResponse, DeletePipelineData, DeletePipelineError, DeletePipelineResponse, DeleteUserData, DeleteUserError, DeleteUserResponse, DeleteWebhookData, DeleteWebhookError, DeleteWebhookResponse, DevLoginData, DevLoginError, DevLoginResponse, GetAgentConfigData, GetAgentConfigError, GetAgentConfigResponse, GetAgentData, GetAgentError, GetAgentResponse, GetBillingSettingsData, GetBillingSettingsError, GetBillingSettingsResponse, GetBillingStatementData, GetBillingStatementError, GetBillingStatementResponse, GetComponentCatalogData, GetComponentCatalogError, GetComponentCatalogResponse, GetCostStatsData, GetCostStatsError, GetCostStatsResponse, GetCustomerData, GetCustomerError, GetCustomerResponse, GetCustomerThroughputData, GetCustomerThroughputError, GetCustomerThroughputResponse, GetMeData, GetMeError, GetMeResponse, GetPipelineData, GetPipelineError, GetPipelineResponse, GetPipelineStageStatsData, GetPipelineStageStatsError, GetPipelineStageStatsResponse, GetPipelineVersionData, GetPipelineVersionError, GetPipelineVersionResponse, GetStatsOverviewData, GetStatsOverviewError, GetStatsOverviewResponse, GetTraceData, GetTraceError, GetTraceResponse, InviteUserData, InviteUserError, InviteUserResponse, ListAgentEventsData, ListAgentEventsError, ListAgentEventsResponse, ListAgentsData, ListAgentsError, ListAgentsResponse, ListAlertRulesData, ListAlertRulesError, ListAlertRulesResponse, ListApiKeysData, ListApiKeysError, ListApiKeysResponse, ListApiTokensData, ListApiTokensError, ListApiTokensResponse, ListAuditLogData, ListAuditLogError, ListAuditLogResponse, ListAuthProviderConfigsData, ListAuthProviderConfigsError, ListAuthProviderConfigsResponse, ListAuthProvidersData, ListAuthProvidersResponse, ListBootstrapTokensData, ListBootstrapTokensError, ListBootstrapTokensResponse, ListCustomerPipelinesData, ListCustomerPipelinesError, ListCustomerPipelinesResponse, ListCustomersData, ListCustomersError, ListCustomersResponse, ListMaintenanceWindowsData, ListMaintenanceWindowsError, ListMaintenanceWindowsResponse, ListPipelinesData, ListPipelinesError, ListPipelinesResponse, ListUsersData, ListUsersError, ListUsersResponse, ListWebhooksData, ListWebhooksError, ListWebhooksResponse, LogoutData, LogoutResponse, QueryLogsData, QueryLogsError, QueryLogsResponse, QueryMetricsRangeData, QueryMetricsRangeError, QueryMetricsRangeResponse, QueryTracesData, QueryTracesError, QueryTracesResponse, RevokeApiKeyData, RevokeApiKeyError, RevokeApiKeyResponse, RevokeApiTokenData, RevokeApiTokenError, RevokeApiTokenResponse, RevokeBootstrapTokenData, RevokeBootstrapTokenError, RevokeBootstrapTokenResponse, SyncAgentData, SyncAgentError, SyncAgentResponse, TestAuthProviderConfigData, TestAuthProviderConfigError, TestAuthProviderConfigResponse, TestWebhookData, TestWebhookError, TestWebhookResponse, UpdateAgentData, UpdateAgentError, UpdateAgentResponse, UpdateAlertRuleData, UpdateAlertRuleError, UpdateAlertRuleResponse, UpdateAuthProviderConfigData, UpdateAuthProviderConfigError, UpdateAuthProviderConfigResponse, UpdateBillingSettingsData, UpdateBillingSettingsError, UpdateBillingSettingsResponse, UpdateCustomerData, UpdateCustomerError, UpdateCustomerResponse, UpdateUserData, UpdateUserError, UpdateUserResponse, UpdateWebhookData, UpdateWebhookError, UpdateWebhookResponse, ValidatePipelineData, ValidatePipelineError, ValidatePipelineResponse } from '../types.gen';
+import { activatePipelineVersion, createAlertRule, createApiKey, createApiToken, createAuthProviderConfig, createBootstrapToken, createCustomer, createMaintenanceWindow, createPipeline, createPipelineVersion, createWebhook, deleteAgent, deleteAlertRule, deleteAuthProviderConfig, deleteCustomer, deleteMaintenanceWindow, deletePipeline, deleteUser, deleteWebhook, devLogin, getAgent, getAgentConfig, getBillingSettings, getBillingStatement, getComponentCatalog, getCostStats, getCustomer, getCustomerThroughput, getMe, getPipeline, getPipelineStageStats, getPipelineVersion, getStatsOverview, getTrace, inviteUser, listAgentEvents, listAgents, listAlertRules, listApiKeys, listApiTokens, listAuditLog, listAuthProviderConfigs, listAuthProviders, listBootstrapTokens, listCustomerPipelines, listCustomers, listMaintenanceWindows, listPipelines, listUsers, listWebhooks, logout, type Options, queryCustomerMetricsRange, queryLogs, queryMetricsRange, queryTraces, revokeApiKey, revokeApiToken, revokeBootstrapToken, syncAgent, testAuthProviderConfig, testWebhook, updateAgent, updateAlertRule, updateAuthProviderConfig, updateBillingSettings, updateCustomer, updateUser, updateWebhook, validatePipeline } from '../sdk.gen';
+import type { ActivatePipelineVersionData, ActivatePipelineVersionError, ActivatePipelineVersionResponse, CreateAlertRuleData, CreateAlertRuleError, CreateAlertRuleResponse, CreateApiKeyData, CreateApiKeyError, CreateApiKeyResponse, CreateApiTokenData, CreateApiTokenError, CreateApiTokenResponse, CreateAuthProviderConfigData, CreateAuthProviderConfigError, CreateAuthProviderConfigResponse, CreateBootstrapTokenData, CreateBootstrapTokenError, CreateBootstrapTokenResponse, CreateCustomerData, CreateCustomerError, CreateCustomerResponse, CreateMaintenanceWindowData, CreateMaintenanceWindowError, CreateMaintenanceWindowResponse, CreatePipelineData, CreatePipelineError, CreatePipelineResponse, CreatePipelineVersionData, CreatePipelineVersionError, CreatePipelineVersionResponse, CreateWebhookData, CreateWebhookError, CreateWebhookResponse, DeleteAgentData, DeleteAgentError, DeleteAgentResponse, DeleteAlertRuleData, DeleteAlertRuleError, DeleteAlertRuleResponse, DeleteAuthProviderConfigData, DeleteAuthProviderConfigError, DeleteAuthProviderConfigResponse, DeleteCustomerData, DeleteCustomerError, DeleteCustomerResponse, DeleteMaintenanceWindowData, DeleteMaintenanceWindowError, DeleteMaintenanceWindowResponse, DeletePipelineData, DeletePipelineError, DeletePipelineResponse, DeleteUserData, DeleteUserError, DeleteUserResponse, DeleteWebhookData, DeleteWebhookError, DeleteWebhookResponse, DevLoginData, DevLoginError, DevLoginResponse, GetAgentConfigData, GetAgentConfigError, GetAgentConfigResponse, GetAgentData, GetAgentError, GetAgentResponse, GetBillingSettingsData, GetBillingSettingsError, GetBillingSettingsResponse, GetBillingStatementData, GetBillingStatementError, GetBillingStatementResponse, GetComponentCatalogData, GetComponentCatalogError, GetComponentCatalogResponse, GetCostStatsData, GetCostStatsError, GetCostStatsResponse, GetCustomerData, GetCustomerError, GetCustomerResponse, GetCustomerThroughputData, GetCustomerThroughputError, GetCustomerThroughputResponse, GetMeData, GetMeError, GetMeResponse, GetPipelineData, GetPipelineError, GetPipelineResponse, GetPipelineStageStatsData, GetPipelineStageStatsError, GetPipelineStageStatsResponse, GetPipelineVersionData, GetPipelineVersionError, GetPipelineVersionResponse, GetStatsOverviewData, GetStatsOverviewError, GetStatsOverviewResponse, GetTraceData, GetTraceError, GetTraceResponse, InviteUserData, InviteUserError, InviteUserResponse, ListAgentEventsData, ListAgentEventsError, ListAgentEventsResponse, ListAgentsData, ListAgentsError, ListAgentsResponse, ListAlertRulesData, ListAlertRulesError, ListAlertRulesResponse, ListApiKeysData, ListApiKeysError, ListApiKeysResponse, ListApiTokensData, ListApiTokensError, ListApiTokensResponse, ListAuditLogData, ListAuditLogError, ListAuditLogResponse, ListAuthProviderConfigsData, ListAuthProviderConfigsError, ListAuthProviderConfigsResponse, ListAuthProvidersData, ListAuthProvidersResponse, ListBootstrapTokensData, ListBootstrapTokensError, ListBootstrapTokensResponse, ListCustomerPipelinesData, ListCustomerPipelinesError, ListCustomerPipelinesResponse, ListCustomersData, ListCustomersError, ListCustomersResponse, ListMaintenanceWindowsData, ListMaintenanceWindowsError, ListMaintenanceWindowsResponse, ListPipelinesData, ListPipelinesError, ListPipelinesResponse, ListUsersData, ListUsersError, ListUsersResponse, ListWebhooksData, ListWebhooksError, ListWebhooksResponse, LogoutData, LogoutResponse, QueryCustomerMetricsRangeData, QueryCustomerMetricsRangeError, QueryCustomerMetricsRangeResponse, QueryLogsData, QueryLogsError, QueryLogsResponse, QueryMetricsRangeData, QueryMetricsRangeError, QueryMetricsRangeResponse, QueryTracesData, QueryTracesError, QueryTracesResponse, RevokeApiKeyData, RevokeApiKeyError, RevokeApiKeyResponse, RevokeApiTokenData, RevokeApiTokenError, RevokeApiTokenResponse, RevokeBootstrapTokenData, RevokeBootstrapTokenError, RevokeBootstrapTokenResponse, SyncAgentData, SyncAgentError, SyncAgentResponse, TestAuthProviderConfigData, TestAuthProviderConfigError, TestAuthProviderConfigResponse, TestWebhookData, TestWebhookError, TestWebhookResponse, UpdateAgentData, UpdateAgentError, UpdateAgentResponse, UpdateAlertRuleData, UpdateAlertRuleError, UpdateAlertRuleResponse, UpdateAuthProviderConfigData, UpdateAuthProviderConfigError, UpdateAuthProviderConfigResponse, UpdateBillingSettingsData, UpdateBillingSettingsError, UpdateBillingSettingsResponse, UpdateCustomerData, UpdateCustomerError, UpdateCustomerResponse, UpdateUserData, UpdateUserError, UpdateUserResponse, UpdateWebhookData, UpdateWebhookError, UpdateWebhookResponse, ValidatePipelineData, ValidatePipelineError, ValidatePipelineResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -265,6 +265,89 @@ export const getStatsOverviewOptions = (options: Options<GetStatsOverviewData>) 
     },
     queryKey: getStatsOverviewQueryKey(options)
 });
+
+export const queryCustomerMetricsRangeQueryKey = (options: Options<QueryCustomerMetricsRangeData>) => createQueryKey('queryCustomerMetricsRange', options);
+
+/**
+ * Scoped range PromQL query for one customer's metrics
+ *
+ * Runs a range PromQL query against VictoriaMetrics, scoped to this customer: the server applies an `extra_filters[]` matcher (tenant_id="<clientId>") to every selector, so the caller can run any PromQL but only ever sees this tenant's series. Requires access to the customer (portal users can query their own tenant).
+ *
+ */
+export const queryCustomerMetricsRangeOptions = (options: Options<QueryCustomerMetricsRangeData>) => queryOptions<QueryCustomerMetricsRangeResponse, QueryCustomerMetricsRangeError, QueryCustomerMetricsRangeResponse, ReturnType<typeof queryCustomerMetricsRangeQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await queryCustomerMetricsRange({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: queryCustomerMetricsRangeQueryKey(options)
+});
+
+const createInfiniteParams = <K extends Pick<QueryKey<Options>[0], 'body' | 'headers' | 'path' | 'query'>>(queryKey: QueryKey<Options>, page: K) => {
+    const params = { ...queryKey[0] };
+    if (page.body) {
+        params.body = {
+            ...queryKey[0].body as any,
+            ...page.body as any
+        };
+    }
+    if (page.headers) {
+        params.headers = {
+            ...queryKey[0].headers,
+            ...page.headers
+        };
+    }
+    if (page.path) {
+        params.path = {
+            ...queryKey[0].path as any,
+            ...page.path as any
+        };
+    }
+    if (page.query) {
+        params.query = {
+            ...queryKey[0].query as any,
+            ...page.query as any
+        };
+    }
+    return params as unknown as typeof page;
+};
+
+export const queryCustomerMetricsRangeInfiniteQueryKey = (options: Options<QueryCustomerMetricsRangeData>): QueryKey<Options<QueryCustomerMetricsRangeData>> => createQueryKey('queryCustomerMetricsRange', options, true);
+
+/**
+ * Scoped range PromQL query for one customer's metrics
+ *
+ * Runs a range PromQL query against VictoriaMetrics, scoped to this customer: the server applies an `extra_filters[]` matcher (tenant_id="<clientId>") to every selector, so the caller can run any PromQL but only ever sees this tenant's series. Requires access to the customer (portal users can query their own tenant).
+ *
+ */
+export const queryCustomerMetricsRangeInfiniteOptions = (options: Options<QueryCustomerMetricsRangeData>) => {
+    const opts = infiniteQueryOptions<QueryCustomerMetricsRangeResponse, QueryCustomerMetricsRangeError, InfiniteData<QueryCustomerMetricsRangeResponse>, QueryKey<Options<QueryCustomerMetricsRangeData>>, string | Pick<QueryKey<Options<QueryCustomerMetricsRangeData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
+    // @ts-ignore
+    {
+        queryFn: async ({ pageParam, queryKey, signal }) => {
+            // @ts-ignore
+            const page: Pick<QueryKey<Options<QueryCustomerMetricsRangeData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
+                query: {
+                    start: pageParam
+                }
+            };
+            const params = createInfiniteParams(queryKey, page);
+            const { data } = await queryCustomerMetricsRange({
+                ...options,
+                ...params,
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: queryCustomerMetricsRangeInfiniteQueryKey(options)
+    });
+    return opts as Omit<typeof opts, 'initialData'>;
+};
 
 export const getCustomerThroughputQueryKey = (options: Options<GetCustomerThroughputData>) => createQueryKey('getCustomerThroughput', options);
 
@@ -917,35 +1000,6 @@ export const queryMetricsRangeOptions = (options: Options<QueryMetricsRangeData>
     },
     queryKey: queryMetricsRangeQueryKey(options)
 });
-
-const createInfiniteParams = <K extends Pick<QueryKey<Options>[0], 'body' | 'headers' | 'path' | 'query'>>(queryKey: QueryKey<Options>, page: K) => {
-    const params = { ...queryKey[0] };
-    if (page.body) {
-        params.body = {
-            ...queryKey[0].body as any,
-            ...page.body as any
-        };
-    }
-    if (page.headers) {
-        params.headers = {
-            ...queryKey[0].headers,
-            ...page.headers
-        };
-    }
-    if (page.path) {
-        params.path = {
-            ...queryKey[0].path as any,
-            ...page.path as any
-        };
-    }
-    if (page.query) {
-        params.query = {
-            ...queryKey[0].query as any,
-            ...page.query as any
-        };
-    }
-    return params as unknown as typeof page;
-};
 
 export const queryMetricsRangeInfiniteQueryKey = (options: Options<QueryMetricsRangeData>): QueryKey<Options<QueryMetricsRangeData>> => createQueryKey('queryMetricsRange', options, true);
 

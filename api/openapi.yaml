@@ -261,6 +261,41 @@ paths:
               schema: { $ref: "#/components/schemas/StatsOverview" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /api/v1/customers/{customerId}/metrics/query_range:
+    get:
+      tags: [stats]
+      operationId: queryCustomerMetricsRange
+      summary: Scoped range PromQL query for one customer's metrics
+      description: >
+        Runs a range PromQL query against VictoriaMetrics, scoped to this
+        customer: the server applies an `extra_filters[]` matcher
+        (tenant_id="<clientId>") to every selector, so the caller can run any
+        PromQL but only ever sees this tenant's series. Requires access to the
+        customer (portal users can query their own tenant).
+      parameters:
+        - { name: customerId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: query, in: query, required: true, schema: { type: string, minLength: 1 } }
+        - { name: start, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: end, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: step, in: query, required: true, schema: { type: string, pattern: "^[0-9]+(ns|us|ms|s|m|h)$" } }
+      responses:
+        "200":
+          description: Matrix result (scoped to the customer)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [series]
+                properties:
+                  series:
+                    type: array
+                    items: { $ref: "#/components/schemas/MetricSeries" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailable" }
+
   /api/v1/customers/{customerId}/stats/throughput:
     get:
       tags: [stats]

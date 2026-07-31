@@ -1462,6 +1462,14 @@ type QueryLogsParams struct {
 	Before *time.Time `form:"before,omitempty" json:"before,omitempty"`
 }
 
+// QueryCustomerMetricsRangeParams defines parameters for QueryCustomerMetricsRange.
+type QueryCustomerMetricsRangeParams struct {
+	Query string    `form:"query" json:"query"`
+	Start time.Time `form:"start" json:"start"`
+	End   time.Time `form:"end" json:"end"`
+	Step  string    `form:"step" json:"step"`
+}
+
 // CreatePipelineJSONBody defines parameters for CreatePipeline.
 type CreatePipelineJSONBody struct {
 	// Graph UI pipeline model. The receiver side is implicit: the customer's ingested stream, routed by tenant.id into this pipeline on the forwarding tier.
@@ -1701,6 +1709,9 @@ type ServerInterface interface {
 	// Search a customer's stored logs (newest first)
 	// (GET /api/v1/customers/{customerId}/logs)
 	QueryLogs(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID, params QueryLogsParams)
+	// Scoped range PromQL query for one customer's metrics
+	// (GET /api/v1/customers/{customerId}/metrics/query_range)
+	QueryCustomerMetricsRange(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID, params QueryCustomerMetricsRangeParams)
 	// List pipelines of a customer
 	// (GET /api/v1/customers/{customerId}/pipelines)
 	ListCustomerPipelines(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID)
@@ -1983,6 +1994,12 @@ func (_ Unimplemented) RevokeBootstrapToken(w http.ResponseWriter, r *http.Reque
 // Search a customer's stored logs (newest first)
 // (GET /api/v1/customers/{customerId}/logs)
 func (_ Unimplemented) QueryLogs(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID, params QueryLogsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Scoped range PromQL query for one customer's metrics
+// (GET /api/v1/customers/{customerId}/metrics/query_range)
+func (_ Unimplemented) QueryCustomerMetricsRange(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID, params QueryCustomerMetricsRangeParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3107,6 +3124,87 @@ func (siw *ServerInterfaceWrapper) QueryLogs(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.QueryLogs(w, r, customerId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// QueryCustomerMetricsRange operation middleware
+func (siw *ServerInterfaceWrapper) QueryCustomerMetricsRange(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "customerId" -------------
+	var customerId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "customerId", chi.URLParam(r, "customerId"), &customerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "customerId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params QueryCustomerMetricsRangeParams
+
+	// ------------- Required query parameter "query" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "query", r.URL.Query(), &params.Query, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "query"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "query", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "start" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "start", r.URL.Query(), &params.Start, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "start"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "start", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "end" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "end", r.URL.Query(), &params.End, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "end"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "end", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "step" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "step", r.URL.Query(), &params.Step, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "step"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "step", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.QueryCustomerMetricsRange(w, r, customerId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4521,6 +4619,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/customers/{customerId}/logs", wrapper.QueryLogs)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/customers/{customerId}/metrics/query_range", wrapper.QueryCustomerMetricsRange)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/customers/{customerId}/pipelines", wrapper.ListCustomerPipelines)
@@ -6029,6 +6130,103 @@ func (response QueryLogs404JSONResponse) VisitQueryLogsResponse(w http.ResponseW
 type QueryLogs503JSONResponse Error
 
 func (response QueryLogs503JSONResponse) VisitQueryLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryCustomerMetricsRangeRequestObject struct {
+	CustomerId openapi_types.UUID `json:"customerId"`
+	Params     QueryCustomerMetricsRangeParams
+}
+
+type QueryCustomerMetricsRangeResponseObject interface {
+	VisitQueryCustomerMetricsRangeResponse(w http.ResponseWriter) error
+}
+
+type QueryCustomerMetricsRange200JSONResponse struct {
+	Series []MetricSeries `json:"series"`
+}
+
+func (response QueryCustomerMetricsRange200JSONResponse) VisitQueryCustomerMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryCustomerMetricsRange400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response QueryCustomerMetricsRange400JSONResponse) VisitQueryCustomerMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryCustomerMetricsRange401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response QueryCustomerMetricsRange401JSONResponse) VisitQueryCustomerMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryCustomerMetricsRange403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response QueryCustomerMetricsRange403JSONResponse) VisitQueryCustomerMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryCustomerMetricsRange404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response QueryCustomerMetricsRange404JSONResponse) VisitQueryCustomerMetricsRangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryCustomerMetricsRange503JSONResponse struct {
+	UpstreamUnavailableJSONResponse
+}
+
+func (response QueryCustomerMetricsRange503JSONResponse) VisitQueryCustomerMetricsRangeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -8682,6 +8880,9 @@ type StrictServerInterface interface {
 	// Search a customer's stored logs (newest first)
 	// (GET /api/v1/customers/{customerId}/logs)
 	QueryLogs(ctx context.Context, request QueryLogsRequestObject) (QueryLogsResponseObject, error)
+	// Scoped range PromQL query for one customer's metrics
+	// (GET /api/v1/customers/{customerId}/metrics/query_range)
+	QueryCustomerMetricsRange(ctx context.Context, request QueryCustomerMetricsRangeRequestObject) (QueryCustomerMetricsRangeResponseObject, error)
 	// List pipelines of a customer
 	// (GET /api/v1/customers/{customerId}/pipelines)
 	ListCustomerPipelines(ctx context.Context, request ListCustomerPipelinesRequestObject) (ListCustomerPipelinesResponseObject, error)
@@ -9521,6 +9722,33 @@ func (sh *strictHandler) QueryLogs(w http.ResponseWriter, r *http.Request, custo
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(QueryLogsResponseObject); ok {
 		if err := validResponse.VisitQueryLogsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// QueryCustomerMetricsRange operation middleware
+func (sh *strictHandler) QueryCustomerMetricsRange(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID, params QueryCustomerMetricsRangeParams) {
+	var request QueryCustomerMetricsRangeRequestObject
+
+	request.CustomerId = customerId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.QueryCustomerMetricsRange(ctx, request.(QueryCustomerMetricsRangeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "QueryCustomerMetricsRange")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(QueryCustomerMetricsRangeResponseObject); ok {
+		if err := validResponse.VisitQueryCustomerMetricsRangeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -31,15 +31,32 @@ type MetricSeries struct {
 // VictoriaMetrics' /api/v1/query_range and returns the matrix. Admin-only at
 // the API layer — it can read every metric, including per-tenant self-telemetry.
 func (s *Service) QueryRange(ctx context.Context, query string, from, to time.Time, step time.Duration) ([]MetricSeries, error) {
+	return s.queryRange(ctx, query, from, to, step, nil)
+}
+
+// QueryRangeScoped is QueryRange with VictoriaMetrics `extra_filters[]` label
+// matchers applied to EVERY selector in the query, server-side. Used for
+// per-tenant queries: the caller passes {tenant_id="<clientID>"} so a scoped
+// user can run arbitrary PromQL but only ever sees their own tenant's series
+// (no query-injection risk — VM enforces the filter, not string concatenation).
+func (s *Service) QueryRangeScoped(ctx context.Context, query string, from, to time.Time, step time.Duration, extraFilters []string) ([]MetricSeries, error) {
+	return s.queryRange(ctx, query, from, to, step, extraFilters)
+}
+
+func (s *Service) queryRange(ctx context.Context, query string, from, to time.Time, step time.Duration, extraFilters []string) ([]MetricSeries, error) {
 	if s.vmURL == "" {
 		return nil, ErrUpstreamUnavailable
 	}
-	u := s.vmURL + "/api/v1/query_range?" + url.Values{
+	vals := url.Values{
 		"query": {query},
 		"start": {strconv.FormatInt(from.Unix(), 10)},
 		"end":   {strconv.FormatInt(to.Unix(), 10)},
 		"step":  {strconv.FormatFloat(step.Seconds(), 'f', -1, 64)},
-	}.Encode()
+	}
+	for _, f := range extraFilters {
+		vals.Add("extra_filters[]", f)
+	}
+	u := s.vmURL + "/api/v1/query_range?" + vals.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err

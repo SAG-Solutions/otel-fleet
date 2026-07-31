@@ -1220,6 +1220,56 @@ export type GetStatsOverviewResponses = {
 
 export type GetStatsOverviewResponse = GetStatsOverviewResponses[keyof GetStatsOverviewResponses];
 
+export type QueryCustomerMetricsRangeData = {
+    body?: never;
+    path: {
+        customerId: string;
+    };
+    query: {
+        query: string;
+        start: string;
+        end: string;
+        step: string;
+    };
+    url: '/api/v1/customers/{customerId}/metrics/query_range';
+};
+
+export type QueryCustomerMetricsRangeErrors = {
+    /**
+     * Validation error
+     */
+    400: Error;
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+    /**
+     * Resource not found
+     */
+    404: Error;
+    /**
+     * An upstream store (VictoriaMetrics/ClickHouse) is unavailable
+     */
+    503: Error;
+};
+
+export type QueryCustomerMetricsRangeError = QueryCustomerMetricsRangeErrors[keyof QueryCustomerMetricsRangeErrors];
+
+export type QueryCustomerMetricsRangeResponses = {
+    /**
+     * Matrix result (scoped to the customer)
+     */
+    200: {
+        series: Array<MetricSeries>;
+    };
+};
+
+export type QueryCustomerMetricsRangeResponse = QueryCustomerMetricsRangeResponses[keyof QueryCustomerMetricsRangeResponses];
+
 export type GetCustomerThroughputData = {
     body?: never;
     path: {
