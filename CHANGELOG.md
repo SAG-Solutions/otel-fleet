@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.6.0...v0.7.0) (2026-07-30)
+
+
+### Features
+
+* **alerting:** PromQL alert rules evaluated against VictoriaMetrics ([43271a9](https://github.com/SAG-Solutions/otel-fleet/commit/43271a9f09be6eda3a1a76af29a24c87080eeae9))
+* **alerting:** PromQL rule form + cluster-monitoring docs ([09b6e7b](https://github.com/SAG-Solutions/otel-fleet/commit/09b6e7b24ab8f4d2907000e97ff48adde4629532))
+* **cluster-monitoring:** OTel-native kube-prometheus-stack alternative ([3f4acd5](https://github.com/SAG-Solutions/otel-fleet/commit/3f4acd5a25e695f62bdb4f76f1274c27613a6bcf))
+* **metrics:** admin Infrastructure view (cluster metrics in the UI) ([d39279b](https://github.com/SAG-Solutions/otel-fleet/commit/d39279b1d9756c27b696a450646ceb6394ef92f0))
+* **metrics:** admin PromQL query_range proxy to VictoriaMetrics ([a16e21b](https://github.com/SAG-Solutions/otel-fleet/commit/a16e21bf062ef13eac3ab9aec551eedeb72e7f86))
+* **pipelines:** backend exporter presets + more exporters ([ddb8a22](https://github.com/SAG-Solutions/otel-fleet/commit/ddb8a2233aa53c28a5523434f7f9a02336c97578))
+* **pipelines:** exporter preset gallery with backend icons ([efd7b77](https://github.com/SAG-Solutions/otel-fleet/commit/efd7b7701286b1bddfd19620016705295407e4e0))
+
 ## [0.6.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.5.2...v0.6.0) (2026-07-29)
 
 
