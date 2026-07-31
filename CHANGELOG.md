@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.7.0...v0.8.0) (2026-07-31)
+
+
+### Features
+
+* **alerting:** maintenance windows (silence all firing while active) ([d460ccc](https://github.com/SAG-Solutions/otel-fleet/commit/d460ccc5eddcfb398da74f39eac4399c0f791740))
+* **alerting:** maintenance windows UI + docs ([9dba6c5](https://github.com/SAG-Solutions/otel-fleet/commit/9dba6c5946c9ce374a9b7b1dd390a3a5a68d0680))
+* **alerting:** per-rule severity (info/warning/critical) ([55afcf1](https://github.com/SAG-Solutions/otel-fleet/commit/55afcf10894a369775a658aa4a19daa5447c8375))
+* **alerting:** severity select + badge in the alert rules UI ([fcd570b](https://github.com/SAG-Solutions/otel-fleet/commit/fcd570bd35b1a450482e0a7eccf12121e75ce380))
+* **collector:** slim collector distro variant ([bed12fc](https://github.com/SAG-Solutions/otel-fleet/commit/bed12fc4e9fc922cf020115b73cb6c34d52a1698))
+* **crypto:** zero-downtime master-key rotation ([747c82c](https://github.com/SAG-Solutions/otel-fleet/commit/747c82cbe7a5734149dcb07d2fbe5dd0cf15b758))
+* **metrics:** per-customer Metrics tab (tenant-scoped PromQL) ([32240ba](https://github.com/SAG-Solutions/otel-fleet/commit/32240bacb778990ecb5f8bf4e1e7f1c5c92790b9))
+* **metrics:** scoped per-customer PromQL query endpoint ([81a6fc7](https://github.com/SAG-Solutions/otel-fleet/commit/81a6fc76b916fd8491c3e1b4d2dd725c33b32e7a))
+* **opamp:** HA OpAMP tier via advisory-lock leader election ([0a5f3ac](https://github.com/SAG-Solutions/otel-fleet/commit/0a5f3ac48063449d7a6452a1496fba7740892ead))
+
 ## [0.7.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.6.0...v0.7.0) (2026-07-30)
 
 
