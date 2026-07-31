@@ -302,6 +302,36 @@ func (s *Server) ListAuthProviderConfigs(ctx context.Context, _ apigen.ListAuthP
 	return apigen.ListAuthProviderConfigs200JSONResponse{Providers: out}, nil
 }
 
+// ReencryptSecrets re-keys every stored discrete secret (SSO client secrets,
+// webhook signing secrets) under the current primary master key. It is the
+// active step of a key rotation: deploy the new key as OTEL_FLEET_MASTER_KEY
+// with the old one in OTEL_FLEET_MASTER_KEY_SECONDARY, POST here, then drop the
+// secondary. Idempotent — secrets already under the primary key are skipped.
+func (s *Server) ReencryptSecrets(ctx context.Context, request apigen.ReencryptSecretsRequestObject) (apigen.ReencryptSecretsResponseObject, error) {
+	if !s.cipher.Configured() {
+		return apigen.ReencryptSecrets503JSONResponse{Code: codeUpstream, Message: "master key not configured (set OTEL_FLEET_MASTER_KEY)"}, nil
+	}
+	migrated, err := s.store.ReencryptSecrets(ctx, func(enc []byte) ([]byte, bool, error) {
+		if s.cipher.EncryptedWithPrimary(enc) {
+			return nil, false, nil // already under the primary key
+		}
+		pt, err := s.cipher.Decrypt(enc)
+		if err != nil {
+			return nil, false, err
+		}
+		ne, err := s.cipher.Encrypt(pt)
+		if err != nil {
+			return nil, false, err
+		}
+		return ne, true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.log.Info("re-encrypted secrets under primary master key", "migrated", migrated)
+	return apigen.ReencryptSecrets200JSONResponse{Migrated: migrated}, nil
+}
+
 // encryptClientSecret wraps the master-key requirement in a user-actionable
 // message (only shown to admins).
 func (s *Server) encryptClientSecret(secret string) ([]byte, error) {

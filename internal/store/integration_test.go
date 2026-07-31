@@ -430,6 +430,64 @@ func containsWindow(ws []MaintenanceWindow, id uuid.UUID) bool {
 }
 
 // TestIntegrationAuditLog exercises the audit read path.
+// TestIntegrationReencryptSecrets guards the master-key rotation path: every
+// stored discrete secret is rewritten through migrate, primary-keyed secrets
+// are skipped, and only the enc column is touched.
+func TestIntegrationReencryptSecrets(t *testing.T) {
+	ctx := ctxT(t)
+	issuer := "https://accounts.google.com"
+	ap, err := testPG.CreateAuthProvider(ctx, NewAuthProvider{
+		ID: uuid.New(), Type: "oidc", Name: "reenc-" + uniq(), DisplayName: "OIDC",
+		ClientID: "cid", ClientSecretEnc: []byte("v1:secret"), Issuer: &issuer, Enabled: true,
+	}, auditEntry("authprovider.create", "auth_provider", "oidc"))
+	if err != nil {
+		t.Fatalf("CreateAuthProvider: %v", err)
+	}
+	wh, err := testPG.CreateWebhook(ctx, NewWebhook{
+		ID: uuid.New(), Type: WebhookTypeGeneric, Name: "reenc-" + uniq(),
+		URL: "https://hooks.example.com", Events: []string{WebhookEventAgentOffline},
+		SecretEnc: []byte("v2:already"), Enabled: true,
+	}, auditEntry("webhook.create", "webhook", "generic"))
+	if err != nil {
+		t.Fatalf("CreateWebhook: %v", err)
+	}
+
+	// migrate rewrites v1: secrets to v2: and reports v2: (primary) as unchanged.
+	calls := 0
+	migrated, err := testPG.ReencryptSecrets(ctx, func(enc []byte) ([]byte, bool, error) {
+		calls++
+		if len(enc) < 3 || string(enc[:3]) != "v1:" {
+			return nil, false, nil // already primary, or foreign/empty — leave it
+		}
+		return append([]byte("v2:"), enc[3:]...), true, nil
+	})
+	if err != nil {
+		t.Fatalf("ReencryptSecrets: %v", err)
+	}
+	if migrated < 1 {
+		t.Fatalf("migrated = %d, want >= 1 (this run's v1 provider)", migrated)
+	}
+	if calls < 2 {
+		t.Fatalf("migrate called %d times, want >= 2 (provider + webhook seen)", calls)
+	}
+
+	got, err := testPG.GetAuthProvider(ctx, ap.ID)
+	if err != nil {
+		t.Fatalf("GetAuthProvider: %v", err)
+	}
+	if string(got.ClientSecretEnc) != "v2:secret" {
+		t.Errorf("provider secret = %q, want re-encrypted %q", got.ClientSecretEnc, "v2:secret")
+	}
+	// The already-primary webhook secret is untouched, and other columns survive.
+	gotWH, err := testPG.GetWebhook(ctx, wh.ID)
+	if err != nil {
+		t.Fatalf("GetWebhook: %v", err)
+	}
+	if string(gotWH.SecretEnc) != "v2:already" || gotWH.URL != "https://hooks.example.com" {
+		t.Errorf("webhook mutated unexpectedly: secret=%q url=%q", gotWH.SecretEnc, gotWH.URL)
+	}
+}
+
 func TestIntegrationAuditLog(t *testing.T) {
 	ctx := ctxT(t)
 	makeCustomer(t) // generates an audit row

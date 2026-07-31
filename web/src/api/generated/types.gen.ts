@@ -2918,6 +2918,44 @@ export type TestWebhookResponses = {
 
 export type TestWebhookResponse = TestWebhookResponses[keyof TestWebhookResponses];
 
+export type ReencryptSecretsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/reencrypt-secrets';
+};
+
+export type ReencryptSecretsErrors = {
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+    /**
+     * Master key not configured
+     */
+    503: Error;
+};
+
+export type ReencryptSecretsError = ReencryptSecretsErrors[keyof ReencryptSecretsErrors];
+
+export type ReencryptSecretsResponses = {
+    /**
+     * Re-encryption completed
+     */
+    200: {
+        /**
+         * Number of secrets re-encrypted under the primary key
+         */
+        migrated: number;
+    };
+};
+
+export type ReencryptSecretsResponse = ReencryptSecretsResponses[keyof ReencryptSecretsResponses];
+
 export type ListAlertRulesData = {
     body?: never;
     path?: never;

@@ -89,8 +89,11 @@ func run(log *slog.Logger) error {
 	// SSO-provider management and pipeline secret fields are unavailable.
 	var cipher *crypto.Cipher
 	if cfg.MasterKeyBase64 != "" {
-		if cipher, err = crypto.New(cfg.MasterKeyBase64); err != nil {
+		if cipher, err = crypto.NewWithSecondaries(cfg.MasterKeyBase64, cfg.MasterKeySecondary); err != nil {
 			return fmt.Errorf("OTEL_FLEET_MASTER_KEY: %w", err)
+		}
+		if len(cfg.MasterKeySecondary) > 0 {
+			log.Info("master key rotation active", "secondary_keys", len(cfg.MasterKeySecondary))
 		}
 		log.Info("master key configured, secret encryption enabled")
 	} else {

@@ -77,6 +77,11 @@ controlPlane:
   # pipeline credentials (encrypted at rest); without it those features
   # return a clear error.
   masterKeySecret: ""
+  # Secret with key OTEL_FLEET_MASTER_KEY_SECONDARY (comma-separated old keys)
+  # for zero-downtime key rotation: set the new key in masterKeySecret and the
+  # previous one here, re-encrypt (Settings → SSO → Encryption at rest), then
+  # clear this. See the configuration reference → Key rotation.
+  masterKeySecondarySecret: ""
   oidc:
     # Env-defined fallback OIDC provider; additional providers (Google,
     # Microsoft, GitHub, generic OIDC) are managed in the UI under

@@ -86,6 +86,11 @@ type Config struct {
 	// Validity (base64, length) is checked by crypto.New at wiring time.
 	MasterKeyBase64 string
 
+	// MasterKeySecondary holds old master keys (OTEL_FLEET_MASTER_KEY_SECONDARY,
+	// comma-separated) used only to DECRYPT during a key rotation. Deploy the
+	// new key as MASTER_KEY and the old one here; re-encrypt, then drop it.
+	MasterKeySecondary []string
+
 	// OtelcolBin is the collector distro binary used for `otelcol validate`;
 	// when missing, pipeline validation degrades to structural checks.
 	OtelcolBin string
@@ -146,6 +151,7 @@ func Load() (*Config, error) {
 		K8sCRName:           env("K8S_CR_NAME", "otel-fleet-forwarding"),
 		K8sCRNamespace:      env("K8S_CR_NAMESPACE", "otelfleet"),
 		MasterKeyBase64:     env("MASTER_KEY", ""),
+		MasterKeySecondary:  splitComma(env("MASTER_KEY_SECONDARY", "")),
 	}
 	if cfg.Distributor != "publish" && cfg.Distributor != "k8s" {
 		return nil, fmt.Errorf("OTEL_FLEET_DISTRIBUTOR must be 'publish' or 'k8s', got %q", cfg.Distributor)
@@ -239,6 +245,17 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// splitComma splits a comma-separated env value into trimmed, non-empty parts.
+func splitComma(v string) []string {
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func envInt(key string, def int) (int, error) {

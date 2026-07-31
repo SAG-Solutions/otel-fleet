@@ -81,6 +81,7 @@ CSRF / insufficient-role / tenant-scope, 429 rate-limited) is recorded two ways
 | `OTEL_FLEET_DEV_LOGIN` | `false` | Password-less login with any email (`POST /api/v1/auth/dev-login`). **Never enable outside local development/demos.** |
 | `OTEL_FLEET_ADMIN_EMAILS` | *(empty)* | Comma-separated, case-insensitive list of emails that receive role `admin` on login. Everyone else starts as `viewer` (or with their invited role). |
 | `OTEL_FLEET_MASTER_KEY` | *(empty)* | Base64-encoded 32-byte key for envelope encryption of secrets at rest. See [Secrets encryption](#secrets-encryption). |
+| `OTEL_FLEET_MASTER_KEY_SECONDARY` | *(empty)* | Comma-separated old master keys, used **only to decrypt** during a [key rotation](#key-rotation). Deploy the new key as `OTEL_FLEET_MASTER_KEY`, the previous one here, re-encrypt, then drop it. |
 
 ### Environment-defined OIDC provider (bootstrap fallback)
 
@@ -109,10 +110,32 @@ openssl rand -base64 32
 
 - **Not set:** the server boots and everything else works, but saving an SSO
   provider or a pipeline containing password fields fails with a clear error.
-- **Lost/rotated without re-encryption:** existing ciphertexts become
-  unrecoverable (`cannot decrypt: data corrupted or wrong master key`). There is
-  no automatic key-rotation yet (the ciphertext format is versioned to allow it
-  later); treat the key as precious.
+- **Lost without a secondary:** existing ciphertexts become unrecoverable
+  (`cannot decrypt: data corrupted or wrong master key`). Treat the key as
+  precious and back it up in your secret manager.
+
+### Key rotation
+
+The control plane supports **zero-downtime rotation**. It always encrypts with
+the primary key (`OTEL_FLEET_MASTER_KEY`) but decrypts by trying the primary and
+then any secondary keys — so old ciphertexts keep opening while new writes use
+the new key.
+
+1. **Generate** a new key: `openssl rand -base64 32`.
+2. **Deploy** with the new key as `OTEL_FLEET_MASTER_KEY` and the current key
+   moved to `OTEL_FLEET_MASTER_KEY_SECONDARY`. Everything decrypts; new/edited
+   secrets are written under the new key.
+3. **Re-encrypt** the stored discrete secrets under the new key: **Settings →
+   SSO → Encryption at rest → “Re-encrypt under current key”** (admin), or
+   `POST /api/v1/settings/reencrypt-secrets`. This rewrites SSO client secrets
+   and webhook signing secrets; it is idempotent (already-migrated secrets are
+   skipped). Pipeline exporter credentials re-key the next time their pipeline
+   version is saved.
+4. **Drop** `OTEL_FLEET_MASTER_KEY_SECONDARY` and redeploy once no ciphertext
+   depends on the old key.
+
+Multiple secondaries are allowed (comma-separated) if you are catching up on
+several past keys at once.
 
 ## Pipeline validation and rollout
 

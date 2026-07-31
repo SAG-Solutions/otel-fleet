@@ -78,6 +78,40 @@ func TestWrongKey(t *testing.T) {
 	}
 }
 
+func TestKeyRotationWithSecondary(t *testing.T) {
+	oldKey := NewRandomKeyBase64()
+	newKey := NewRandomKeyBase64()
+
+	// A secret sealed under the OLD key...
+	oldCipher, _ := New(oldKey)
+	ct, err := oldCipher.Encrypt([]byte("s3cr3t"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ...still opens after rotation (new primary + old as secondary).
+	rotated, err := NewWithSecondaries(newKey, []string{oldKey})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pt, err := rotated.Decrypt(ct)
+	if err != nil || string(pt) != "s3cr3t" {
+		t.Fatalf("rotated decrypt of old ciphertext: pt=%q err=%v", pt, err)
+	}
+	// It was NOT yet encrypted with the primary → re-encryption should migrate it.
+	if rotated.EncryptedWithPrimary(ct) {
+		t.Error("old-key ciphertext must not report as primary-encrypted")
+	}
+	// New writes use the primary and the old key can no longer open them.
+	ct2, _ := rotated.Encrypt([]byte("s3cr3t"))
+	if !rotated.EncryptedWithPrimary(ct2) {
+		t.Error("new ciphertext must be primary-encrypted")
+	}
+	if _, err := oldCipher.Decrypt(ct2); !errors.Is(err, ErrDecrypt) {
+		t.Error("old key must not open a new-key ciphertext")
+	}
+}
+
 func TestNilCipher(t *testing.T) {
 	var c *Cipher
 	if c.Configured() {

@@ -103,6 +103,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   valueFrom:
     secretKeyRef: { name: {{ . | quote }}, key: OTEL_FLEET_MASTER_KEY }
 {{- end }}
+{{- with .Values.controlPlane.masterKeySecondarySecret }}
+- name: OTEL_FLEET_MASTER_KEY_SECONDARY
+  valueFrom:
+    secretKeyRef: { name: {{ . | quote }}, key: OTEL_FLEET_MASTER_KEY_SECONDARY }
+{{- end }}
 {{- with .Values.controlPlane.extraEnv }}
 {{- toYaml . | nindent 0 }}
 {{- end }}

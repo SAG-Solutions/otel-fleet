@@ -268,23 +268,30 @@ The control plane needs `OTEL_FLEET_MASTER_KEY` (base64, 32 bytes —
 `openssl rand -base64 32`) to store SSO providers and pipeline password fields;
 see the [configuration reference](/otel-fleet/installation/configuration/#secrets-encryption).
 
-:::note[Chart gap]
-The chart does not yet expose a value for `OTEL_FLEET_MASTER_KEY`. Until it
-does, inject it yourself, e.g. with a post-render patch or:
+Create the Secret and point the chart at it with
+`controlPlane.masterKeySecret`:
 
 ```sh
 kubectl -n otel-fleet create secret generic otel-fleet-master-key \
   --from-literal=OTEL_FLEET_MASTER_KEY="$(openssl rand -base64 32)"
-kubectl -n otel-fleet set env deployment/otel-fleet-control-plane \
-  --from=secret/otel-fleet-master-key
 ```
 
-(Note: `kubectl set env` edits drift from the chart — re-apply after
-`helm upgrade` until the chart supports this natively.)
+```yaml
+controlPlane:
+  masterKeySecret: otel-fleet-master-key
+```
 
 Without the key the server runs, but saving an SSO provider or a pipeline
 with password fields fails with a clear error. Losing the key makes stored
 secrets unrecoverable — keep it in a secret manager.
+
+:::tip[Key rotation]
+To rotate, put the new key in `masterKeySecret` and the previous one in a
+Secret referenced by `controlPlane.masterKeySecondarySecret` (key
+`OTEL_FLEET_MASTER_KEY_SECONDARY`). Old ciphertexts keep decrypting; run
+**Settings → SSO → Encryption at rest → “Re-encrypt under current key”**, then
+clear `masterKeySecondarySecret`. Full steps in the
+[configuration reference](/otel-fleet/installation/configuration/#key-rotation).
 :::
 
 ## Security hardening & availability

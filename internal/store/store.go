@@ -696,6 +696,10 @@ type Store interface {
 	UpdateWebhook(ctx context.Context, id uuid.UUID, upd WebhookUpdate, entries []audit.Entry) (Webhook, error)
 	DeleteWebhook(ctx context.Context, id uuid.UUID, entries []audit.Entry) error
 
+	// ReencryptSecrets re-keys every stored discrete secret through migrate
+	// (used by master-key rotation) and returns how many were re-encrypted.
+	ReencryptSecrets(ctx context.Context, migrate func(enc []byte) (newEnc []byte, changed bool, err error)) (int, error)
+
 	// Pipelines
 	CreatePipeline(ctx context.Context, p NewPipeline, v NewPipelineVersion, entries []audit.Entry) (Pipeline, PipelineVersion, error)
 	GetPipeline(ctx context.Context, id uuid.UUID) (Pipeline, error)

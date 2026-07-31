@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, KeyRound, Pencil, Plus, Trash2, XCircle } from 'lucide-react'
+import { CheckCircle2, KeyRound, Pencil, Plus, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import {
   deleteAuthProviderConfigMutation,
   listAuthProviderConfigsOptions,
   listAuthProviderConfigsQueryKey,
+  reencryptSecretsMutation,
   testAuthProviderConfigMutation,
   updateAuthProviderConfigMutation,
 } from '@/api/generated/@tanstack/react-query.gen'
@@ -146,6 +147,8 @@ export function SsoTab() {
           />
         ))}
 
+      <EncryptionAtRest />
+
       <ProviderDialog open={addOpen} onOpenChange={setAddOpen} provider={null} />
       <ProviderDialog
         open={editTarget !== null}
@@ -169,6 +172,47 @@ export function SsoTab() {
         }}
       />
     </div>
+  )
+}
+
+function EncryptionAtRest() {
+  const reencrypt = useMutation({
+    ...reencryptSecretsMutation(),
+    onSuccess: (result) =>
+      toast(
+        result.migrated === 0
+          ? 'All secrets already use the current master key'
+          : `Re-encrypted ${result.migrated} secret${result.migrated === 1 ? '' : 's'} under the current master key`,
+      ),
+    onError: (error) =>
+      toast(apiErrorMessage(error, 'Could not re-encrypt secrets'), 'danger'),
+  })
+
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+      <div className="flex items-start gap-2">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-ink-2" aria-hidden />
+        <div>
+          <h2 className="text-[13px] font-semibold text-ink">Encryption at rest</h2>
+          <p className="text-xs text-ink-2">
+            SSO client secrets and webhook signing secrets are sealed with{' '}
+            <code className="font-mono">OTEL_FLEET_MASTER_KEY</code>. After rotating the key (new key
+            primary, old key in <code className="font-mono">OTEL_FLEET_MASTER_KEY_SECONDARY</code>),
+            re-encrypt so every secret uses the new key — then drop the old key. Idempotent.
+          </p>
+        </div>
+      </div>
+      <div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={reencrypt.isPending}
+          onClick={() => reencrypt.mutate({})}
+        >
+          {reencrypt.isPending ? 'Re-encrypting…' : 'Re-encrypt under current key'}
+        </Button>
+      </div>
+    </section>
   )
 }
 

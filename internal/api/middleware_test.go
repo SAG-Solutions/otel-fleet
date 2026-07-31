@@ -257,6 +257,7 @@ func TestGuardAdminOnlyPaths(t *testing.T) {
 		{"operator", http.MethodGet, "/api/v1/audit", http.StatusForbidden},
 		{"operator", http.MethodPatch, "/api/v1/settings/auth-providers/xyz", http.StatusForbidden},
 		{"operator", http.MethodPost, "/api/v1/settings/auth-providers/xyz/test", http.StatusForbidden},
+		{"operator", http.MethodPost, "/api/v1/settings/reencrypt-secrets", http.StatusForbidden},
 		{"admin", http.MethodGet, "/api/v1/users", http.StatusOK},
 		{"admin", http.MethodPost, "/api/v1/users", http.StatusOK},
 		{"admin", http.MethodGet, "/api/v1/audit", http.StatusOK},

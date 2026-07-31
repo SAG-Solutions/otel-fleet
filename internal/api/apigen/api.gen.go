@@ -1839,6 +1839,9 @@ type ServerInterface interface {
 	// Delete a maintenance window
 	// (DELETE /api/v1/settings/maintenance-windows/{windowId})
 	DeleteMaintenanceWindow(w http.ResponseWriter, r *http.Request, windowId openapi_types.UUID)
+	// Re-encrypt stored secrets under the primary master key (key rotation)
+	// (POST /api/v1/settings/reencrypt-secrets)
+	ReencryptSecrets(w http.ResponseWriter, r *http.Request)
 	// List alerting webhooks (admin only, secrets never returned)
 	// (GET /api/v1/settings/webhooks)
 	ListWebhooks(w http.ResponseWriter, r *http.Request)
@@ -2223,6 +2226,12 @@ func (_ Unimplemented) CreateMaintenanceWindow(w http.ResponseWriter, r *http.Re
 // Delete a maintenance window
 // (DELETE /api/v1/settings/maintenance-windows/{windowId})
 func (_ Unimplemented) DeleteMaintenanceWindow(w http.ResponseWriter, r *http.Request, windowId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Re-encrypt stored secrets under the primary master key (key rotation)
+// (POST /api/v1/settings/reencrypt-secrets)
+func (_ Unimplemented) ReencryptSecrets(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4185,6 +4194,20 @@ func (siw *ServerInterfaceWrapper) DeleteMaintenanceWindow(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ReencryptSecrets operation middleware
+func (siw *ServerInterfaceWrapper) ReencryptSecrets(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReencryptSecrets(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListWebhooks operation middleware
 func (siw *ServerInterfaceWrapper) ListWebhooks(w http.ResponseWriter, r *http.Request) {
 
@@ -4749,6 +4772,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/api/v1/settings/maintenance-windows/{windowId}", wrapper.DeleteMaintenanceWindow)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/settings/reencrypt-secrets", wrapper.ReencryptSecrets)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/settings/webhooks", wrapper.ListWebhooks)
@@ -8160,6 +8186,72 @@ func (response DeleteMaintenanceWindow404JSONResponse) VisitDeleteMaintenanceWin
 	return err
 }
 
+type ReencryptSecretsRequestObject struct {
+}
+
+type ReencryptSecretsResponseObject interface {
+	VisitReencryptSecretsResponse(w http.ResponseWriter) error
+}
+
+type ReencryptSecrets200JSONResponse struct {
+	// Migrated Number of secrets re-encrypted under the primary key
+	Migrated int `json:"migrated"`
+}
+
+func (response ReencryptSecrets200JSONResponse) VisitReencryptSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReencryptSecrets401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ReencryptSecrets401JSONResponse) VisitReencryptSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReencryptSecrets403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ReencryptSecrets403JSONResponse) VisitReencryptSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReencryptSecrets503JSONResponse Error
+
+func (response ReencryptSecrets503JSONResponse) VisitReencryptSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListWebhooksRequestObject struct {
 }
 
@@ -9010,6 +9102,9 @@ type StrictServerInterface interface {
 	// Delete a maintenance window
 	// (DELETE /api/v1/settings/maintenance-windows/{windowId})
 	DeleteMaintenanceWindow(ctx context.Context, request DeleteMaintenanceWindowRequestObject) (DeleteMaintenanceWindowResponseObject, error)
+	// Re-encrypt stored secrets under the primary master key (key rotation)
+	// (POST /api/v1/settings/reencrypt-secrets)
+	ReencryptSecrets(ctx context.Context, request ReencryptSecretsRequestObject) (ReencryptSecretsResponseObject, error)
 	// List alerting webhooks (admin only, secrets never returned)
 	// (GET /api/v1/settings/webhooks)
 	ListWebhooks(ctx context.Context, request ListWebhooksRequestObject) (ListWebhooksResponseObject, error)
@@ -10662,6 +10757,30 @@ func (sh *strictHandler) DeleteMaintenanceWindow(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DeleteMaintenanceWindowResponseObject); ok {
 		if err := validResponse.VisitDeleteMaintenanceWindowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReencryptSecrets operation middleware
+func (sh *strictHandler) ReencryptSecrets(w http.ResponseWriter, r *http.Request) {
+	var request ReencryptSecretsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReencryptSecrets(ctx, request.(ReencryptSecretsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReencryptSecrets")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReencryptSecretsResponseObject); ok {
+		if err := validResponse.VisitReencryptSecretsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

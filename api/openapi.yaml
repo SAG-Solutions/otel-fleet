@@ -1228,6 +1228,39 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/settings/reencrypt-secrets:
+    post:
+      tags: [admin]
+      operationId: reencryptSecrets
+      summary: Re-encrypt stored secrets under the primary master key (key rotation)
+      description: >
+        Rewrites every discrete stored secret (SSO client secrets, webhook
+        signing secrets) that is still sealed under an old master key so it uses
+        the current primary key. Idempotent: secrets already under the primary
+        key are skipped. Run this after deploying a new OTEL_FLEET_MASTER_KEY
+        with the old key(s) in OTEL_FLEET_MASTER_KEY_SECONDARY, then drop the
+        secondary. Pipeline exporter credentials re-key when their pipeline is
+        next saved.
+      responses:
+        "200":
+          description: Re-encryption completed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [migrated]
+                properties:
+                  migrated:
+                    type: integer
+                    description: Number of secrets re-encrypted under the primary key
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503":
+          description: Master key not configured
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/settings/alert-rules:
     get:
       tags: [admin]
