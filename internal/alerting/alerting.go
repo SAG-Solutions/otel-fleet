@@ -43,6 +43,7 @@ type Store interface {
 	ListEnabledAlertRules(ctx context.Context) ([]store.AlertRule, error)
 	ListCustomerRefs(ctx context.Context) ([]store.CustomerRef, error)
 	ListWebhooks(ctx context.Context) ([]store.Webhook, error)
+	ListActiveMaintenanceWindows(ctx context.Context, at time.Time) ([]store.MaintenanceWindow, error)
 }
 
 // Notifier delivers an alert payload to an explicit set of channels.
@@ -110,6 +111,16 @@ func (s *Service) evalOnce(ctx context.Context) {
 
 // Evaluate runs one full evaluation pass at time now. Exported for testing.
 func (s *Service) Evaluate(ctx context.Context, now time.Time) error {
+	// A maintenance window silences the whole pass: skip evaluation entirely so
+	// nothing fires or resolves; firing state is left untouched and resumes
+	// cleanly when the window ends.
+	if windows, err := s.store.ListActiveMaintenanceWindows(ctx, now); err != nil {
+		return fmt.Errorf("list maintenance windows: %w", err)
+	} else if len(windows) > 0 {
+		s.log.Info("alerting: suppressed by maintenance window", "window", windows[0].Name)
+		return nil
+	}
+
 	rules, err := s.store.ListEnabledAlertRules(ctx)
 	if err != nil {
 		return fmt.Errorf("list rules: %w", err)

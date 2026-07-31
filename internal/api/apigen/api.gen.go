@@ -1025,6 +1025,23 @@ type LogRecord struct {
 	TraceId        *string            `json:"traceId,omitempty"`
 }
 
+// MaintenanceWindow defines model for MaintenanceWindow.
+type MaintenanceWindow struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	EndsAt    time.Time          `json:"endsAt"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	StartsAt  time.Time          `json:"startsAt"`
+}
+
+// MaintenanceWindowCreate defines model for MaintenanceWindowCreate.
+type MaintenanceWindowCreate struct {
+	// EndsAt Must be after startsAt.
+	EndsAt   time.Time `json:"endsAt"`
+	Name     string    `json:"name"`
+	StartsAt time.Time `json:"startsAt"`
+}
+
 // Me defines model for Me.
 type Me struct {
 	// AllCustomers True when the user may access every customer (admins, and non-admins with no grants). When false, access is limited to scopedCustomerIds.
@@ -1592,6 +1609,9 @@ type UpdateAuthProviderConfigJSONRequestBody = AuthProviderConfigUpdate
 // UpdateBillingSettingsJSONRequestBody defines body for UpdateBillingSettings for application/json ContentType.
 type UpdateBillingSettingsJSONRequestBody = BillingSettingsUpdate
 
+// CreateMaintenanceWindowJSONRequestBody defines body for CreateMaintenanceWindow for application/json ContentType.
+type CreateMaintenanceWindowJSONRequestBody = MaintenanceWindowCreate
+
 // CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
 type CreateWebhookJSONRequestBody = WebhookCreate
 
@@ -1768,6 +1788,15 @@ type ServerInterface interface {
 	// Update the metered-billing price list (admin only)
 	// (PUT /api/v1/settings/billing)
 	UpdateBillingSettings(w http.ResponseWriter, r *http.Request)
+	// Alert maintenance windows (admin only)
+	// (GET /api/v1/settings/maintenance-windows)
+	ListMaintenanceWindows(w http.ResponseWriter, r *http.Request)
+	// Create an alert maintenance window (silences all firing while active)
+	// (POST /api/v1/settings/maintenance-windows)
+	CreateMaintenanceWindow(w http.ResponseWriter, r *http.Request)
+	// Delete a maintenance window
+	// (DELETE /api/v1/settings/maintenance-windows/{windowId})
+	DeleteMaintenanceWindow(w http.ResponseWriter, r *http.Request, windowId openapi_types.UUID)
 	// List alerting webhooks (admin only, secrets never returned)
 	// (GET /api/v1/settings/webhooks)
 	ListWebhooks(w http.ResponseWriter, r *http.Request)
@@ -2128,6 +2157,24 @@ func (_ Unimplemented) GetBillingSettings(w http.ResponseWriter, r *http.Request
 // Update the metered-billing price list (admin only)
 // (PUT /api/v1/settings/billing)
 func (_ Unimplemented) UpdateBillingSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Alert maintenance windows (admin only)
+// (GET /api/v1/settings/maintenance-windows)
+func (_ Unimplemented) ListMaintenanceWindows(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create an alert maintenance window (silences all firing while active)
+// (POST /api/v1/settings/maintenance-windows)
+func (_ Unimplemented) CreateMaintenanceWindow(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Delete a maintenance window
+// (DELETE /api/v1/settings/maintenance-windows/{windowId})
+func (_ Unimplemented) DeleteMaintenanceWindow(w http.ResponseWriter, r *http.Request, windowId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3955,6 +4002,60 @@ func (siw *ServerInterfaceWrapper) UpdateBillingSettings(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// ListMaintenanceWindows operation middleware
+func (siw *ServerInterfaceWrapper) ListMaintenanceWindows(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMaintenanceWindows(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMaintenanceWindow operation middleware
+func (siw *ServerInterfaceWrapper) CreateMaintenanceWindow(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMaintenanceWindow(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteMaintenanceWindow operation middleware
+func (siw *ServerInterfaceWrapper) DeleteMaintenanceWindow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "windowId" -------------
+	var windowId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "windowId", chi.URLParam(r, "windowId"), &windowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "windowId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteMaintenanceWindow(w, r, windowId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListWebhooks operation middleware
 func (siw *ServerInterfaceWrapper) ListWebhooks(w http.ResponseWriter, r *http.Request) {
 
@@ -4507,6 +4608,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/api/v1/settings/billing", wrapper.UpdateBillingSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/settings/maintenance-windows", wrapper.ListMaintenanceWindows)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/settings/maintenance-windows", wrapper.CreateMaintenanceWindow)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/settings/maintenance-windows/{windowId}", wrapper.DeleteMaintenanceWindow)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/settings/webhooks", wrapper.ListWebhooks)
@@ -7648,6 +7758,179 @@ func (response UpdateBillingSettings403JSONResponse) VisitUpdateBillingSettingsR
 	return err
 }
 
+type ListMaintenanceWindowsRequestObject struct {
+}
+
+type ListMaintenanceWindowsResponseObject interface {
+	VisitListMaintenanceWindowsResponse(w http.ResponseWriter) error
+}
+
+type ListMaintenanceWindows200JSONResponse struct {
+	Windows []MaintenanceWindow `json:"windows"`
+}
+
+func (response ListMaintenanceWindows200JSONResponse) VisitListMaintenanceWindowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMaintenanceWindows401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListMaintenanceWindows401JSONResponse) VisitListMaintenanceWindowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMaintenanceWindows403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListMaintenanceWindows403JSONResponse) VisitListMaintenanceWindowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMaintenanceWindowRequestObject struct {
+	Body *CreateMaintenanceWindowJSONRequestBody
+}
+
+type CreateMaintenanceWindowResponseObject interface {
+	VisitCreateMaintenanceWindowResponse(w http.ResponseWriter) error
+}
+
+type CreateMaintenanceWindow201JSONResponse MaintenanceWindow
+
+func (response CreateMaintenanceWindow201JSONResponse) VisitCreateMaintenanceWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMaintenanceWindow400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateMaintenanceWindow400JSONResponse) VisitCreateMaintenanceWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMaintenanceWindow401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateMaintenanceWindow401JSONResponse) VisitCreateMaintenanceWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMaintenanceWindow403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateMaintenanceWindow403JSONResponse) VisitCreateMaintenanceWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMaintenanceWindowRequestObject struct {
+	WindowId openapi_types.UUID `json:"windowId"`
+}
+
+type DeleteMaintenanceWindowResponseObject interface {
+	VisitDeleteMaintenanceWindowResponse(w http.ResponseWriter) error
+}
+
+type DeleteMaintenanceWindow204Response struct {
+}
+
+func (response DeleteMaintenanceWindow204Response) VisitDeleteMaintenanceWindowResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteMaintenanceWindow401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteMaintenanceWindow401JSONResponse) VisitDeleteMaintenanceWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMaintenanceWindow403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteMaintenanceWindow403JSONResponse) VisitDeleteMaintenanceWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMaintenanceWindow404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteMaintenanceWindow404JSONResponse) VisitDeleteMaintenanceWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListWebhooksRequestObject struct {
 }
 
@@ -8486,6 +8769,15 @@ type StrictServerInterface interface {
 	// Update the metered-billing price list (admin only)
 	// (PUT /api/v1/settings/billing)
 	UpdateBillingSettings(ctx context.Context, request UpdateBillingSettingsRequestObject) (UpdateBillingSettingsResponseObject, error)
+	// Alert maintenance windows (admin only)
+	// (GET /api/v1/settings/maintenance-windows)
+	ListMaintenanceWindows(ctx context.Context, request ListMaintenanceWindowsRequestObject) (ListMaintenanceWindowsResponseObject, error)
+	// Create an alert maintenance window (silences all firing while active)
+	// (POST /api/v1/settings/maintenance-windows)
+	CreateMaintenanceWindow(ctx context.Context, request CreateMaintenanceWindowRequestObject) (CreateMaintenanceWindowResponseObject, error)
+	// Delete a maintenance window
+	// (DELETE /api/v1/settings/maintenance-windows/{windowId})
+	DeleteMaintenanceWindow(ctx context.Context, request DeleteMaintenanceWindowRequestObject) (DeleteMaintenanceWindowResponseObject, error)
 	// List alerting webhooks (admin only, secrets never returned)
 	// (GET /api/v1/settings/webhooks)
 	ListWebhooks(ctx context.Context, request ListWebhooksRequestObject) (ListWebhooksResponseObject, error)
@@ -10030,6 +10322,87 @@ func (sh *strictHandler) UpdateBillingSettings(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateBillingSettingsResponseObject); ok {
 		if err := validResponse.VisitUpdateBillingSettingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMaintenanceWindows operation middleware
+func (sh *strictHandler) ListMaintenanceWindows(w http.ResponseWriter, r *http.Request) {
+	var request ListMaintenanceWindowsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMaintenanceWindows(ctx, request.(ListMaintenanceWindowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMaintenanceWindows")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMaintenanceWindowsResponseObject); ok {
+		if err := validResponse.VisitListMaintenanceWindowsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateMaintenanceWindow operation middleware
+func (sh *strictHandler) CreateMaintenanceWindow(w http.ResponseWriter, r *http.Request) {
+	var request CreateMaintenanceWindowRequestObject
+
+	var body CreateMaintenanceWindowJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateMaintenanceWindow(ctx, request.(CreateMaintenanceWindowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateMaintenanceWindow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateMaintenanceWindowResponseObject); ok {
+		if err := validResponse.VisitCreateMaintenanceWindowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteMaintenanceWindow operation middleware
+func (sh *strictHandler) DeleteMaintenanceWindow(w http.ResponseWriter, r *http.Request, windowId openapi_types.UUID) {
+	var request DeleteMaintenanceWindowRequestObject
+
+	request.WindowId = windowId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteMaintenanceWindow(ctx, request.(DeleteMaintenanceWindowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteMaintenanceWindow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteMaintenanceWindowResponseObject); ok {
+		if err := validResponse.VisitDeleteMaintenanceWindowResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

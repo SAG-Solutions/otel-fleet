@@ -1231,6 +1231,57 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /api/v1/settings/maintenance-windows:
+    get:
+      tags: [admin]
+      operationId: listMaintenanceWindows
+      summary: Alert maintenance windows (admin only)
+      responses:
+        "200":
+          description: Windows
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [windows]
+                properties:
+                  windows:
+                    type: array
+                    items: { $ref: "#/components/schemas/MaintenanceWindow" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin]
+      operationId: createMaintenanceWindow
+      summary: Create an alert maintenance window (silences all firing while active)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MaintenanceWindowCreate" }
+      responses:
+        "201":
+          description: Created window
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MaintenanceWindow" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/settings/maintenance-windows/{windowId}:
+    parameters:
+      - { name: windowId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [admin]
+      operationId: deleteMaintenanceWindow
+      summary: Delete a maintenance window
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/settings/alert-rules/{ruleId}:
     parameters:
       - { name: ruleId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -2024,6 +2075,24 @@ components:
           type: array
           items: { type: string, format: uuid }
         enabled: { type: boolean }
+
+    MaintenanceWindow:
+      type: object
+      required: [id, name, startsAt, endsAt, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    MaintenanceWindowCreate:
+      type: object
+      required: [name, startsAt, endsAt]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time, description: Must be after startsAt. }
 
     WebhookEvent:
       type: string

@@ -609,6 +609,23 @@ export type AlertRuleUpdate = {
     enabled?: boolean;
 };
 
+export type MaintenanceWindow = {
+    id: string;
+    name: string;
+    startsAt: string;
+    endsAt: string;
+    createdAt: string;
+};
+
+export type MaintenanceWindowCreate = {
+    name: string;
+    startsAt: string;
+    /**
+     * Must be after startsAt.
+     */
+    endsAt: string;
+};
+
 export type WebhookEvent = 'agent_offline' | 'agent_config_failed' | 'agent_unhealthy';
 
 /**
@@ -2906,6 +2923,105 @@ export type CreateAlertRuleResponses = {
 };
 
 export type CreateAlertRuleResponse = CreateAlertRuleResponses[keyof CreateAlertRuleResponses];
+
+export type ListMaintenanceWindowsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/maintenance-windows';
+};
+
+export type ListMaintenanceWindowsErrors = {
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+};
+
+export type ListMaintenanceWindowsError = ListMaintenanceWindowsErrors[keyof ListMaintenanceWindowsErrors];
+
+export type ListMaintenanceWindowsResponses = {
+    /**
+     * Windows
+     */
+    200: {
+        windows: Array<MaintenanceWindow>;
+    };
+};
+
+export type ListMaintenanceWindowsResponse = ListMaintenanceWindowsResponses[keyof ListMaintenanceWindowsResponses];
+
+export type CreateMaintenanceWindowData = {
+    body: MaintenanceWindowCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/maintenance-windows';
+};
+
+export type CreateMaintenanceWindowErrors = {
+    /**
+     * Validation error
+     */
+    400: Error;
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+};
+
+export type CreateMaintenanceWindowError = CreateMaintenanceWindowErrors[keyof CreateMaintenanceWindowErrors];
+
+export type CreateMaintenanceWindowResponses = {
+    /**
+     * Created window
+     */
+    201: MaintenanceWindow;
+};
+
+export type CreateMaintenanceWindowResponse = CreateMaintenanceWindowResponses[keyof CreateMaintenanceWindowResponses];
+
+export type DeleteMaintenanceWindowData = {
+    body?: never;
+    path: {
+        windowId: string;
+    };
+    query?: never;
+    url: '/api/v1/settings/maintenance-windows/{windowId}';
+};
+
+export type DeleteMaintenanceWindowErrors = {
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+    /**
+     * Resource not found
+     */
+    404: Error;
+};
+
+export type DeleteMaintenanceWindowError = DeleteMaintenanceWindowErrors[keyof DeleteMaintenanceWindowErrors];
+
+export type DeleteMaintenanceWindowResponses = {
+    /**
+     * Deleted
+     */
+    204: void;
+};
+
+export type DeleteMaintenanceWindowResponse = DeleteMaintenanceWindowResponses[keyof DeleteMaintenanceWindowResponses];
 
 export type DeleteAlertRuleData = {
     body?: never;

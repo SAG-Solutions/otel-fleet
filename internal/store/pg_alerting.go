@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -122,6 +123,72 @@ func (s *PG) DeleteAlertRule(ctx context.Context, id uuid.UUID, entries []audit.
 		tag, err := tx.Exec(ctx, `DELETE FROM alert_rules WHERE id = $1`, id)
 		if err != nil {
 			return fmt.Errorf("delete alert rule: %w", err)
+		}
+		if tag.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		return audit.Write(ctx, tx, entries...)
+	})
+}
+
+const maintenanceWindowCols = `id, name, starts_at, ends_at, created_at`
+
+func scanMaintenanceWindow(row pgx.Row) (MaintenanceWindow, error) {
+	var w MaintenanceWindow
+	err := row.Scan(&w.ID, &w.Name, &w.StartsAt, &w.EndsAt, &w.CreatedAt)
+	return w, err
+}
+
+func (s *PG) scanMaintenanceWindows(ctx context.Context, q string, args ...any) ([]MaintenanceWindow, error) {
+	rows, err := s.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []MaintenanceWindow{}
+	for rows.Next() {
+		w, err := scanMaintenanceWindow(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, w)
+	}
+	return out, rows.Err()
+}
+
+func (s *PG) ListMaintenanceWindows(ctx context.Context) ([]MaintenanceWindow, error) {
+	return s.scanMaintenanceWindows(ctx, `SELECT `+maintenanceWindowCols+` FROM alert_maintenance_windows ORDER BY starts_at DESC, id`)
+}
+
+func (s *PG) ListActiveMaintenanceWindows(ctx context.Context, at time.Time) ([]MaintenanceWindow, error) {
+	return s.scanMaintenanceWindows(ctx, `SELECT `+maintenanceWindowCols+` FROM alert_maintenance_windows WHERE starts_at <= $1 AND ends_at > $1`, at)
+}
+
+func (s *PG) CreateMaintenanceWindow(ctx context.Context, w NewMaintenanceWindow, entries []audit.Entry) (MaintenanceWindow, error) {
+	var out MaintenanceWindow
+	err := s.inTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		out, err = scanMaintenanceWindow(tx.QueryRow(ctx, `
+			INSERT INTO alert_maintenance_windows (id, name, starts_at, ends_at)
+			VALUES ($1, $2, $3, $4)
+			RETURNING `+maintenanceWindowCols,
+			w.ID, w.Name, w.StartsAt, w.EndsAt))
+		if err != nil {
+			return fmt.Errorf("insert maintenance window: %w", err)
+		}
+		return audit.Write(ctx, tx, entries...)
+	})
+	if err != nil {
+		return MaintenanceWindow{}, err
+	}
+	return out, nil
+}
+
+func (s *PG) DeleteMaintenanceWindow(ctx context.Context, id uuid.UUID, entries []audit.Entry) error {
+	return s.inTx(ctx, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `DELETE FROM alert_maintenance_windows WHERE id = $1`, id)
+		if err != nil {
+			return fmt.Errorf("delete maintenance window: %w", err)
 		}
 		if tag.RowsAffected() == 0 {
 			return ErrNotFound

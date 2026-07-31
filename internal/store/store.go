@@ -195,6 +195,22 @@ type AlertRuleUpdate struct {
 	Enabled       *bool
 }
 
+// MaintenanceWindow silences all alert firing while now is within [StartsAt,EndsAt).
+type MaintenanceWindow struct {
+	ID        uuid.UUID
+	Name      string
+	StartsAt  time.Time
+	EndsAt    time.Time
+	CreatedAt time.Time
+}
+
+type NewMaintenanceWindow struct {
+	ID       uuid.UUID
+	Name     string
+	StartsAt time.Time
+	EndsAt   time.Time
+}
+
 // AuditFilter narrows ListAuditLog; nil fields match everything.
 type AuditFilter struct {
 	Action      *string
@@ -637,6 +653,10 @@ type Store interface {
 	CreateAlertRule(ctx context.Context, r NewAlertRule, entries []audit.Entry) (AlertRule, error)
 	UpdateAlertRule(ctx context.Context, id uuid.UUID, upd AlertRuleUpdate, entries []audit.Entry) (AlertRule, error)
 	DeleteAlertRule(ctx context.Context, id uuid.UUID, entries []audit.Entry) error
+	ListMaintenanceWindows(ctx context.Context) ([]MaintenanceWindow, error)
+	ListActiveMaintenanceWindows(ctx context.Context, at time.Time) ([]MaintenanceWindow, error)
+	CreateMaintenanceWindow(ctx context.Context, w NewMaintenanceWindow, entries []audit.Entry) (MaintenanceWindow, error)
+	DeleteMaintenanceWindow(ctx context.Context, id uuid.UUID, entries []audit.Entry) error
 
 	// Billing settings (singleton price list).
 	GetBillingSettings(ctx context.Context) (BillingSettings, error)

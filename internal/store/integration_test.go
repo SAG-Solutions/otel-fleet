@@ -383,6 +383,48 @@ func TestIntegrationAlertRules(t *testing.T) {
 	}
 }
 
+// TestIntegrationMaintenanceWindows guards the maintenance-window CRUD +
+// active-window lookup (migration 0016).
+func TestIntegrationMaintenanceWindows(t *testing.T) {
+	ctx := ctxT(t)
+	now := time.Now()
+	w, err := testPG.CreateMaintenanceWindow(ctx, NewMaintenanceWindow{
+		ID: uuid.New(), Name: "deploy " + uniq(), StartsAt: now.Add(-time.Hour), EndsAt: now.Add(time.Hour),
+	}, auditEntry("maintenance_window.create", "maintenance_window", "w"))
+	if err != nil {
+		t.Fatalf("CreateMaintenanceWindow: %v", err)
+	}
+	active, err := testPG.ListActiveMaintenanceWindows(ctx, now)
+	if err != nil {
+		t.Fatalf("ListActiveMaintenanceWindows: %v", err)
+	}
+	found := false
+	for _, a := range active {
+		if a.ID == w.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("window covering now not reported active")
+	}
+	// A time outside the window is not active.
+	if out, err := testPG.ListActiveMaintenanceWindows(ctx, now.Add(2*time.Hour)); err != nil || containsWindow(out, w.ID) {
+		t.Fatalf("window should be inactive 2h later: err=%v", err)
+	}
+	if err := testPG.DeleteMaintenanceWindow(ctx, w.ID, auditEntry("maintenance_window.delete", "maintenance_window", w.ID.String())); err != nil {
+		t.Fatalf("DeleteMaintenanceWindow: %v", err)
+	}
+}
+
+func containsWindow(ws []MaintenanceWindow, id uuid.UUID) bool {
+	for _, w := range ws {
+		if w.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 // TestIntegrationAuditLog exercises the audit read path.
 func TestIntegrationAuditLog(t *testing.T) {
 	ctx := ctxT(t)

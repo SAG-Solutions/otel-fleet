@@ -153,6 +153,59 @@ func (s *Server) UpdateAlertRule(ctx context.Context, request apigen.UpdateAlert
 	return apigen.UpdateAlertRule200JSONResponse(toAlertRule(updated)), nil
 }
 
+func toMaintenanceWindow(w store.MaintenanceWindow) apigen.MaintenanceWindow {
+	return apigen.MaintenanceWindow{
+		Id: w.ID, Name: w.Name, StartsAt: w.StartsAt, EndsAt: w.EndsAt, CreatedAt: w.CreatedAt,
+	}
+}
+
+func (s *Server) ListMaintenanceWindows(ctx context.Context, _ apigen.ListMaintenanceWindowsRequestObject) (apigen.ListMaintenanceWindowsResponseObject, error) {
+	ws, err := s.store.ListMaintenanceWindows(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]apigen.MaintenanceWindow, 0, len(ws))
+	for _, w := range ws {
+		out = append(out, toMaintenanceWindow(w))
+	}
+	return apigen.ListMaintenanceWindows200JSONResponse{Windows: out}, nil
+}
+
+func (s *Server) CreateMaintenanceWindow(ctx context.Context, request apigen.CreateMaintenanceWindowRequestObject) (apigen.CreateMaintenanceWindowResponseObject, error) {
+	b := request.Body
+	if !b.EndsAt.After(b.StartsAt) {
+		return apigen.CreateMaintenanceWindow400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: "endsAt must be after startsAt"}}, nil
+	}
+	nw := store.NewMaintenanceWindow{ID: uuid.New(), Name: b.Name, StartsAt: b.StartsAt, EndsAt: b.EndsAt}
+	created, err := s.store.CreateMaintenanceWindow(ctx, nw, []audit.Entry{{
+		ActorUserID: actorID(ctx),
+		Action:      "maintenance_window.create",
+		EntityType:  "maintenance_window",
+		EntityID:    nw.ID.String(),
+		Payload:     map[string]any{"name": nw.Name},
+	}})
+	if err != nil {
+		return nil, err
+	}
+	return apigen.CreateMaintenanceWindow201JSONResponse(toMaintenanceWindow(created)), nil
+}
+
+func (s *Server) DeleteMaintenanceWindow(ctx context.Context, request apigen.DeleteMaintenanceWindowRequestObject) (apigen.DeleteMaintenanceWindowResponseObject, error) {
+	err := s.store.DeleteMaintenanceWindow(ctx, request.WindowId, []audit.Entry{{
+		ActorUserID: actorID(ctx),
+		Action:      "maintenance_window.delete",
+		EntityType:  "maintenance_window",
+		EntityID:    request.WindowId.String(),
+	}})
+	if errors.Is(err, store.ErrNotFound) {
+		return apigen.DeleteMaintenanceWindow404JSONResponse{NotFoundJSONResponse: apigen.NotFoundJSONResponse{Code: codeNotFound, Message: "maintenance window not found"}}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return apigen.DeleteMaintenanceWindow204Response{}, nil
+}
+
 func (s *Server) DeleteAlertRule(ctx context.Context, request apigen.DeleteAlertRuleRequestObject) (apigen.DeleteAlertRuleResponseObject, error) {
 	err := s.store.DeleteAlertRule(ctx, request.RuleId, []audit.Entry{{
 		ActorUserID: actorID(ctx),

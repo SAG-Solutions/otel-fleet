@@ -20,9 +20,10 @@ func (f *fakeSource) Metric(context.Context, string, time.Time) (map[string]floa
 }
 
 type fakeStore struct {
-	rules []store.AlertRule
-	refs  []store.CustomerRef
-	hooks []store.Webhook
+	rules   []store.AlertRule
+	refs    []store.CustomerRef
+	hooks   []store.Webhook
+	windows []store.MaintenanceWindow
 }
 
 func (f *fakeStore) ListEnabledAlertRules(context.Context) ([]store.AlertRule, error) {
@@ -30,6 +31,9 @@ func (f *fakeStore) ListEnabledAlertRules(context.Context) ([]store.AlertRule, e
 }
 func (f *fakeStore) ListCustomerRefs(context.Context) ([]store.CustomerRef, error) { return f.refs, nil }
 func (f *fakeStore) ListWebhooks(context.Context) ([]store.Webhook, error)         { return f.hooks, nil }
+func (f *fakeStore) ListActiveMaintenanceWindows(context.Context, time.Time) ([]store.MaintenanceWindow, error) {
+	return f.windows, nil
+}
 
 type capturedSend struct {
 	event    string
@@ -162,6 +166,29 @@ func TestEvaluatePromQLRuleFiresOnceThenResolves(t *testing.T) {
 	must(t, svc.Evaluate(ctx, now))
 	if len(notifier.sends) != 2 {
 		t.Fatalf("no-data must not fire: %+v", notifier.sends)
+	}
+}
+
+func TestEvaluateSuppressedByMaintenanceWindow(t *testing.T) {
+	chID := uuid.New()
+	cust := store.CustomerRef{ID: uuid.New(), Name: "ACME", ClientID: "cust_x"}
+	rule := store.AlertRule{
+		ID: uuid.New(), Name: "ingest stopped", Metric: store.AlertMetricIngestItems,
+		Comparison: store.AlertComparisonBelow, Threshold: 10, WindowSeconds: 300,
+		ChannelIDs: []uuid.UUID{chID}, Enabled: true,
+	}
+	src := &fakeSource{vals: map[string]float64{"cust_x": 0}} // would breach
+	st := &fakeStore{
+		rules:   []store.AlertRule{rule},
+		refs:    []store.CustomerRef{cust},
+		hooks:   []store.Webhook{{ID: chID, Enabled: true}},
+		windows: []store.MaintenanceWindow{{Name: "deploy", StartsAt: time.Unix(0, 0), EndsAt: time.Unix(1<<40, 0)}},
+	}
+	notifier := &fakeNotifier{}
+	svc := New(src, nil, st, notifier, time.Minute, discardLog())
+	must(t, svc.Evaluate(context.Background(), time.Unix(1_700_000_000, 0)))
+	if len(notifier.sends) != 0 {
+		t.Fatalf("maintenance window must suppress all firing, got %+v", notifier.sends)
 	}
 }
 
