@@ -113,6 +113,8 @@ jobs:
           go-version-file: go.mod
       - name: Test custom components
         run: make -C collector test
+      - name: Check slim/full invariant
+        run: make -C collector check-slim
       - name: Build distro (OCB)
         run: make -C collector build
       - name: Validate gateway config

@@ -1,0 +1,88 @@
+# OpenTelemetry Collector Builder (OCB) manifest for the otel-fleet SLIM
+# collector distribution.
+#
+# Slim is builder-config.yaml MINUS the five heavy external-backend exporters
+# (Datadog, Elasticsearch, Kafka, AWS S3, Splunk HEC) that dominate the image
+# size. Everything else — the tenant ingest path, the cluster-monitoring
+# receivers, ClickHouse / VictoriaMetrics (Prometheus remote-write) / OTLP /
+# file exporters, and the forwarding-tier processors/connectors — is identical
+# to the full distro. Use slim when you export only to self-hosted backends
+# (ClickHouse, VictoriaMetrics, OTLP, file); use full for the SaaS/cloud
+# presets.
+#
+# INVARIANT: every component here MUST also appear in builder-config.yaml
+# (slim ⊆ full). CI enforces this (see `make -C collector check-slim`). New
+# lean components are added to BOTH files; heavy backend exporters stay
+# full-only.
+#
+# Build (from collector/):
+#   make -C collector build CONFIG=builder-config.slim.yaml
+#
+# Pinned release train: collector core v1.62.0/v0.156.0, contrib v0.156.0.
+
+dist:
+  module: github.com/sag-solutions/otel-fleet/collector/otel-fleet-collector
+  name: otel-fleet-collector
+  description: otel-fleet slim OpenTelemetry Collector distribution
+  version: 0.1.0
+  output_path: ./dist
+
+receivers:
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.156.0
+  # Cluster-monitoring bundle (kube-prometheus-stack alternative): node metrics
+  # (hostmetrics ~= node-exporter), per-node kubelet/cAdvisor (kubeletstats),
+  # cluster object metrics (k8scluster ~= kube-state-metrics) and Prometheus
+  # scrape configs — all remote-written to VictoriaMetrics.
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.156.0
+
+processors:
+  - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.156.0
+  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.156.0
+  - gomod: github.com/sag-solutions/otel-fleet/collector/processor/tenantstamp v0.0.0
+  - gomod: github.com/sag-solutions/otel-fleet/collector/processor/tenantquota v0.0.0
+  # P2 forwarding tier: processors available to rendered per-customer pipelines.
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.156.0
+  # Enriches cluster-monitoring metrics with k8s metadata (namespace/pod/node).
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.156.0
+
+exporters:
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.156.0
+  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.156.0
+  # P2 forwarding tier: exporters available to rendered per-customer pipelines.
+  - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.156.0
+  - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.156.0
+
+connectors:
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.156.0
+  # P2 forwarding tier: fans tenant traffic out to per-customer pipelines.
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/routingconnector v0.156.0
+
+# Config providers. These are the OCB defaults for v0.156.0, pinned explicitly
+# because the forwarding tier depends on the HTTP provider
+# (--config=http://.../internal/v1/collector-config/forwarding).
+providers:
+  - gomod: go.opentelemetry.io/collector/confmap/provider/envprovider v1.62.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/fileprovider v1.62.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/httpprovider v1.62.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.62.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.62.0
+
+extensions:
+  - gomod: github.com/sag-solutions/otel-fleet/collector/extension/tenantauth v0.0.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.156.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.156.0
+
+# Paths are relative to the generated module in dist/.
+replaces:
+  - github.com/sag-solutions/otel-fleet/collector/extension/tenantauth => ../extension/tenantauth
+  - github.com/sag-solutions/otel-fleet/collector/processor/tenantstamp => ../processor/tenantstamp
+  - github.com/sag-solutions/otel-fleet/collector/processor/tenantquota => ../processor/tenantquota

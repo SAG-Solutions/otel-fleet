@@ -10,6 +10,13 @@ images:
     tag: ""            # defaults to the chart version
     pullPolicy: IfNotPresent
   collector:
+    # Gateway/forwarding collector distro. Use the -slim image
+    # (ghcr.io/sag-solutions/otel-fleet-collector-slim) when your pipelines
+    # export only to self-hosted backends (ClickHouse, VictoriaMetrics, OTLP,
+    # file) — it drops the five heavy SaaS/cloud exporters (Datadog,
+    # Elasticsearch, Kafka, S3, Splunk). Keep the full image if any pipeline
+    # uses those presets. The control plane always bundles the full distro for
+    # pipeline validation, so slim gateways never block config authoring.
     repository: ghcr.io/sag-solutions/otel-fleet-collector
     tag: ""            # defaults to the chart version
     pullPolicy: IfNotPresent

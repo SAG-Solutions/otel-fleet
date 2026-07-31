@@ -40,6 +40,8 @@ Local components (own Go modules, wired in via `replaces`):
 
 ```sh
 make -C collector build      # go run go.opentelemetry.io/collector/cmd/builder@v0.156.0
+make -C collector build-slim # slim distro (drops the heavy backend exporters)
+make -C collector check-slim # enforce the slim ⊆ full invariant (no compile)
 make -C collector test       # unit tests for the local components
 make -C collector validate   # validate deploy/compose/otelcol-gateway.yaml
 make -C collector docker     # docker build -f Dockerfile.collector (repo root context)
@@ -47,6 +49,25 @@ make -C collector proto      # regenerate tenantauth's AuthService stubs
 ```
 
 The binary lands in `collector/dist/otel-fleet-collector` (gitignored).
+
+### Full vs slim distro
+
+Two OCB manifests build the same collector at different weights:
+
+- **Full** — `builder-config.yaml` (default). Includes the five heavy external
+  backend exporters: Datadog, Elasticsearch, Kafka, AWS S3, Splunk HEC.
+- **Slim** — `builder-config.slim.yaml`. Everything else (tenant ingest,
+  cluster-monitoring receivers, ClickHouse / Prometheus-remote-write / OTLP /
+  file exporters, forwarding processors + connectors), ~11 % smaller and
+  notably faster to compile.
+
+Both emit `dist/otel-fleet-collector`. Pick the manifest with
+`make build CONFIG=…` or the `BUILDER_CONFIG` build-arg on `Dockerfile.collector`
+/ `Dockerfile.supervisor`; CI publishes `-slim` image variants alongside the
+full ones. **Invariant:** slim ⊆ full — every slim component must also be in
+full, and the five heavy exporters stay full-only (`make check-slim`, run in
+CI). The control-plane image always bundles the full distro so `otelcol
+validate` accepts every catalog component regardless of which gateway image runs.
 
 The container image is built by `Dockerfile.collector` at the repo root
 (multi-stage: OCB in `golang:1.26`, runtime `distroless/static` running as

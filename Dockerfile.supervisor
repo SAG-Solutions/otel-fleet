@@ -25,6 +25,9 @@ FROM ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-colle
 FROM golang:1.26 AS collector-builder
 
 ARG OCB_VERSION=v0.156.0
+# BUILDER_CONFIG selects the distro: builder-config.yaml (full, default) or
+# builder-config.slim.yaml. The opamp extension is patched into the chosen one.
+ARG BUILDER_CONFIG=builder-config.yaml
 
 WORKDIR /src
 
@@ -37,17 +40,17 @@ WORKDIR /src/collector
 # The supervisor requires the managed collector to include the contrib
 # `opamp` extension: it injects an `extensions: opamp:` block into every
 # config it hands the collector (bootstrap + remote) to receive health and
-# effective-config reports over a local OpAMP connection. The shared
-# builder-config.yaml (owned by the gateway build) does not include it yet,
-# so it is patched in at image build time. TODO: move this into
-# collector/builder-config.yaml once the collector owners pick it up.
+# effective-config reports over a local OpAMP connection. The builder
+# manifests (owned by the gateway build) do not include it yet, so it is
+# patched into the selected config at image build time. TODO: move this into
+# the builder configs once the collector owners pick it up.
 RUN sed -i '/^extensions:/a\  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.156.0' \
-      builder-config.yaml
+      "${BUILDER_CONFIG}"
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go run go.opentelemetry.io/collector/cmd/builder@${OCB_VERSION} \
-      --config builder-config.yaml
+      --config "${BUILDER_CONFIG}"
 
 # --- Runtime -----------------------------------------------------------------
 # alpine (not distroless): the supervisor needs a writable storage dir and

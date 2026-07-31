@@ -6,13 +6,22 @@ BUF_VERSION ?= v1.57.2
 DIST        := dist/otel-fleet-collector
 TOOLS_BIN   := $(CURDIR)/.tools/bin
 
-.PHONY: all build test proto validate docker clean
+# CONFIG selects the OCB manifest: builder-config.yaml (full, default) or
+# builder-config.slim.yaml (drops the five heavy SaaS/cloud exporters). Both
+# emit dist/otel-fleet-collector. `make build-slim` is a shorthand.
+CONFIG ?= builder-config.yaml
+
+.PHONY: all build build-slim test proto validate check-slim docker clean
 
 all: test build
 
 # Build the distribution with the OpenTelemetry Collector Builder.
 build:
-	go run go.opentelemetry.io/collector/cmd/builder@$(OCB_VERSION) --config builder-config.yaml
+	go run go.opentelemetry.io/collector/cmd/builder@$(OCB_VERSION) --config $(CONFIG)
+
+# Build the slim distribution (full minus the heavy backend exporters).
+build-slim:
+	$(MAKE) build CONFIG=builder-config.slim.yaml
 
 # Unit-test the custom components.
 test:
@@ -36,6 +45,12 @@ validate:
 	CLICKHOUSE_ENDPOINT='tcp://localhost:9000?database=otel' \
 	./$(DIST) validate --config=../deploy/compose/otelcol-gateway.yaml
 	./$(DIST) validate --config=testdata/forwarding-sample.yaml
+
+# Enforce the slim/full invariant: every gomod in the slim manifest must also
+# be in the full manifest (slim ⊆ full), and none of the heavy backend
+# exporters may leak into slim. Pure text check — no build required.
+check-slim:
+	@./scripts/check-slim.sh
 
 # Build the gateway container image (repo root as context).
 docker:

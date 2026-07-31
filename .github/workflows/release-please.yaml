@@ -65,6 +65,15 @@ jobs:
             dockerfile: Dockerfile.collector
           - image: otel-fleet-supervisor
             dockerfile: Dockerfile.supervisor
+          # Slim variants: the same distro minus the five heavy SaaS/cloud
+          # exporters (Datadog/Elasticsearch/Kafka/S3/Splunk). Opt-in via
+          # images.collector.repository / agent supervisor.repository.
+          - image: otel-fleet-collector-slim
+            dockerfile: Dockerfile.collector
+            buildArgs: BUILDER_CONFIG=builder-config.slim.yaml
+          - image: otel-fleet-supervisor-slim
+            dockerfile: Dockerfile.supervisor
+            buildArgs: BUILDER_CONFIG=builder-config.slim.yaml
     steps:
       - uses: actions/checkout@v4
         with:
@@ -88,6 +97,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.buildArgs }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |

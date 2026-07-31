@@ -101,6 +101,8 @@ release:
 
     - `ghcr.io/sag-solutions/otel-fleet:{{ .Version }}` — control plane (binary + web UI + collector for validation)
     - `ghcr.io/sag-solutions/otel-fleet-collector:{{ .Version }}` — gateway/forwarding collector distro
+    - `ghcr.io/sag-solutions/otel-fleet-collector-slim:{{ .Version }}` — same, minus the heavy Datadog/Elasticsearch/Kafka/S3/Splunk exporters
     - `ghcr.io/sag-solutions/otel-fleet-supervisor:{{ .Version }}` — edge agent (OpAMP supervisor + collector)
+    - `ghcr.io/sag-solutions/otel-fleet-supervisor-slim:{{ .Version }}` — edge agent, slim collector
 
     **Helm chart**: `helm install otel-fleet oci://ghcr.io/sag-solutions/charts/otel-fleet --version {{ .Version }}`

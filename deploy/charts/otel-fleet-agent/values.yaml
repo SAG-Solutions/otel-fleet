@@ -2,6 +2,11 @@
 # opamp.endpoint at that region's OpAMP endpoint.
 
 image:
+  # Edge agent = OpAMP supervisor + collector distro. Use the -slim image
+  # (ghcr.io/sag-solutions/otel-fleet-supervisor-slim) when edge pipelines
+  # export only to self-hosted backends (the common case: forward OTLP to the
+  # gateway); it drops the five heavy SaaS/cloud exporters. Keep the full image
+  # if an edge pipeline exports directly to Datadog/Elasticsearch/Kafka/S3/Splunk.
   repository: ghcr.io/sag-solutions/otel-fleet-supervisor
   tag: "" # defaults to the chart version
   pullPolicy: IfNotPresent

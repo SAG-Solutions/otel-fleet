@@ -66,6 +66,35 @@ ingress:
 
 Tags default to the chart's `appVersion`; override with `images.*.tag`.
 
+### Slim collector variant
+
+The collector and edge-agent images ship in two weights:
+
+| Variant | Image | Contents |
+| --- | --- | --- |
+| Full (default) | `…/otel-fleet-collector`, `…/otel-fleet-supervisor` | All exporters, incl. the heavy SaaS/cloud presets: Datadog, Elasticsearch, Kafka, AWS S3, Splunk HEC |
+| Slim | `…/otel-fleet-collector-slim`, `…/otel-fleet-supervisor-slim` | Everything **except** those five exporters — ~11 % smaller, fewer CVEs to track |
+
+Use slim when your pipelines export only to self-hosted backends (ClickHouse,
+VictoriaMetrics, OTLP, file — the Loki/Tempo/Mimir/Jaeger/Grafana-Cloud presets
+all use OTLP or remote-write and work on slim). Switch by pointing the image at
+the `-slim` repository:
+
+```yaml
+# otel-fleet chart
+images:
+  collector:
+    repository: ghcr.io/sag-solutions/otel-fleet-collector-slim
+
+# otel-fleet-agent chart
+image:
+  repository: ghcr.io/sag-solutions/otel-fleet-supervisor-slim
+```
+
+The **control plane always bundles the full distro** for `otelcol validate`, so
+authoring a Datadog/Kafka/… pipeline in the UI still validates even when your
+gateways run slim — that pipeline just needs a full-image collector to run.
+
 ## Control plane
 
 ```yaml
