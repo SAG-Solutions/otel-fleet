@@ -94,6 +94,33 @@ jobs:
           echo "=== control plane ==="; cat /tmp/cp.log || true
           echo "=== gateway ==="; docker compose -f deploy/compose/docker-compose.yaml logs --tail=120 gateway || true
 
+  # Real-cluster e2e for the cluster-monitoring bundle: spin up kind, load the
+  # (slim) collector image, deploy the bundle + an in-cluster VictoriaMetrics,
+  # and assert the DaemonSet + singleton actually scrape and remote-write k8s_*
+  # and system_* metrics. This is the kube-prometheus-stack replacement verified
+  # against a live cluster (previously only helm-template-checked).
+  cluster-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build the slim collector image
+        run: docker build --build-arg BUILDER_CONFIG=builder-config.slim.yaml -f Dockerfile.collector -t otel-fleet-collector:e2e .
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: otelfleet-e2e
+      - name: Load collector image into kind
+        run: kind load docker-image otel-fleet-collector:e2e --name otelfleet-e2e
+      - name: Run cluster-monitoring e2e
+        run: test/e2e-cluster/run.sh
+        env:
+          KCTX: kind-otelfleet-e2e
+          COLLECTOR_IMAGE: otel-fleet-collector
+          COLLECTOR_TAG: e2e
+
   codegen-drift:
     runs-on: ubuntu-latest
     steps:

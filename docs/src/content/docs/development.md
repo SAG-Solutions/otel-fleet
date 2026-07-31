@@ -64,6 +64,9 @@ If that fails locally, your PR will fail the `codegen-drift` job.
 | Rendered-config contract | `collector/testdata/forwarding-sample.yaml` | `make -C collector validate` |
 | Web | `web/src/**` (vitest) | `cd web && pnpm test` |
 | Helm | lint + template of both forwarding modes | see `.github/workflows/ci.yaml` |
+| Full-stack smoke | `test/e2e` (`//go:build e2e`) | compose stack up, then `OTEL_FLEET_E2E_URL=… go test -tags=e2e ./test/e2e/...` |
+| Store / leader | `internal/{store,leader}` (`//go:build integration`) | `OTEL_FLEET_TEST_DATABASE_URL=… go test -tags=integration ./internal/store/... ./internal/leader/...` |
+| Cluster monitoring | `test/e2e-cluster/run.sh` (real kind cluster) | build the collector image, `kind load`, then `KCTX=kind-… test/e2e-cluster/run.sh` — asserts k8s_*/system_* land in VictoriaMetrics |
 
 Pipeline-validation tests exercise the real distro binary; build it first with
 `make -C collector build` (tests that need it degrade or skip when it is
