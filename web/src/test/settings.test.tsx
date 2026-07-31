@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderApp, stubApi, testViewerMe } from '@/test/render-app'
 import { setCsrfToken } from '@/lib/api-client'
@@ -272,6 +272,43 @@ describe('/settings?tab=alert-rules', () => {
     await user.type(within(dialog).getByLabelText('Threshold'), '0.8')
     await user.click(within(dialog).getByRole('button', { name: /create rule/i }))
     expect(within(dialog).getByText('Enter a PromQL query')).toBeInTheDocument()
+  })
+})
+
+describe('maintenance windows', () => {
+  it('renders windows in the alert-rules tab with their computed status badges', async () => {
+    renderApp('/settings?tab=alert-rules')
+    // Section heading + explanatory line.
+    expect(await screen.findByText('Maintenance windows')).toBeInTheDocument()
+    expect(
+      screen.getByText('While a window is active, all alert rules are silenced (no notifications sent).'),
+    ).toBeInTheDocument()
+    // Windows render with client-side status badges (fixed fixture date ranges).
+    expect(await screen.findByText('db-migration')).toBeInTheDocument()
+    expect(screen.getByText('holiday-freeze')).toBeInTheDocument()
+    expect(screen.getByText('old-cleanup')).toBeInTheDocument()
+    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.getByText('Scheduled')).toBeInTheDocument()
+    expect(screen.getByText('Past')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete db-migration' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /new window/i })).toBeInTheDocument()
+  })
+
+  it('blocks the create dialog when the end is not after the start', async () => {
+    const user = userEvent.setup()
+    renderApp('/settings?tab=alert-rules')
+    await user.click(await screen.findByRole('button', { name: /new window/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Name'), 'planned-work')
+    // Same start and end → ends <= starts is rejected client-side.
+    fireEvent.change(within(dialog).getByLabelText('Starts'), {
+      target: { value: '2026-08-01T10:00' },
+    })
+    fireEvent.change(within(dialog).getByLabelText('Ends'), {
+      target: { value: '2026-08-01T10:00' },
+    })
+    await user.click(within(dialog).getByRole('button', { name: /create window/i }))
+    expect(within(dialog).getByText('The end must be after the start')).toBeInTheDocument()
   })
 })
 

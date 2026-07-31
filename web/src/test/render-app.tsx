@@ -17,6 +17,7 @@ import type {
   BootstrapToken,
   Customer,
   LogRecord,
+  MaintenanceWindow,
   Me,
   MetricSeries,
   Span,
@@ -346,6 +347,33 @@ export const testAlertRules: AlertRule[] = [
   },
 ]
 
+// Fixed date ranges so client-side status is deterministic regardless of the
+// wall-clock time tests run at: one always-active, one always-scheduled, one
+// always-past window.
+export const testMaintenanceWindows: MaintenanceWindow[] = [
+  {
+    id: '4f2c7a1e-0000-4000-8000-000000000081',
+    name: 'db-migration',
+    startsAt: '2020-01-01T00:00:00Z',
+    endsAt: '2099-01-01T00:00:00Z',
+    createdAt: '2026-07-14T09:00:00Z',
+  },
+  {
+    id: '4f2c7a1e-0000-4000-8000-000000000082',
+    name: 'holiday-freeze',
+    startsAt: '2099-06-01T00:00:00Z',
+    endsAt: '2099-06-02T00:00:00Z',
+    createdAt: '2026-07-15T09:00:00Z',
+  },
+  {
+    id: '4f2c7a1e-0000-4000-8000-000000000083',
+    name: 'old-cleanup',
+    startsAt: '2020-01-01T00:00:00Z',
+    endsAt: '2020-01-02T00:00:00Z',
+    createdAt: '2026-07-13T09:00:00Z',
+  },
+]
+
 export const testBillingSettings: BillingSettings = {
   pricePerGibMicro: 500_000,
   pricePerMillionItemsMicro: 2_000_000,
@@ -540,6 +568,8 @@ export function stubApi(
           return json({ webhooks: testWebhooks })
         case '/api/v1/settings/alert-rules':
           return json({ rules: testAlertRules })
+        case '/api/v1/settings/maintenance-windows':
+          return json({ windows: testMaintenanceWindows })
         case '/api/v1/settings/billing':
           return json(testBillingSettings)
         case '/api/v1/billing/statement':

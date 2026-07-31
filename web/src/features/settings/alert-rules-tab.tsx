@@ -1,16 +1,21 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellRing, Pencil, Plus, Trash2 } from 'lucide-react'
+import { BellRing, CalendarClock, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   createAlertRuleMutation,
+  createMaintenanceWindowMutation,
   deleteAlertRuleMutation,
+  deleteMaintenanceWindowMutation,
   listAlertRulesOptions,
   listAlertRulesQueryKey,
   listCustomersOptions,
+  listMaintenanceWindowsOptions,
+  listMaintenanceWindowsQueryKey,
   listWebhooksOptions,
   updateAlertRuleMutation,
 } from '@/api/generated/@tanstack/react-query.gen'
 import { apiErrorMessage } from '@/lib/api-error'
+import { formatDateTime, formatRelative } from '@/lib/format'
 import { toast } from '@/components/toaster'
 import { ErrorState } from '@/components/error-state'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -38,7 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { AlertComparison, AlertMetric, AlertRule } from '@/api/generated'
+import type { AlertComparison, AlertMetric, AlertRule, MaintenanceWindow } from '@/api/generated'
 
 const METRICS: { value: AlertMetric; label: string }[] = [
   { value: 'ingest_items', label: 'Ingest items' },
@@ -223,6 +228,8 @@ export function AlertRulesTab() {
             </Table>
           </section>
         ))}
+
+      <MaintenanceWindowsSection />
 
       <AlertRuleDialog
         open={dialogOpen || editTarget !== null}
@@ -531,6 +538,288 @@ function AlertRuleDialog({
           </Button>
           <Button variant="primary" onClick={submit} disabled={pending || !name || threshold === ''}>
             {pending ? 'Saving…' : editing ? 'Save changes' : 'Create rule'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+type WindowStatus = 'active' | 'scheduled' | 'past'
+
+function windowStatus(window: MaintenanceWindow, now: Date): WindowStatus {
+  const t = now.getTime()
+  const start = new Date(window.startsAt).getTime()
+  const end = new Date(window.endsAt).getTime()
+  if (t >= start && t < end) return 'active'
+  if (t < start) return 'scheduled'
+  return 'past'
+}
+
+const STATUS_META: Record<
+  WindowStatus,
+  { label: string; variant: 'ok' | 'accent' | 'neutral'; rank: number }
+> = {
+  active: { label: 'Active', variant: 'ok', rank: 0 },
+  scheduled: { label: 'Scheduled', variant: 'accent', rank: 1 },
+  past: { label: 'Past', variant: 'neutral', rank: 2 },
+}
+
+/** Convert a browser <input type="datetime-local"> value (local time) to an ISO string. */
+function localInputToIso(value: string): string {
+  return new Date(value).toISOString()
+}
+
+function MaintenanceWindowsSection() {
+  const queryClient = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<MaintenanceWindow | null>(null)
+
+  const query = useQuery(listMaintenanceWindowsOptions())
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: listMaintenanceWindowsQueryKey() })
+
+  const remove = useMutation({
+    ...deleteMaintenanceWindowMutation(),
+    onSuccess: () => {
+      void invalidate()
+      setDeleteTarget(null)
+      toast('Maintenance window deleted')
+    },
+    onError: (error) => {
+      setDeleteTarget(null)
+      toast(apiErrorMessage(error, 'Could not delete the maintenance window'), 'danger')
+    },
+  })
+
+  const now = new Date()
+  const windows = query.isSuccess
+    ? [...query.data.windows].sort((a, b) => {
+        const rankDelta = STATUS_META[windowStatus(a, now)].rank - STATUS_META[windowStatus(b, now)].rank
+        if (rankDelta !== 0) return rankDelta
+        return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+      })
+    : []
+
+  return (
+    <div className="flex flex-col gap-4 border-t border-line pt-6">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-[13px] font-semibold text-ink">Maintenance windows</h2>
+          <p className="text-xs text-ink-2">
+            While a window is active, all alert rules are silenced (no notifications sent).
+          </p>
+        </div>
+        <Button variant="primary" size="sm" onClick={() => setDialogOpen(true)}>
+          <Plus aria-hidden />
+          New window
+        </Button>
+      </div>
+
+      {query.isPending && (
+        <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
+          {Array.from({ length: 2 }, (_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
+      )}
+      {query.isError && (
+        <ErrorState
+          title="Could not load maintenance windows"
+          onRetry={() => void query.refetch()}
+        />
+      )}
+      {query.isSuccess &&
+        (windows.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-line bg-surface px-6 py-10 text-center">
+            <CalendarClock className="size-5 text-ink-3" />
+            <div className="text-sm font-semibold text-ink">No maintenance windows</div>
+            <p className="max-w-md text-[13px] text-ink-2">
+              Schedule a window to silence all alert notifications during planned work.
+            </p>
+          </div>
+        ) : (
+          <section className="rounded-lg border border-line bg-surface">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Name</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Starts</TableHead>
+                  <TableHead>Ends</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {windows.map((window) => {
+                  const status = windowStatus(window, now)
+                  const meta = STATUS_META[status]
+                  return (
+                    <TableRow key={window.id}>
+                      <TableCell>
+                        <span className="font-medium text-ink">{window.name}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={meta.variant} dot={status === 'active'}>
+                          {meta.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[13px] text-ink-2" title={formatRelative(window.startsAt, now)}>
+                          {formatDateTime(window.startsAt)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[13px] text-ink-2" title={formatRelative(window.endsAt, now)}>
+                          {formatDateTime(window.endsAt)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 hover:text-danger"
+                          aria-label={`Delete ${window.name}`}
+                          onClick={() => setDeleteTarget(window)}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </section>
+        ))}
+
+      <MaintenanceWindowDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSaved={() => void invalidate()}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        title={`Delete ${deleteTarget?.name ?? 'this window'}?`}
+        description="Alerts will no longer be silenced for this window's schedule."
+        confirmLabel="Delete window"
+        destructive
+        pending={remove.isPending}
+        onConfirm={() => {
+          if (deleteTarget) remove.mutate({ path: { windowId: deleteTarget.id } })
+        }}
+      />
+    </div>
+  )
+}
+
+function MaintenanceWindowDialog({
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState('')
+  const [startsAt, setStartsAt] = useState('')
+  const [endsAt, setEndsAt] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  // Reset the form each time the dialog opens.
+  const [seeded, setSeeded] = useState(false)
+  if (open && !seeded) {
+    setName('')
+    setStartsAt('')
+    setEndsAt('')
+    setError(null)
+    setSeeded(true)
+  }
+  if (!open && seeded) setSeeded(false)
+
+  const create = useMutation({
+    ...createMaintenanceWindowMutation(),
+    onSuccess: () => {
+      onSaved()
+      toast('Maintenance window created')
+      onOpenChange(false)
+    },
+    onError: (err) => setError(apiErrorMessage(err, 'Could not create the maintenance window')),
+  })
+
+  const submit = () => {
+    setError(null)
+    if (name.trim() === '') {
+      setError('Enter a name')
+      return
+    }
+    if (startsAt === '' || endsAt === '') {
+      setError('Enter both a start and an end')
+      return
+    }
+    if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+      setError('The end must be after the start')
+      return
+    }
+    create.mutate({
+      body: {
+        name: name.trim(),
+        startsAt: localInputToIso(startsAt),
+        endsAt: localInputToIso(endsAt),
+      },
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New maintenance window</DialogTitle>
+          <DialogDescription>
+            While this window is active, all alert rules are silenced and no notifications are sent.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="mw-name">Name</Label>
+            <Input id="mw-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="mw-starts">Starts</Label>
+              <Input
+                id="mw-starts"
+                type="datetime-local"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="mw-ends">Ends</Label>
+              <Input
+                id="mw-ends"
+                type="datetime-local"
+                value={endsAt}
+                onChange={(e) => setEndsAt(e.target.value)}
+              />
+            </div>
+          </div>
+          {error && <p className="text-[13px] text-danger">{error}</p>}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={submit}
+            disabled={create.isPending || !name || startsAt === '' || endsAt === ''}
+          >
+            {create.isPending ? 'Saving…' : 'Create window'}
           </Button>
         </DialogFooter>
       </DialogContent>

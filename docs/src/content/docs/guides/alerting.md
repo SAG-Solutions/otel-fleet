@@ -119,6 +119,16 @@ when denied requests spike; `avg(k8s_node_cpu_utilization)` **above** `0.85` →
 node CPU saturation. Requires VictoriaMetrics reachable from the control plane
 (`OTEL_FLEET_VICTORIAMETRICS_URL`).
 
+### Maintenance windows
+
+To avoid alert noise during planned work, create a **maintenance window**
+(Settings → Alert rules → Maintenance windows) with a start and end time. While
+`now` is inside any active window, the evaluator skips its entire pass — **no
+rule fires or resolves**, across all rules. Firing state is left untouched, so
+evaluation resumes cleanly when the window ends (a rule that was already firing
+before the window stays firing without re-notifying; one that started breaching
+during the window fires on the first tick after it ends).
+
 ### Examples
 
 - **Ingest stopped for a key customer** — Metric `ingest_items`, comparison
