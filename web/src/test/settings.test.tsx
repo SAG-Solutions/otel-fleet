@@ -218,6 +218,9 @@ describe('/settings?tab=alert-rules', () => {
     // Scope: null → All customers, else the customer name.
     expect(screen.getAllByText('All customers').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('ACME Corp')).toBeInTheDocument()
+    // Per-rule severity badge.
+    expect(screen.getByText('Critical')).toBeInTheDocument()
+    expect(screen.getByText('Warning')).toBeInTheDocument()
     // Channel counts (singular/plural).
     expect(screen.getByText('1 channel')).toBeInTheDocument()
     expect(screen.getAllByText('0 channels').length).toBeGreaterThanOrEqual(1)
@@ -238,6 +241,7 @@ describe('/settings?tab=alert-rules', () => {
     expect(within(dialog).getByLabelText('Name')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Metric')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Comparison')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Severity')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Threshold')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Window')).toBeInTheDocument()
     // Scope is editable on create and offers a customer option.

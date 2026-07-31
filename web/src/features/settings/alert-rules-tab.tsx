@@ -43,7 +43,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { AlertComparison, AlertMetric, AlertRule, MaintenanceWindow } from '@/api/generated'
+import type {
+  AlertComparison,
+  AlertMetric,
+  AlertRule,
+  AlertSeverity,
+  MaintenanceWindow,
+} from '@/api/generated'
 
 const METRICS: { value: AlertMetric; label: string }[] = [
   { value: 'ingest_items', label: 'Ingest items' },
@@ -60,6 +66,18 @@ const COMPARISONS: { value: AlertComparison; label: string }[] = [
   { value: 'below', label: 'below' },
   { value: 'above', label: 'above' },
 ]
+
+const SEVERITIES: { value: AlertSeverity; label: string }[] = [
+  { value: 'info', label: 'Info' },
+  { value: 'warning', label: 'Warning' },
+  { value: 'critical', label: 'Critical' },
+]
+
+const SEVERITY_META: Record<AlertSeverity, { label: string; variant: 'accent' | 'warn' | 'danger' }> = {
+  info: { label: 'Info', variant: 'accent' },
+  warning: { label: 'Warning', variant: 'warn' },
+  critical: { label: 'Critical', variant: 'danger' },
+}
 
 const WINDOWS: { value: number; label: string }[] = [
   { value: 60, label: '1m' },
@@ -155,6 +173,7 @@ export function AlertRulesTab() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Name</TableHead>
+                  <TableHead>Severity</TableHead>
                   <TableHead>Condition</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>Channels</TableHead>
@@ -167,6 +186,11 @@ export function AlertRulesTab() {
                   <TableRow key={rule.id}>
                     <TableCell>
                       <span className="font-medium text-ink">{rule.name}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={SEVERITY_META[rule.severity].variant}>
+                        {SEVERITY_META[rule.severity].label}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <span
@@ -276,6 +300,7 @@ function AlertRuleDialog({
   const [metric, setMetric] = useState<AlertMetric>('ingest_items')
   const [query, setQuery] = useState('')
   const [comparison, setComparison] = useState<AlertComparison>('below')
+  const [severity, setSeverity] = useState<AlertSeverity>('warning')
   const [threshold, setThreshold] = useState('')
   const [windowSeconds, setWindowSeconds] = useState(300)
   const [customerId, setCustomerId] = useState<string>('')
@@ -294,6 +319,7 @@ function AlertRuleDialog({
     setMetric(rule?.metric ?? 'ingest_items')
     setQuery(rule?.query ?? '')
     setComparison(rule?.comparison ?? 'below')
+    setSeverity(rule?.severity ?? 'warning')
     setThreshold(rule ? String(rule.threshold) : '')
     setWindowSeconds(rule?.windowSeconds ?? 300)
     setCustomerId(rule?.customerId ?? '')
@@ -354,6 +380,7 @@ function AlertRuleDialog({
           metric,
           query: isPromql ? query.trim() : undefined,
           comparison,
+          severity,
           threshold: thresholdValue,
           windowSeconds: effectiveWindow,
           channelIds,
@@ -367,6 +394,7 @@ function AlertRuleDialog({
           metric,
           query: isPromql ? query.trim() : undefined,
           comparison,
+          severity,
           threshold: thresholdValue,
           windowSeconds: effectiveWindow,
           customerId: isPromql ? null : customerId || null,
@@ -420,6 +448,20 @@ function AlertRuleDialog({
                 {COMPARISONS.map((c) => (
                   <option key={c.value} value={c.value}>
                     {c.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ar-severity">Severity</Label>
+              <Select
+                id="ar-severity"
+                value={severity}
+                onChange={(e) => setSeverity(e.target.value as AlertSeverity)}
+              >
+                {SEVERITIES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
                   </option>
                 ))}
               </Select>
