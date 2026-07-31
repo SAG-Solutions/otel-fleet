@@ -66,6 +66,13 @@ The gateway's `count` connector produces ground-truth ingest counters —
 `tenant.id` as a label (resource-to-telemetry conversion). The dashboard and
 customer pages are built on these plus per-request accepted/refused counts.
 
+The customer detail page has a **Metrics** tab that runs PromQL directly
+against VictoriaMetrics, scoped to that tenant: the server applies an
+`extra_filters[] tenant_id="<clientId>"` matcher to every selector, so any
+query — curated panels or ad-hoc — only ever returns that customer's series
+(the scoping is enforced by VictoriaMetrics, not string concatenation, so it is
+injection-safe). Portal users get the same, limited to their own customer.
+
 ## Isolation model (honest edition)
 
 - Attribution is enforced at the gateway; tenants cannot write into each other's

@@ -48,9 +48,10 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { CreateApiKeyDialog } from '@/components/create-api-key-dialog'
 import { SecretDialog } from '@/components/secret-dialog'
 import { CustomerAgentsTab } from '@/features/fleet/customer-agents-tab'
+import { CustomerMetrics } from '@/features/customers/customer-metrics'
 import type { ApiKey, ApiKeyCreated, Customer, ThroughputPoint } from '@/api/generated'
 
-const TABS = ['overview', 'api-keys', 'agents', 'settings'] as const
+const TABS = ['overview', 'metrics', 'api-keys', 'agents', 'settings'] as const
 type Tab = (typeof TABS)[number]
 
 interface CustomerSearch {
@@ -90,6 +91,7 @@ function CustomerDetailPage() {
       <CustomerHeader customer={customer} />
       <TabBar customerId={customerId} active={tab} />
       {tab === 'overview' && <OverviewTab customerId={customerId} />}
+      {tab === 'metrics' && <CustomerMetrics customerId={customerId} />}
       {tab === 'api-keys' && <ApiKeysTab customerId={customerId} />}
       {tab === 'agents' && <CustomerAgentsTab customerId={customerId} />}
       {tab === 'settings' && <CustomerSettingsTab customer={customer} />}
@@ -188,6 +190,7 @@ function CustomerHeader({ customer }: { customer: Customer }) {
 function TabBar({ customerId, active }: { customerId: string; active: Tab }) {
   const labels: Record<Tab, string> = {
     overview: 'Overview',
+    metrics: 'Metrics',
     'api-keys': 'API keys',
     agents: 'Agents',
     settings: 'Settings',

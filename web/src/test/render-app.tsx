@@ -576,6 +576,8 @@ export function stubApi(
           return json(testBillingStatement)
         case '/api/v1/metrics/query_range':
           return json({ series: metricSeries })
+        case `/api/v1/customers/${testCustomer.id}/metrics/query_range`:
+          return json({ series: metricSeries })
         default:
           return new Response(JSON.stringify({ code: 'not_found', message: 'not found' }), {
             status: 404,
