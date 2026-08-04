@@ -412,13 +412,19 @@ func (e WebhookEvent) Valid() bool {
 
 // Defines values for WebhookType.
 const (
-	WebhookTypeSlack   WebhookType = "slack"
-	WebhookTypeWebhook WebhookType = "webhook"
+	WebhookTypeOpsgenie  WebhookType = "opsgenie"
+	WebhookTypePagerduty WebhookType = "pagerduty"
+	WebhookTypeSlack     WebhookType = "slack"
+	WebhookTypeWebhook   WebhookType = "webhook"
 )
 
 // Valid indicates whether the value is a known member of the WebhookType enum.
 func (e WebhookType) Valid() bool {
 	switch e {
+	case WebhookTypeOpsgenie:
+		return true
+	case WebhookTypePagerduty:
+		return true
 	case WebhookTypeSlack:
 		return true
 	case WebhookTypeWebhook:
@@ -1340,7 +1346,7 @@ type Webhook struct {
 	Id        openapi_types.UUID `json:"id"`
 	Name      string             `json:"name"`
 
-	// Type Notification channel type. 'webhook' = generic HMAC-signed JSON POST; 'slack' = a Slack incoming-webhook message (URL from Slack, no secret).
+	// Type Notification channel type. 'webhook' = generic HMAC-signed JSON POST; 'slack' = a Slack incoming-webhook message (URL from Slack, no secret); 'pagerduty' = PagerDuty Events API v2 (secret = routing key, URL optional — defaults to the PagerDuty endpoint); 'opsgenie' = Opsgenie Alert API (secret = GenieKey API key, URL optional — set the EU region endpoint if needed).
 	Type WebhookType `json:"type"`
 	Url  string      `json:"url"`
 }
@@ -1351,18 +1357,18 @@ type WebhookCreate struct {
 	Events  []WebhookEvent `json:"events"`
 	Name    string         `json:"name"`
 
-	// Secret HMAC signing secret (generic webhooks only); encrypted at rest
+	// Secret Channel secret, encrypted at rest. Generic webhook: optional HMAC signing key. PagerDuty: routing key (required). Opsgenie: GenieKey API key (required). Slack: none.
 	Secret *string      `json:"secret,omitempty"`
 	Type   *WebhookType `json:"type,omitempty"`
 
-	// Url Must be https:// (http allowed only for localhost). For Slack, the incoming-webhook URL.
-	Url string `json:"url"`
+	// Url Delivery URL. Required for webhook/slack (https:// only, http allowed for localhost). Optional for pagerduty/opsgenie — omit to use the default vendor endpoint.
+	Url *string `json:"url,omitempty"`
 }
 
 // WebhookEvent defines model for WebhookEvent.
 type WebhookEvent string
 
-// WebhookType Notification channel type. 'webhook' = generic HMAC-signed JSON POST; 'slack' = a Slack incoming-webhook message (URL from Slack, no secret).
+// WebhookType Notification channel type. 'webhook' = generic HMAC-signed JSON POST; 'slack' = a Slack incoming-webhook message (URL from Slack, no secret); 'pagerduty' = PagerDuty Events API v2 (secret = routing key, URL optional — defaults to the PagerDuty endpoint); 'opsgenie' = Opsgenie Alert API (secret = GenieKey API key, URL optional — set the EU region endpoint if needed).
 type WebhookType string
 
 // WebhookUpdate defines model for WebhookUpdate.
@@ -1374,7 +1380,7 @@ type WebhookUpdate struct {
 	// Secret Omit = keep; empty string = remove signing
 	Secret *string `json:"secret,omitempty"`
 
-	// Type Notification channel type. 'webhook' = generic HMAC-signed JSON POST; 'slack' = a Slack incoming-webhook message (URL from Slack, no secret).
+	// Type Notification channel type. 'webhook' = generic HMAC-signed JSON POST; 'slack' = a Slack incoming-webhook message (URL from Slack, no secret); 'pagerduty' = PagerDuty Events API v2 (secret = routing key, URL optional — defaults to the PagerDuty endpoint); 'opsgenie' = Opsgenie Alert API (secret = GenieKey API key, URL optional — set the EU region endpoint if needed).
 	Type *WebhookType `json:"type,omitempty"`
 	Url  *string      `json:"url,omitempty"`
 }

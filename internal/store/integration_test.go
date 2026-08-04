@@ -208,10 +208,11 @@ func TestIntegrationAuthProviders(t *testing.T) {
 	}
 }
 
-// TestIntegrationWebhooks guards webhookCols incl. the type column (0010).
+// TestIntegrationWebhooks guards webhookCols incl. the type column (0010) and
+// that migration 0018 relaxed the CHECK to admit pagerduty/opsgenie.
 func TestIntegrationWebhooks(t *testing.T) {
 	ctx := ctxT(t)
-	for _, typ := range []string{WebhookTypeGeneric, WebhookTypeSlack} {
+	for _, typ := range []string{WebhookTypeGeneric, WebhookTypeSlack, WebhookTypePagerDuty, WebhookTypeOpsgenie} {
 		w, err := testPG.CreateWebhook(ctx, NewWebhook{
 			ID: uuid.New(), Type: typ, Name: typ + "-" + uniq(), URL: "https://hooks.example.com",
 			Events: []string{WebhookEventAgentOffline}, Enabled: true,

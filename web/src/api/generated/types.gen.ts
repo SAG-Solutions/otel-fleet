@@ -637,9 +637,9 @@ export type MaintenanceWindowCreate = {
 export type WebhookEvent = 'agent_offline' | 'agent_config_failed' | 'agent_unhealthy';
 
 /**
- * Notification channel type. 'webhook' = generic HMAC-signed JSON POST; 'slack' = a Slack incoming-webhook message (URL from Slack, no secret).
+ * Notification channel type. 'webhook' = generic HMAC-signed JSON POST; 'slack' = a Slack incoming-webhook message (URL from Slack, no secret); 'pagerduty' = PagerDuty Events API v2 (secret = routing key, URL optional — defaults to the PagerDuty endpoint); 'opsgenie' = Opsgenie Alert API (secret = GenieKey API key, URL optional — set the EU region endpoint if needed).
  */
-export type WebhookType = 'webhook' | 'slack';
+export type WebhookType = 'webhook' | 'slack' | 'pagerduty' | 'opsgenie';
 
 export type Webhook = {
     id: string;
@@ -659,12 +659,12 @@ export type WebhookCreate = {
     type?: WebhookType;
     name: string;
     /**
-     * Must be https:// (http allowed only for localhost). For Slack, the incoming-webhook URL.
+     * Delivery URL. Required for webhook/slack (https:// only, http allowed for localhost). Optional for pagerduty/opsgenie — omit to use the default vendor endpoint.
      */
-    url: string;
+    url?: string;
     events: Array<WebhookEvent>;
     /**
-     * HMAC signing secret (generic webhooks only); encrypted at rest
+     * Channel secret, encrypted at rest. Generic webhook: optional HMAC signing key. PagerDuty: routing key (required). Opsgenie: GenieKey API key (required). Slack: none.
      */
     secret?: string | null;
     enabled?: boolean;

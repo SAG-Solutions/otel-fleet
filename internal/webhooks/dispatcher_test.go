@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	neturl "net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -83,10 +84,9 @@ func TestDeliverSignsWhenSecretPresent(t *testing.T) {
 	defer srv.Close()
 
 	d := New(&fakeStore{}, cipher, testLogger())
-	body := []byte(`{"event":"agent_offline"}`)
-	status, err := d.Deliver(context.Background(), store.Webhook{URL: srv.URL, SecretEnc: enc}, "agent_offline", body)
+	status, err := d.deliver(context.Background(), store.Webhook{Type: store.WebhookTypeGeneric, URL: srv.URL, SecretEnc: enc}, "agent_offline", Payload{Event: "agent_offline"})
 	if err != nil || status != http.StatusOK {
-		t.Fatalf("Deliver: status=%d err=%v", status, err)
+		t.Fatalf("deliver: status=%d err=%v", status, err)
 	}
 	if gotSig != Signature([]byte("top-secret"), gotBody) {
 		t.Errorf("signature header %q does not match body HMAC", gotSig)
@@ -108,9 +108,9 @@ func TestDeliverUnsignedWhenNoSecret(t *testing.T) {
 	defer srv.Close()
 
 	d := New(&fakeStore{}, nil, testLogger()) // nil cipher, no secret → must not touch it
-	status, err := d.Deliver(context.Background(), store.Webhook{URL: srv.URL}, "test", []byte("{}"))
+	status, err := d.deliver(context.Background(), store.Webhook{URL: srv.URL}, "test", Payload{Event: "test"})
 	if err != nil || status != http.StatusAccepted {
-		t.Fatalf("Deliver: status=%d err=%v", status, err)
+		t.Fatalf("deliver: status=%d err=%v", status, err)
 	}
 	if hadSig {
 		t.Error("unsigned webhook must not send a signature header")
@@ -181,7 +181,7 @@ func TestDeliverWithRetryRecoversAfter500(t *testing.T) {
 
 	d := New(&fakeStore{}, nil, testLogger())
 	d.backoff = []time.Duration{time.Millisecond} // fast retry for the test
-	d.deliverWithRetry(context.Background(), store.Webhook{ID: uuid.New(), URL: srv.URL}, "test", []byte("{}"))
+	d.deliverWithRetry(context.Background(), store.Webhook{ID: uuid.New(), URL: srv.URL}, "test", Payload{Event: "test"})
 	if attempts.Load() != 2 {
 		t.Errorf("attempts = %d, want 2 (500 then 200)", attempts.Load())
 	}
@@ -197,7 +197,7 @@ func TestDeliverWithRetryStopsOn4xx(t *testing.T) {
 
 	d := New(&fakeStore{}, nil, testLogger())
 	d.backoff = []time.Duration{time.Millisecond, time.Millisecond}
-	d.deliverWithRetry(context.Background(), store.Webhook{ID: uuid.New(), URL: srv.URL}, "test", []byte("{}"))
+	d.deliverWithRetry(context.Background(), store.Webhook{ID: uuid.New(), URL: srv.URL}, "test", Payload{Event: "test"})
 	if attempts.Load() != 1 {
 		t.Errorf("attempts = %d, want 1 (4xx is permanent, no retry)", attempts.Load())
 	}
@@ -294,6 +294,147 @@ func TestBuildPayloadEnrichesFromStore(t *testing.T) {
 	}
 	if p.Detail["k"] != "v" {
 		t.Error("detail not carried through")
+	}
+}
+
+func TestPagerDutyTriggerAndResolve(t *testing.T) {
+	cipher := newCipher(t)
+	enc, err := cipher.Encrypt([]byte("routing-key-123"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotURL string
+	var gotBody []byte
+	var gotSig string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotURL = r.URL.String()
+		gotSig = r.Header.Get("X-Otelfleet-Signature")
+		gotBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer srv.Close()
+
+	wh := store.Webhook{ID: uuid.New(), Type: store.WebhookTypePagerDuty, URL: srv.URL, SecretEnc: enc, Enabled: true}
+	d := New(&fakeStore{}, cipher, testLogger())
+
+	// A firing alert → event_action "trigger" with the routing key + payload.
+	fire := Payload{Event: AlertFiring, OccurredAt: time.Unix(0, 0).UTC(),
+		Detail: map[string]any{"severity": store.AlertSeverityCritical, "rule": "cpu hot", "customer": "ACME", "metric": "ingest_items"}}
+	if status, err := d.deliver(context.Background(), wh, AlertFiring, fire); err != nil || status != http.StatusAccepted {
+		t.Fatalf("deliver trigger: status=%d err=%v", status, err)
+	}
+	if gotSig != "" {
+		t.Errorf("PagerDuty must not carry an HMAC signature, got %q", gotSig)
+	}
+	var trig struct {
+		RoutingKey  string `json:"routing_key"`
+		EventAction string `json:"event_action"`
+		DedupKey    string `json:"dedup_key"`
+		Payload     *struct {
+			Summary  string `json:"summary"`
+			Severity string `json:"severity"`
+		} `json:"payload"`
+	}
+	if err := json.Unmarshal(gotBody, &trig); err != nil {
+		t.Fatalf("trigger body not JSON: %v (%s)", err, gotBody)
+	}
+	if trig.RoutingKey != "routing-key-123" {
+		t.Errorf("routing_key = %q, want the decrypted secret", trig.RoutingKey)
+	}
+	if trig.EventAction != "trigger" {
+		t.Errorf("event_action = %q, want trigger", trig.EventAction)
+	}
+	if trig.Payload == nil || trig.Payload.Severity != "critical" {
+		t.Errorf("trigger payload severity wrong: %+v", trig.Payload)
+	}
+	if !strings.Contains(trig.Payload.Summary, "cpu hot") {
+		t.Errorf("summary missing rule: %q", trig.Payload.Summary)
+	}
+	triggerKey := trig.DedupKey
+
+	// The matching resolve → event_action "resolve" with the SAME dedup key
+	// (so PagerDuty auto-resolves the incident) and no payload.
+	resolve := Payload{Event: AlertResolved, OccurredAt: time.Unix(0, 0).UTC(),
+		Detail: map[string]any{"severity": store.AlertSeverityCritical, "rule": "cpu hot", "customer": "ACME", "metric": "ingest_items"}}
+	if _, err := d.deliver(context.Background(), wh, AlertResolved, resolve); err != nil {
+		t.Fatalf("deliver resolve: %v", err)
+	}
+	var res struct {
+		EventAction string `json:"event_action"`
+		DedupKey    string `json:"dedup_key"`
+		Payload     any    `json:"payload"`
+	}
+	if err := json.Unmarshal(gotBody, &res); err != nil {
+		t.Fatalf("resolve body not JSON: %v", err)
+	}
+	if res.EventAction != "resolve" {
+		t.Errorf("event_action = %q, want resolve", res.EventAction)
+	}
+	if res.DedupKey != triggerKey {
+		t.Errorf("resolve dedup_key %q != trigger dedup_key %q — PagerDuty won't correlate", res.DedupKey, triggerKey)
+	}
+	if res.Payload != nil {
+		t.Errorf("resolve must omit payload, got %v", res.Payload)
+	}
+	_ = gotURL
+}
+
+func TestOpsgenieCreateAndCloseUseAliasAndGenieKey(t *testing.T) {
+	cipher := newCipher(t)
+	enc, err := cipher.Encrypt([]byte("genie-api-key"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotAuth, gotURL string
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		gotURL = r.URL.String()
+		gotBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer srv.Close()
+
+	wh := store.Webhook{ID: uuid.New(), Type: store.WebhookTypeOpsgenie, URL: srv.URL, SecretEnc: enc, Enabled: true}
+	d := New(&fakeStore{}, cipher, testLogger())
+
+	// Fire → POST base with a create body carrying the alias + priority.
+	fire := Payload{Event: AlertFiring, OccurredAt: time.Unix(0, 0).UTC(),
+		Detail: map[string]any{"severity": store.AlertSeverityWarning, "rule": "cpu hot", "customer": "ACME", "metric": "ingest_items"}}
+	if _, err := d.deliver(context.Background(), wh, AlertFiring, fire); err != nil {
+		t.Fatalf("deliver create: %v", err)
+	}
+	if gotAuth != "GenieKey genie-api-key" {
+		t.Errorf("Authorization = %q, want GenieKey <decrypted secret>", gotAuth)
+	}
+	var create struct {
+		Message  string `json:"message"`
+		Alias    string `json:"alias"`
+		Priority string `json:"priority"`
+	}
+	if err := json.Unmarshal(gotBody, &create); err != nil {
+		t.Fatalf("create body not JSON: %v (%s)", err, gotBody)
+	}
+	if create.Priority != "P3" {
+		t.Errorf("priority = %q, want P3 for warning", create.Priority)
+	}
+	if create.Alias == "" || !strings.Contains(create.Message, "cpu hot") {
+		t.Errorf("create alias/message wrong: %+v", create)
+	}
+	createAlias := create.Alias
+
+	// Resolve → POST the alias close endpoint (identifierType=alias).
+	resolve := Payload{Event: AlertResolved, OccurredAt: time.Unix(0, 0).UTC(),
+		Detail: map[string]any{"severity": store.AlertSeverityWarning, "rule": "cpu hot", "customer": "ACME", "metric": "ingest_items"}}
+	if _, err := d.deliver(context.Background(), wh, AlertResolved, resolve); err != nil {
+		t.Fatalf("deliver close: %v", err)
+	}
+	if !strings.Contains(gotURL, "/close") || !strings.Contains(gotURL, "identifierType=alias") {
+		t.Errorf("resolve URL = %q, want the alias close endpoint", gotURL)
+	}
+	// The alias in the close URL must match the create alias (URL-escaped).
+	if !strings.Contains(gotURL, neturl.PathEscape(createAlias)) {
+		t.Errorf("close URL %q does not address the created alias %q", gotURL, createAlias)
 	}
 }
 

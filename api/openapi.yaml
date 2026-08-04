@@ -2176,10 +2176,14 @@ components:
 
     WebhookType:
       type: string
-      enum: [webhook, slack]
+      enum: [webhook, slack, pagerduty, opsgenie]
       description: >-
         Notification channel type. 'webhook' = generic HMAC-signed JSON POST;
-        'slack' = a Slack incoming-webhook message (URL from Slack, no secret).
+        'slack' = a Slack incoming-webhook message (URL from Slack, no secret);
+        'pagerduty' = PagerDuty Events API v2 (secret = routing key, URL
+        optional — defaults to the PagerDuty endpoint); 'opsgenie' = Opsgenie
+        Alert API (secret = GenieKey API key, URL optional — set the EU region
+        endpoint if needed).
 
     Webhook:
       type: object
@@ -2200,18 +2204,18 @@ components:
 
     WebhookCreate:
       type: object
-      required: [name, url, events]
+      required: [name, events]
       properties:
         type:
           allOf: [{ $ref: "#/components/schemas/WebhookType" }]
           default: webhook
         name: { type: string, minLength: 1, maxLength: 200 }
-        url: { type: string, format: uri, description: "Must be https:// (http allowed only for localhost). For Slack, the incoming-webhook URL." }
+        url: { type: string, format: uri, description: "Delivery URL. Required for webhook/slack (https:// only, http allowed for localhost). Optional for pagerduty/opsgenie — omit to use the default vendor endpoint." }
         events:
           type: array
           minItems: 1
           items: { $ref: "#/components/schemas/WebhookEvent" }
-        secret: { type: string, nullable: true, description: "HMAC signing secret (generic webhooks only); encrypted at rest" }
+        secret: { type: string, nullable: true, description: "Channel secret, encrypted at rest. Generic webhook: optional HMAC signing key. PagerDuty: routing key (required). Opsgenie: GenieKey API key (required). Slack: none." }
         enabled: { type: boolean, default: true }
 
     WebhookUpdate:

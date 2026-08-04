@@ -15,6 +15,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	neturl "net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -158,26 +159,90 @@ func (d *Dispatcher) dispatch(ctx context.Context, evt Event) {
 
 	payload := d.buildPayload(ctx, evt)
 	for _, wh := range matched {
-		body, err := encodeBody(wh.Type, payload)
-		if err != nil {
-			d.log.Error("webhooks: encode payload failed", "webhook", wh.ID, "type", wh.Type, "err", err)
-			continue
-		}
 		d.wg.Add(1)
-		go func(wh store.Webhook, body []byte) {
+		go func(wh store.Webhook) {
 			defer d.wg.Done()
-			d.deliverWithRetry(ctx, wh, evt.Type, body)
-		}(wh, body)
+			d.deliverWithRetry(ctx, wh, evt.Type, payload)
+		}(wh)
 	}
 }
 
-// encodeBody renders the delivery body for a channel type: a Slack incoming-
-// webhook message for slack channels, otherwise the generic JSON payload.
-func encodeBody(whType string, p Payload) ([]byte, error) {
-	if whType == store.WebhookTypeSlack {
-		return json.Marshal(slackMessage(p))
+// render produces the type-specific delivery request: the target URL, the JSON
+// body, and the headers (including auth). The channel secret is decrypted at
+// most once here and threaded into the body (PagerDuty routing key), a header
+// (Opsgenie GenieKey, generic HMAC signature) as the type requires.
+func (d *Dispatcher) render(wh store.Webhook, eventType string, p Payload) (url string, body []byte, headers map[string]string, err error) {
+	headers = map[string]string{
+		"Content-Type":         "application/json",
+		"X-Otelfleet-Event":    eventType,
+		"X-Otelfleet-Delivery": uuid.NewString(),
 	}
-	return json.Marshal(p)
+	url = wh.URL
+
+	var secret []byte
+	if len(wh.SecretEnc) > 0 {
+		if secret, err = d.cipher.Decrypt(wh.SecretEnc); err != nil {
+			return "", nil, nil, fmt.Errorf("decrypt webhook secret: %w", err)
+		}
+	}
+
+	switch wh.Type {
+	case store.WebhookTypeSlack:
+		body, err = json.Marshal(slackMessage(p))
+	case store.WebhookTypePagerDuty:
+		if url == "" {
+			url = pagerDutyEndpoint
+		}
+		body, err = pagerDutyBody(p, string(secret))
+	case store.WebhookTypeOpsgenie:
+		base := url
+		if base == "" {
+			base = opsgenieEndpoint
+		}
+		headers["Authorization"] = "GenieKey " + string(secret)
+		if p.Event == AlertResolved {
+			// Close the alert opened by the fire, addressed by its alias.
+			url = base + "/" + neturl.PathEscape(alertDedupKey(p)) + "/close?identifierType=alias"
+			body, err = opsgenieCloseBody()
+		} else {
+			url = base
+			body, err = opsgenieCreateBody(p)
+		}
+	default: // generic webhook
+		if body, err = json.Marshal(p); err == nil && len(secret) > 0 {
+			headers["X-Otelfleet-Signature"] = Signature(secret, body)
+		}
+	}
+	return url, body, headers, err
+}
+
+// send performs one HTTP POST with the rendered body + headers.
+func (d *Dispatcher) send(ctx context.Context, targetURL string, body []byte, headers map[string]string) (int, error) {
+	reqCtx, cancel := context.WithTimeout(ctx, deliveryTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, targetURL, bytes.NewReader(body))
+	if err != nil {
+		return 0, fmt.Errorf("build request: %w", err)
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := d.httpc.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()               //nolint:errcheck
+	_, _ = io.Copy(io.Discard, resp.Body) //nolint:errcheck // drain for connection reuse
+	return resp.StatusCode, nil
+}
+
+// deliver renders and sends one delivery attempt (used by the test endpoint).
+func (d *Dispatcher) deliver(ctx context.Context, wh store.Webhook, eventType string, p Payload) (int, error) {
+	url, body, headers, err := d.render(wh, eventType, p)
+	if err != nil {
+		return 0, err
+	}
+	return d.send(ctx, url, body, headers)
 }
 
 // slackMessage formats an event as a Slack incoming-webhook message (mrkdwn).
@@ -259,16 +324,11 @@ func (d *Dispatcher) SendToChannels(ctx context.Context, channels []store.Webhoo
 		if !wh.Enabled {
 			continue
 		}
-		body, err := encodeBody(wh.Type, p)
-		if err != nil {
-			d.log.Error("webhooks: encode alert payload failed", "webhook", wh.ID, "err", err)
-			continue
-		}
 		d.wg.Add(1)
-		go func(wh store.Webhook, body []byte) {
+		go func(wh store.Webhook) {
 			defer d.wg.Done()
-			d.deliverWithRetry(ctx, wh, p.Event, body)
-		}(wh, body)
+			d.deliverWithRetry(ctx, wh, p.Event, p)
+		}(wh)
 	}
 }
 
@@ -294,11 +354,17 @@ func (d *Dispatcher) buildPayload(ctx context.Context, evt Event) Payload {
 	}
 }
 
-// deliverWithRetry attempts one delivery with exponential backoff (1s/5s/25s)
-// on network errors and 5xx responses.
-func (d *Dispatcher) deliverWithRetry(ctx context.Context, wh store.Webhook, eventType string, body []byte) {
+// deliverWithRetry renders the delivery once (so the body, headers and dedup
+// key stay stable across attempts) then retries with exponential backoff
+// (1s/5s/25s) on network errors and 5xx responses.
+func (d *Dispatcher) deliverWithRetry(ctx context.Context, wh store.Webhook, eventType string, p Payload) {
+	url, body, headers, err := d.render(wh, eventType, p)
+	if err != nil {
+		d.log.Error("webhooks: render delivery failed", "webhook", wh.ID, "type", wh.Type, "err", err)
+		return
+	}
 	for attempt := 0; ; attempt++ {
-		status, err := d.Deliver(ctx, wh, eventType, body)
+		status, err := d.send(ctx, url, body, headers)
 		switch {
 		case err == nil && status >= 200 && status < 300:
 			d.log.Info("webhooks: delivered", "webhook", wh.ID, "event", eventType, "status", status, "attempt", attempt+1)
@@ -323,48 +389,14 @@ func (d *Dispatcher) deliverWithRetry(ctx context.Context, wh store.Webhook, eve
 	}
 }
 
-// Deliver performs a single synchronous delivery attempt and returns the
-// receiver's HTTP status (also used by the testWebhook endpoint).
-func (d *Dispatcher) Deliver(ctx context.Context, wh store.Webhook, eventType string, body []byte) (int, error) {
-	reqCtx, cancel := context.WithTimeout(ctx, deliveryTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, wh.URL, bytes.NewReader(body))
-	if err != nil {
-		return 0, fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Otelfleet-Event", eventType)
-	req.Header.Set("X-Otelfleet-Delivery", uuid.NewString())
-	// Slack incoming webhooks do not verify a signature; only sign generic
-	// channels that carry a secret.
-	if wh.Type != store.WebhookTypeSlack && len(wh.SecretEnc) > 0 {
-		secret, err := d.cipher.Decrypt(wh.SecretEnc)
-		if err != nil {
-			return 0, fmt.Errorf("decrypt webhook secret: %w", err)
-		}
-		req.Header.Set("X-Otelfleet-Signature", Signature(secret, body))
-	}
-	resp, err := d.httpc.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()                    //nolint:errcheck
-	_, _ = io.Copy(io.Discard, resp.Body)      //nolint:errcheck // drain for connection reuse
-	return resp.StatusCode, nil
-}
-
 // SendTest delivers a synchronous test event and reports the outcome for the
 // testWebhook endpoint.
 func (d *Dispatcher) SendTest(ctx context.Context, wh store.Webhook) (bool, string) {
-	body, err := encodeBody(wh.Type, Payload{
+	status, err := d.deliver(ctx, wh, "test", Payload{
 		Event:      "test",
 		OccurredAt: time.Now().UTC(),
 		Detail:     map[string]any{"message": "otel-fleet test delivery", "channel": wh.Name},
 	})
-	if err != nil {
-		return false, err.Error()
-	}
-	status, err := d.Deliver(ctx, wh, "test", body)
 	if err != nil {
 		return false, fmt.Sprintf("delivery failed: %v", err)
 	}

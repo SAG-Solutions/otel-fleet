@@ -21,24 +21,33 @@ Both are configured under **Settings** (admin only).
 
 ## Notification channels
 
-A channel is a delivery target. Two types are supported:
+A channel is a delivery target. Four types are supported:
 
 | Type | Delivery |
 |---|---|
 | **Webhook** | An HTTPS `POST` of a JSON body. Optionally HMAC-signed with a shared secret (`X-Otelfleet-Signature: sha256=…`) so the receiver can verify authenticity. |
 | **Slack** | A Slack [incoming-webhook](https://api.slack.com/messaging/webhooks) URL; the body is formatted as a Slack message with a coloured attachment. |
+| **PagerDuty** | A [PagerDuty Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview) event. A firing alert **triggers** an incident and its matching resolve **resolves** it (correlated by a stable `dedup_key`). Alert severity maps to PagerDuty severity; the secret is the integration **routing key**. |
+| **Opsgenie** | An [Opsgenie Alert API](https://docs.opsgenie.com/docs/alert-api) alert. Firing **creates** an alert (keyed by `alias`); resolve **closes** it. Alert severity maps to priority `P1`–`P5`; the secret is a **GenieKey** API key (sent as `Authorization: GenieKey …`). |
 
 Create channels under **Settings → Notification channels**:
 
 1. **New channel** → pick the type.
-2. **URL** — must be `https://` (plain `http://` is allowed only for
-   `localhost`, for local testing). For Slack, paste the incoming-webhook URL.
-3. **Secret** (generic webhooks only) — optional HMAC signing key. Stored
-   encrypted at rest and never returned in API responses.
+2. **URL** — for Webhook it must be `https://` (plain `http://` only for
+   `localhost`); for Slack paste the incoming-webhook URL. For PagerDuty and
+   Opsgenie the URL is **optional** — leave it blank to use the default vendor
+   endpoint, or set a region-specific one (e.g. `https://api.eu.opsgenie.com/v2/alerts`).
+3. **Secret** — an optional HMAC signing key for generic webhooks; the
+   **required** routing key / API key for PagerDuty / Opsgenie; unused for Slack.
+   Stored encrypted at rest and never returned in API responses.
 4. **Events** — which fleet events this channel subscribes to. (Metric-threshold
    rules reference channels directly, so this list does not affect them.)
 5. **Test** sends a sample payload so you can confirm the endpoint works before
    relying on it.
+
+PagerDuty and Opsgenie auto-resolve: because the resolve carries the same
+`dedup_key`/`alias` as the fire, the incident/alert it opened is closed
+automatically when the condition clears — no manual cleanup.
 
 ### Webhook payload
 

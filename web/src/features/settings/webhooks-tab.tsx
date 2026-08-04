@@ -46,12 +46,81 @@ const EVENTS: { value: WebhookEvent; label: string; hint: string }[] = [
 
 const EVENT_LABEL: Record<string, string> = Object.fromEntries(EVENTS.map((e) => [e.value, e.label]))
 
-const CHANNEL_TYPES: { value: WebhookType; label: string; hint: string }[] = [
-  { value: 'webhook', label: 'Webhook', hint: 'HMAC-signed JSON POST to your endpoint' },
-  { value: 'slack', label: 'Slack', hint: 'Message posted to a Slack channel' },
-]
+// Per-type presentation + field rules for the channel dialog. `secret` drives
+// whether the secret field shows and whether it is mandatory; `urlRequired`
+// distinguishes bring-your-own-URL channels (webhook/slack) from fixed-endpoint
+// vendors (pagerduty/opsgenie, where the URL is optional and defaults).
+type ChannelMeta = {
+  label: string
+  hint: string
+  urlRequired: boolean
+  urlLabel: string
+  urlPlaceholder: string
+  urlHelp: string
+  secret: 'none' | 'optional' | 'required'
+  secretLabel: string
+  secretPlaceholder: string
+  secretHelp: string
+}
 
-const TYPE_LABEL: Record<WebhookType, string> = { webhook: 'Webhook', slack: 'Slack' }
+const CHANNEL_META: Record<WebhookType, ChannelMeta> = {
+  webhook: {
+    label: 'Webhook',
+    hint: 'HMAC-signed JSON POST to your endpoint',
+    urlRequired: true,
+    urlLabel: 'URL',
+    urlPlaceholder: 'https://alerts.example.com/otel-fleet',
+    urlHelp: 'https:// required (http:// only for localhost).',
+    secret: 'optional',
+    secretLabel: 'Signing secret',
+    secretPlaceholder: 'optional',
+    secretHelp: 'Optional — deliveries are HMAC-SHA256 signed (X-Otelfleet-Signature).',
+  },
+  slack: {
+    label: 'Slack',
+    hint: 'Message posted to a Slack channel',
+    urlRequired: true,
+    urlLabel: 'Slack incoming webhook URL',
+    urlPlaceholder: 'https://hooks.slack.com/services/…',
+    urlHelp: 'From Slack → Incoming Webhooks (https://hooks.slack.com/…).',
+    secret: 'none',
+    secretLabel: '',
+    secretPlaceholder: '',
+    secretHelp: '',
+  },
+  pagerduty: {
+    label: 'PagerDuty',
+    hint: 'Triggers/resolves a PagerDuty incident (Events API v2)',
+    urlRequired: false,
+    urlLabel: 'URL (optional)',
+    urlPlaceholder: 'https://events.pagerduty.com/v2/enqueue (default)',
+    urlHelp: 'Leave blank to use the default PagerDuty endpoint.',
+    secret: 'required',
+    secretLabel: 'Integration routing key',
+    secretPlaceholder: 'from a service → Integrations → Events API v2',
+    secretHelp: 'The Events API v2 integration key for the target PagerDuty service.',
+  },
+  opsgenie: {
+    label: 'Opsgenie',
+    hint: 'Creates/closes an Opsgenie alert (Alert API)',
+    urlRequired: false,
+    urlLabel: 'URL (optional)',
+    urlPlaceholder: 'https://api.opsgenie.com/v2/alerts (default)',
+    urlHelp: 'Leave blank for the US region; set https://api.eu.opsgenie.com/v2/alerts for EU.',
+    secret: 'required',
+    secretLabel: 'GenieKey API key',
+    secretPlaceholder: 'an Opsgenie API integration key',
+    secretHelp: 'An Opsgenie API integration key (sent as Authorization: GenieKey …).',
+  },
+}
+
+const CHANNEL_TYPES: { value: WebhookType; label: string; hint: string }[] = (
+  Object.keys(CHANNEL_META) as WebhookType[]
+).map((value) => ({ value, label: CHANNEL_META[value].label, hint: CHANNEL_META[value].hint }))
+
+const TYPE_LABEL: Record<WebhookType, string> = Object.fromEntries(
+  (Object.keys(CHANNEL_META) as WebhookType[]).map((v) => [v, CHANNEL_META[v].label]),
+) as Record<WebhookType, string>
 
 interface TestResult {
   ok: boolean
@@ -171,12 +240,16 @@ export function WebhooksTab() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <code
-                          className="block max-w-56 truncate font-mono text-xs text-ink-2"
-                          title={wh.url}
-                        >
-                          {wh.url}
-                        </code>
+                        {wh.url ? (
+                          <code
+                            className="block max-w-56 truncate font-mono text-xs text-ink-2"
+                            title={wh.url}
+                          >
+                            {wh.url}
+                          </code>
+                        ) : (
+                          <span className="text-xs text-ink-3">default endpoint</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -301,7 +374,8 @@ function WebhookDialog({
   const [removeSecret, setRemoveSecret] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isSlack = type === 'slack'
+  const meta = CHANNEL_META[type]
+  const hasSecretField = meta.secret !== 'none'
 
   // Reset the form whenever the dialog opens for a different target.
   const [seededFor, setSeededFor] = useState<string | null>(null)
@@ -345,17 +419,26 @@ function WebhookDialog({
       setError('Select at least one event')
       return
     }
+    if (meta.urlRequired && !url) {
+      setError('URL is required')
+      return
+    }
+    // PagerDuty/Opsgenie need their key; on edit an existing stored secret is fine.
+    if (meta.secret === 'required' && !secret && !(editing && webhook?.hasSecret)) {
+      setError(`${meta.secretLabel} is required`)
+      return
+    }
     if (editing && webhook) {
       const body: Record<string, unknown> = { type, name, url, events }
-      // Slack channels are never signed — the backend ignores any secret.
-      if (!isSlack) {
+      // Channels without a secret field (Slack) never send one.
+      if (hasSecretField) {
         if (removeSecret) body.secret = ''
         else if (secret) body.secret = secret
       }
       update.mutate({ path: { webhookId: webhook.id }, body })
     } else {
       create.mutate({
-        body: { type, name, url, events, ...(isSlack ? {} : { secret: secret || null }) },
+        body: { type, name, url, events, ...(hasSecretField ? { secret: secret || null } : {}) },
       })
     }
   }
@@ -402,20 +485,14 @@ function WebhookDialog({
             <Input id="wh-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="wh-url">{isSlack ? 'Slack incoming webhook URL' : 'URL'}</Label>
+            <Label htmlFor="wh-url">{meta.urlLabel}</Label>
             <Input
               id="wh-url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder={
-                isSlack ? 'https://hooks.slack.com/services/…' : 'https://alerts.example.com/otel-fleet'
-              }
+              placeholder={meta.urlPlaceholder}
             />
-            <p className="text-[11px] text-ink-3">
-              {isSlack
-                ? 'From Slack → Incoming Webhooks (https://hooks.slack.com/…).'
-                : 'https:// required (http:// only for localhost).'}
-            </p>
+            <p className="text-[11px] text-ink-3">{meta.urlHelp}</p>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Events</Label>
@@ -437,18 +514,24 @@ function WebhookDialog({
               ))}
             </div>
           </div>
-          {!isSlack && (
+          {hasSecretField && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="wh-secret">Signing secret{editing && ' (leave blank to keep)'}</Label>
+              <Label htmlFor="wh-secret">
+                {meta.secretLabel}
+                {meta.secret === 'required' && <span className="text-danger"> *</span>}
+                {editing && ' (leave blank to keep)'}
+              </Label>
               <Input
                 id="wh-secret"
                 type="password"
                 value={secret}
                 disabled={removeSecret}
                 onChange={(e) => setSecret(e.target.value)}
-                placeholder={editing && webhook?.hasSecret ? '•••••• (stored)' : 'optional'}
+                placeholder={editing && webhook?.hasSecret ? '•••••• (stored)' : meta.secretPlaceholder}
               />
-              {editing && webhook?.hasSecret && (
+              <p className="text-[11px] text-ink-3">{meta.secretHelp}</p>
+              {/* Only optional-secret channels (generic webhook) can drop signing. */}
+              {meta.secret === 'optional' && editing && webhook?.hasSecret && (
                 <label className="flex items-center gap-2 text-[11px] text-ink-2">
                   <input
                     type="checkbox"
@@ -467,7 +550,11 @@ function WebhookDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} disabled={pending || !name || !url}>
+          <Button
+            variant="primary"
+            onClick={submit}
+            disabled={pending || !name || (meta.urlRequired && !url)}
+          >
             {pending ? 'Saving…' : editing ? 'Save changes' : 'Add channel'}
           </Button>
         </DialogFooter>

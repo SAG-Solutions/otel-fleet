@@ -557,11 +557,22 @@ const (
 
 // Notification-channel types (webhooks.type). WebhookTypeGeneric is the
 // HMAC-signed generic JSON POST; WebhookTypeSlack posts a Slack incoming-
-// webhook message (no HMAC).
+// webhook message (no HMAC); WebhookTypePagerDuty posts a PagerDuty Events API
+// v2 event (secret = routing key); WebhookTypeOpsgenie posts an Opsgenie Alert
+// API request (secret = GenieKey API key).
 const (
-	WebhookTypeGeneric = "webhook"
-	WebhookTypeSlack   = "slack"
+	WebhookTypeGeneric   = "webhook"
+	WebhookTypeSlack     = "slack"
+	WebhookTypePagerDuty = "pagerduty"
+	WebhookTypeOpsgenie  = "opsgenie"
 )
+
+// SecretedWebhookType reports whether a channel type requires a secret to
+// function (PagerDuty routing key / Opsgenie API key). Generic webhooks may
+// carry an optional HMAC secret; Slack never carries one.
+func SecretedWebhookType(t string) bool {
+	return t == WebhookTypePagerDuty || t == WebhookTypeOpsgenie
+}
 
 // Webhook is a notification channel. The HMAC signing secret is envelope-
 // encrypted before it reaches the store; nil = unsigned deliveries (always so
