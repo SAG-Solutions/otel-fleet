@@ -104,9 +104,9 @@ echo "==> validating shipped dashboards reference real metrics"
 dash_metrics="$(grep -hE '"expr"' "$CHART"/dashboards/*.json | grep -ohE '(k8s_|system_|container_)[a-z0-9_]+' | grep -vE '_name$' | sort -u)"
 missing=0
 for m in $dash_metrics; do
-  # VM count() → the series count as a string, or "0" when the metric is absent.
-  n="$(curl -s "http://localhost:18428/api/v1/query?query=count($m)" \
-       | python3 -c 'import sys,json;r=json.load(sys.stdin)["data"]["result"];print(r[0]["value"][1] if r else "0")' 2>/dev/null || echo 0)"
+  # Use the series endpoint (no parens to URL-encode): non-empty data = exists.
+  n="$(curl -s "http://localhost:18428/api/v1/series?match[]=$m" \
+       | python3 -c 'import sys,json;print(len(json.load(sys.stdin).get("data",[])))' 2>/dev/null || echo 0)"
   if [ "$n" = "0" ]; then echo "  MISSING: $m"; missing=$((missing+1)); else echo "  ok: $m ($n series)"; fi
 done
 if [ "$missing" -ne 0 ]; then
