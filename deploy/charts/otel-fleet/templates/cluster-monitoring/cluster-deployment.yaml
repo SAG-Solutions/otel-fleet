@@ -1,4 +1,7 @@
 {{- if .Values.clusterMonitoring.enabled }}
+{{- if and (gt (int .Values.clusterMonitoring.cluster.replicas) 1) (not .Values.clusterMonitoring.targetAllocator.enabled) }}
+{{- fail "clusterMonitoring.cluster.replicas > 1 requires clusterMonitoring.targetAllocator.enabled (the allocator shards prometheus scrape targets; without it replicas double-scrape annotation targets). k8s_cluster is safe via leader election." }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -18,9 +21,10 @@ metadata:
     {{- include "otel-fleet.labels" . | nindent 4 }}
     app.kubernetes.io/component: cluster-monitoring-cluster
 spec:
-  # Singleton: k8s_cluster and the prometheus scrape server must not be
-  # duplicated (double-counted cluster metrics).
-  replicas: 1
+  # HA-capable: k8s_cluster is gated by leader election and prometheus scrapes
+  # are sharded by the Target Allocator, so replicas can exceed 1 (guarded to
+  # require the allocator above).
+  replicas: {{ .Values.clusterMonitoring.cluster.replicas }}
   selector:
     matchLabels:
       {{- include "otel-fleet.selector" . | nindent 6 }}

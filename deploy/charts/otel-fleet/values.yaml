@@ -258,6 +258,12 @@ clusterMonitoring:
       requests: { cpu: 100m, memory: 128Mi }
       limits: { memory: 300Mi }
   cluster:
+    # Replicas of the cluster tier (k8s_cluster + prometheus scrape). Safe to
+    # raise above 1 for HA ONLY with targetAllocator.enabled: the allocator
+    # shards prometheus scrape targets across replicas, and the k8s_cluster
+    # receiver uses leader election so only one replica emits cluster metrics.
+    # Without the allocator, >1 replica would double-scrape annotation targets.
+    replicas: 1
     resources:
       requests: { cpu: 200m, memory: 256Mi }
       limits: { memory: 512Mi }

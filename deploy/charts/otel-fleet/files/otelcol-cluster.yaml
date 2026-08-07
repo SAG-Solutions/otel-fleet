@@ -14,13 +14,22 @@
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
+  # Leader election so this tier can scale to multiple replicas (HA) with only
+  # the leader emitting k8s_cluster metrics — no double-counting. Harmless at a
+  # single replica (it simply always wins the lease).
+  k8s_leader_elector:
+    auth_type: serviceAccount
+    lease_name: otel-fleet-cluster-monitoring
+    lease_namespace: {{ .Release.Namespace }}
 
 receivers:
-  # kube-state-metrics equivalent.
+  # kube-state-metrics equivalent. Gated on leadership: only the elected replica
+  # lists and emits cluster-wide objects.
   k8s_cluster:
     collection_interval: 30s
     node_conditions_to_report: [Ready, MemoryPressure, DiskPressure, PIDPressure]
     allocatable_types_to_report: [cpu, memory, ephemeral-storage, pods]
+    k8s_leader_elector: k8s_leader_elector
   # Scrape workloads. Two discovery modes, selected by the chart:
   prometheus:
 {{- if .Values.clusterMonitoring.targetAllocator.enabled }}
@@ -96,7 +105,7 @@ exporters:
       enabled: true # k8s resource attributes become metric labels
 
 service:
-  extensions: [health_check]
+  extensions: [health_check, k8s_leader_elector]
   pipelines:
     metrics:
       receivers: [k8s_cluster, prometheus]

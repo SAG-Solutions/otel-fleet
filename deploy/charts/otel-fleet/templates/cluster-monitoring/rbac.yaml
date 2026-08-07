@@ -70,6 +70,11 @@ rules:
   # Prometheus kubernetes_sd can be given raw kubelet /metrics access.
   - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
     verbs: ["get"]
+  # Leader election (k8sleaderelector) for the k8s_cluster receiver, so the
+  # cluster tier can run HA (clusterMonitoring.cluster.replicas > 1).
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   {{- if .Values.clusterMonitoring.targetAllocator.enabled }}
   # Target Allocator: discover prometheus-operator ServiceMonitor/PodMonitor
   # (and probe/scrapeconfig) CRDs. Harmless if the CRDs are not installed.

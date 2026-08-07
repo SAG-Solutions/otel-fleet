@@ -82,11 +82,12 @@ YAML
 $K -n "$NS" rollout status deploy/victoriametrics --timeout=120s
 $K -n "$NS" rollout status deploy/sample-app --timeout=120s
 
-echo "==> cluster-monitoring bundle WITH the Target Allocator"
+echo "==> cluster-monitoring bundle WITH the Target Allocator, HA (2 replicas)"
 helm template otel-fleet "$CHART" -n "$NS" \
   --set external.databaseUrl=postgres://unused:unused@pg:5432/db \
   --set clusterMonitoring.enabled=true \
   --set clusterMonitoring.targetAllocator.enabled=true \
+  --set clusterMonitoring.cluster.replicas=2 \
   --set images.collector.repository="$COLLECTOR_IMAGE" \
   --set images.collector.tag="$COLLECTOR_TAG" \
   --set images.collector.pullPolicy=IfNotPresent \
@@ -96,9 +97,25 @@ helm template otel-fleet "$CHART" -n "$NS" \
   -s templates/cluster-monitoring/cluster-deployment.yaml \
   | $K apply -n "$NS" -f -
 
-echo "==> wait for the Target Allocator and the cluster collector"
+echo "==> wait for the Target Allocator and both cluster collector replicas"
 $K -n "$NS" rollout status deploy/otel-fleet-target-allocator --timeout=150s
-$K -n "$NS" rollout status deploy/otel-fleet-cluster --timeout=150s
+$K -n "$NS" rollout status deploy/otel-fleet-cluster --timeout=180s
+
+echo "==> HA: leader election lease is held by exactly one of the two replicas"
+holder=""
+for i in $(seq 1 20); do
+  holder="$($K -n "$NS" get lease otel-fleet-cluster-monitoring -o jsonpath='{.spec.holderIdentity}' 2>/dev/null || true)"
+  [ -n "$holder" ] && break
+  sleep 3
+done
+replicas="$($K -n "$NS" get pods -l app.kubernetes.io/component=cluster-monitoring-cluster --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+echo "  cluster replicas running: $replicas ; lease holder: ${holder:-<none>}"
+if [ "$replicas" != "2" ] || [ -z "$holder" ]; then
+  echo "FAIL: expected 2 cluster replicas and one leader-election lease holder"
+  $K -n "$NS" get pods -l app.kubernetes.io/component=cluster-monitoring-cluster || true
+  $K -n "$NS" get lease otel-fleet-cluster-monitoring -o yaml || true
+  exit 1
+fi
 
 echo "==> generate a little traffic so the sample counter has a value"
 $K -n "$NS" port-forward deploy/sample-app 18080:8080 >/tmp/app-pf.log 2>&1 &
@@ -130,3 +147,16 @@ if [ "$found" -ne 1 ]; then
   exit 1
 fi
 echo "PASS: ServiceMonitor target scraped via the Target Allocator and stored in VictoriaMetrics"
+
+# The leader still emits k8s_cluster metrics under HA (not silenced by election).
+kcount=0
+for i in $(seq 1 20); do
+  kcount="$(curl -s 'http://localhost:18428/api/v1/label/__name__/values' | grep -o '"k8s_[^"]*"' | sort -u | wc -l | tr -d ' ')"
+  [ "$kcount" -gt 0 ] && break
+  sleep 5
+done
+if [ "$kcount" -eq 0 ]; then
+  echo "FAIL: no k8s_* metrics in VictoriaMetrics — the leader replica is not emitting cluster metrics"
+  exit 1
+fi
+echo "PASS: HA cluster tier — leader emits $kcount k8s_* metrics while the Target Allocator shards scrapes across both replicas"

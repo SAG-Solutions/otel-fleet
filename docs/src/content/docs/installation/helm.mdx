@@ -318,6 +318,31 @@ too, so both discovery styles keep working). This requires the
 `ServiceMonitor`/`PodMonitor` CRDs to be installed in the cluster — they can be
 applied standalone, without the full Prometheus Operator.
 
+### High availability for the cluster tier
+
+The cluster collector is no longer a single point of failure. Scale it with:
+
+```yaml
+clusterMonitoring:
+  enabled: true
+  targetAllocator:
+    enabled: true      # required for replicas > 1
+  cluster:
+    replicas: 2
+```
+
+Two mechanisms make this safe. The `prometheus` receiver's scrape targets are
+**sharded across replicas by the Target Allocator** (consistent hashing), so no
+target is scraped twice. The `k8s_cluster` receiver — which lists whole-cluster
+objects and would otherwise double-count — runs behind **leader election**
+(`k8sleaderelector`, backed by a `coordination.k8s.io` Lease): every replica
+runs, but only the elected one emits cluster metrics, and another takes over
+within the lease duration if it fails. Leader election is always on (harmless at
+one replica); the chart refuses `cluster.replicas > 1` unless the Target
+Allocator is enabled, since without it the annotation scrape job would run on
+every replica. The per-node DaemonSet is inherently one-per-node and needs none
+of this.
+
 ### Dashboards and alerting
 
 The metrics land in VictoriaMetrics, which speaks the Prometheus query API. Two

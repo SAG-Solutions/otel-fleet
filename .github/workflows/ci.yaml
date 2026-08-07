@@ -250,6 +250,21 @@ jobs:
           helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set clusterMonitoring.enabled=true --set clusterMonitoring.targetAllocator.enabled=true \
             | grep -q 'target_allocator:'
+          # Cluster tier HA: leader election + leases RBAC always present; the
+          # replica count is values-driven and guarded to require the allocator.
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true | grep -q 'k8s_leader_elector'
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true | grep -q 'leases'
+          # replicas>1 WITHOUT the allocator must fail template rendering.
+          if helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.cluster.replicas=2 >/dev/null 2>&1; then
+            echo "::error::cluster.replicas=2 without targetAllocator should have failed"; exit 1
+          fi
+          # replicas>1 WITH the allocator renders cleanly.
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.targetAllocator.enabled=true \
+            --set clusterMonitoring.cluster.replicas=2 >/dev/null
       - run: helm lint deploy/charts/otel-fleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |
