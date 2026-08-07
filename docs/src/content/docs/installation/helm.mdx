@@ -382,6 +382,26 @@ that query the same VictoriaMetrics and fire to your notification channels —
 see the [alerting guide](../guides/alerting/). Grafana stays an optional
 visualization layer; otel-fleet covers collection, storage (VM) and alerting.
 
+### Recording rules
+
+For expensive rollups you'd otherwise recompute on every dashboard load, enable
+**recording rules**. A [vmalert](https://docs.victoriametrics.com/vmalert/)
+sidecar evaluates the rules in `files/recording-rules.yaml` against
+VictoriaMetrics and writes the results back as new series (e.g.
+`cluster:node_cpu_usage:sum`, `namespace:pod_memory_usage_bytes:sum`):
+
+```yaml
+clusterMonitoring:
+  enabled: true
+  recordingRules:
+    enabled: true
+    evaluationInterval: 30s
+```
+
+It runs recording-only — no notifier or Alertmanager, since alerting stays
+native in otel-fleet. Add your own groups to the rules file. Uses
+`external.victoriaMetrics.url` for both querying and remote-write.
+
 ## Secrets encryption (`OTEL_FLEET_MASTER_KEY`)
 
 The control plane needs `OTEL_FLEET_MASTER_KEY` (base64, 32 bytes —

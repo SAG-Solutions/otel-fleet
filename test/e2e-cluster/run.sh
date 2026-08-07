@@ -52,22 +52,26 @@ spec:
 YAML
 $K -n "$NS" rollout status deploy/victoriametrics --timeout=120s
 
-echo "==> cluster-monitoring bundle (rbac + daemonset + cluster deployment)"
+echo "==> cluster-monitoring bundle (rbac + daemonset + cluster deployment + recording rules)"
 helm template otel-fleet "$CHART" -n "$NS" \
   --set external.databaseUrl=postgres://unused:unused@pg:5432/db \
   --set clusterMonitoring.enabled=true \
+  --set clusterMonitoring.recordingRules.enabled=true \
   --set images.collector.repository="$COLLECTOR_IMAGE" \
   --set images.collector.tag="$COLLECTOR_TAG" \
   --set images.collector.pullPolicy=IfNotPresent \
+  --set external.victoriaMetrics.url=http://victoriametrics.$NS.svc:8428 \
   --set external.victoriaMetrics.remoteWriteUrl=http://victoriametrics.$NS.svc:8428/api/v1/write \
   -s templates/cluster-monitoring/rbac.yaml \
   -s templates/cluster-monitoring/node-daemonset.yaml \
   -s templates/cluster-monitoring/cluster-deployment.yaml \
+  -s templates/cluster-monitoring/recording-rules.yaml \
   | $K apply -n "$NS" -f -
 
-echo "==> wait for the collectors to become ready"
+echo "==> wait for the collectors and the recording-rules evaluator to become ready"
 $K -n "$NS" rollout status daemonset/otel-fleet-cluster-node --timeout=150s
 $K -n "$NS" rollout status deploy/otel-fleet-cluster --timeout=150s
+$K -n "$NS" rollout status deploy/otel-fleet-recording-rules --timeout=120s
 
 echo "==> query VictoriaMetrics for scraped metrics"
 $K -n "$NS" port-forward svc/victoriametrics 18428:8428 >/tmp/vm-pf.log 2>&1 &
@@ -123,3 +127,26 @@ if [ -n "$missing_list" ]; then
   exit 1
 fi
 echo "PASS: all dashboard-referenced metrics exist in VictoriaMetrics"
+
+# Recording rules: vmalert should evaluate the shipped rules and write the
+# rollup series back into VictoriaMetrics.
+echo "==> validating recording rules produced rollup series"
+rec_records="$(grep -E 'record:' "$CHART"/files/recording-rules.yaml | sed -E 's/.*record:[[:space:]]*//' | sort -u)"
+rec_missing=""
+for attempt in $(seq 1 30); do
+  rec_missing=""
+  for r in $rec_records; do
+    n="$(curl -s "http://localhost:18428/api/v1/series?match[]=$r" \
+         | python3 -c 'import sys,json;print(len(json.load(sys.stdin).get("data",[])))' 2>/dev/null || echo 0)"
+    [ "$n" = "0" ] && rec_missing="$rec_missing $r"
+  done
+  [ -z "$rec_missing" ] && break
+  echo "  attempt $attempt: recorded series not yet present:$rec_missing"
+  sleep 5
+done
+if [ -n "$rec_missing" ]; then
+  echo "FAIL: recording rules did not produce:$rec_missing"
+  echo "--- vmalert logs ---"; $K -n "$NS" logs deploy/otel-fleet-recording-rules --tail=40 || true
+  exit 1
+fi
+echo "PASS: recording rules wrote all rollup series back into VictoriaMetrics"

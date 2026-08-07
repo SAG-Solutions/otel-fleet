@@ -298,6 +298,21 @@ clusterMonitoring:
     labelValue: "1"
     folderAnnotation: ""        # e.g. "grafana_folder" to file them in a folder
     folder: otel-fleet
+  # Recording rules: vmalert precomputes rollup series (files/recording-rules.yaml)
+  # and writes them back to VictoriaMetrics, so heavy dashboard/alert queries hit
+  # one cheap series. Recording-only — alerting stays native in otel-fleet, so no
+  # notifier/Alertmanager is involved. Uses external.victoriaMetrics.url for both
+  # querying and remote-write.
+  recordingRules:
+    enabled: false
+    image:
+      repository: victoriametrics/vmalert
+      tag: "v1.103.0"
+      pullPolicy: IfNotPresent
+    evaluationInterval: 30s
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { memory: 192Mi }
 
 serviceAccount:
   create: true
