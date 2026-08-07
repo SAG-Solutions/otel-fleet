@@ -76,6 +76,17 @@ rules:
   - apiGroups: ["monitoring.coreos.com"]
     resources: ["servicemonitors", "podmonitors", "probes", "scrapeconfigs"]
     verbs: ["get", "list", "watch"]
+  # EndpointSlice service discovery for ServiceMonitor targets (role:
+  # endpointslice); the base rules above cover only core endpoints.
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  # The prometheus-CR watcher builds informers for secrets/configmaps to
+  # resolve ServiceMonitor scrape auth (bearer tokens, TLS); without these its
+  # cache never syncs and no targets are allocated.
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "watch"]
   {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
