@@ -265,6 +265,13 @@ jobs:
           helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set clusterMonitoring.enabled=true --set clusterMonitoring.targetAllocator.enabled=true \
             --set clusterMonitoring.cluster.replicas=2 >/dev/null
+          # Grafana dashboards: off by default; opt-in renders sidecar-labelled
+          # ConfigMaps (one per dashboards/*.json).
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true | grep -c 'component: cluster-monitoring-dashboard')" = "0"
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.dashboards.enabled=true \
+            | grep -q 'grafana_dashboard:'
       - run: helm lint deploy/charts/otel-fleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |

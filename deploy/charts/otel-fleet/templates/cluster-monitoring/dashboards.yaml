@@ -1,0 +1,29 @@
+{{- if and .Values.clusterMonitoring.enabled .Values.clusterMonitoring.dashboards.enabled }}
+{{- /*
+Curated OpenTelemetry-native Grafana dashboards for the cluster-monitoring
+metrics (files under dashboards/). Each is wrapped in its own ConfigMap carrying
+the Grafana sidecar discovery label so a sidecar-enabled Grafana imports them
+automatically. Panels use a `datasource` template variable, so they bind to
+whatever Prometheus-compatible datasource (VictoriaMetrics) you select.
+*/}}
+{{- $d := .Values.clusterMonitoring.dashboards }}
+{{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
+{{- $slug := trimSuffix ".json" (base $path) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "otel-fleet.fullname" $ }}-dashboard-{{ $slug }}
+  labels:
+    {{- include "otel-fleet.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-dashboard
+    {{ $d.label }}: {{ $d.labelValue | quote }}
+  {{- if $d.folderAnnotation }}
+  annotations:
+    {{ $d.folderAnnotation }}: {{ $d.folder | quote }}
+  {{- end }}
+data:
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}

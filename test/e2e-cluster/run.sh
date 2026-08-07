@@ -95,3 +95,20 @@ if [ "$kcount" -eq 0 ] || [ "$scount" -eq 0 ]; then
   exit 1
 fi
 echo "PASS: cluster-monitoring scraped $kcount k8s_* + $scount system_* metric series into VictoriaMetrics"
+
+# Every metric referenced by the shipped Grafana dashboards must actually exist
+# in VictoriaMetrics — this is what guarantees the curated dashboards are not
+# built against stale/guessed names. Metric tokens end in a word that is not
+# "name" (k8s_*_name tokens are labels, e.g. k8s_namespace_name, not metrics).
+echo "==> validating shipped dashboards reference real metrics"
+dash_metrics="$(grep -hE '"expr"' "$CHART"/dashboards/*.json | grep -ohE '(k8s_|system_|container_)[a-z0-9_]+' | grep -vE '_name$' | sort -u)"
+missing=0
+for m in $dash_metrics; do
+  c="$(curl -s "http://localhost:18428/api/v1/query?query=count($m)" | grep -o '"result":\[[^]]*\]' | grep -c '"value"')"
+  if [ "$c" = "0" ]; then echo "  MISSING: $m"; missing=$((missing+1)); else echo "  ok: $m"; fi
+done
+if [ "$missing" -ne 0 ]; then
+  echo "FAIL: $missing dashboard metric(s) are absent from VictoriaMetrics — dashboards would render empty panels"
+  exit 1
+fi
+echo "PASS: all dashboard-referenced metrics exist in VictoriaMetrics"

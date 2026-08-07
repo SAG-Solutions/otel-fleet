@@ -353,11 +353,30 @@ ways to see them:
   directly (PromQL against VictoriaMetrics), plus an ad-hoc PromQL panel. No
   extra tool required.
 - **Grafana** (optional) — point it at VictoriaMetrics as a Prometheus
-  datasource (URL `http://<victoriametrics>:8428`) and import your preferred
-  Kubernetes dashboards.
+  datasource (URL `http://<victoriametrics>:8428`). The chart ships two curated
+  dashboards keyed to this bundle's exact metric names — **Kubernetes Nodes**
+  (CPU, memory, filesystem, network, load, readiness) and **Kubernetes
+  Workloads** (pod phases, top pods by CPU/memory, container restarts,
+  Deployment/DaemonSet health). Turn them on and a sidecar-enabled Grafana
+  imports them automatically:
+
+  ```yaml
+  clusterMonitoring:
+    enabled: true
+    dashboards:
+      enabled: true
+      label: grafana_dashboard   # your Grafana sidecar's discovery label
+      labelValue: "1"
+  ```
+
+  Each dashboard uses a `datasource` variable, so pick your VictoriaMetrics
+  datasource on open. Prefer your own dashboards? Leave this off and import
+  anything you like.
 
 The receivers emit standard OpenTelemetry `k8s.*` / `system.*` / `container.*`
-metrics (dots become `_` after remote-write, e.g. `k8s_node_cpu_utilization`). For alerting you don't need Alertmanager: create
+metrics (dots become `_` after remote-write, and units are appended, e.g.
+`k8s_node_memory_usage_bytes`, `k8s_node_cpu_usage`, `system_cpu_load_average_1m`).
+For alerting you don't need Alertmanager: create
 **PromQL alert rules** in otel-fleet (Settings → Alert rules, metric `promql`)
 that query the same VictoriaMetrics and fire to your notification channels —
 see the [alerting guide](../guides/alerting/). Grafana stays an optional

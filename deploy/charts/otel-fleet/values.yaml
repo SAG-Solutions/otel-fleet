@@ -288,6 +288,16 @@ clusterMonitoring:
     resources:
       requests: { cpu: 50m, memory: 128Mi }
       limits: { memory: 256Mi }
+  # Curated Grafana dashboards for the cluster-monitoring metrics, shipped as
+  # ConfigMaps for a sidecar-enabled Grafana to auto-import. Panels use a
+  # datasource template variable, so point them at your VictoriaMetrics
+  # (Prometheus) datasource. Metric names match this bundle's output.
+  dashboards:
+    enabled: false
+    label: grafana_dashboard    # sidecar discovery label key
+    labelValue: "1"
+    folderAnnotation: ""        # e.g. "grafana_folder" to file them in a folder
+    folder: otel-fleet
 
 serviceAccount:
   create: true
