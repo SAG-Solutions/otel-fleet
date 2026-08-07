@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.8.0...v0.9.0) (2026-08-07)
+
+
+### Features
+
+* **cluster-monitoring:** curated Grafana dashboards ([5b5b19c](https://github.com/SAG-Solutions/otel-fleet/commit/5b5b19c6ce528fcb37d6202ff67101d0f56ce1e4))
+* **cluster-monitoring:** HA cluster tier via leader election + TA sharding ([7a991d1](https://github.com/SAG-Solutions/otel-fleet/commit/7a991d1090f0f3bb1300b81179d0a9f888a7321a))
+* **cluster-monitoring:** recording rules via vmalert ([b3f2670](https://github.com/SAG-Solutions/otel-fleet/commit/b3f26703faa56b31acea1ff422ac608be83a4374))
+* **cluster-monitoring:** Target Allocator for ServiceMonitor/PodMonitor ingest ([844447e](https://github.com/SAG-Solutions/otel-fleet/commit/844447e974b3ead9ddb8a989cbf053a87b9a0478))
+* **webhooks:** PagerDuty and Opsgenie notification channels ([0b75baf](https://github.com/SAG-Solutions/otel-fleet/commit/0b75baf3f35a3e63d408540ffe896acf9f8106cd))
+
+
+### Bug Fixes
+
+* **cluster-e2e:** poll for k8s_cluster metrics in dashboard validation ([ba1dc55](https://github.com/SAG-Solutions/otel-fleet/commit/ba1dc556c0dd2754e47cc7c74daa6ba4977bba38))
+* **cluster-e2e:** query series endpoint for dashboard validation ([c7a842a](https://github.com/SAG-Solutions/otel-fleet/commit/c7a842af0c00a7d2513e605d0f8e1fe5829897f3))
+* **cluster-e2e:** robust dashboard-metric validation ([e0278ac](https://github.com/SAG-Solutions/otel-fleet/commit/e0278ac2008ed6e4060c3e4499bd5afc46851170))
+* **cluster-monitoring:** Target Allocator RBAC for target discovery ([897a4d8](https://github.com/SAG-Solutions/otel-fleet/commit/897a4d8c08b4bfec697cbe79869e7cbc354ad1ab))
+
 ## [0.8.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.7.0...v0.8.0) (2026-07-31)
 
 

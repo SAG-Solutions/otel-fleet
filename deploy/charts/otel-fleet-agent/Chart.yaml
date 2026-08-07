@@ -8,7 +8,7 @@ description: >
   (point opamp.endpoint at that region's OpAMP endpoint). The Docker/compose
   edge agent and this chart run the same supervisor image and config.
 type: application
-version: 0.8.0
+version: 0.9.0
 kubeVersion: '>=1.27.0'
 home: https://github.com/sag-solutions/otel-fleet
 sources:
