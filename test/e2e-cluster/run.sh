@@ -104,8 +104,10 @@ echo "==> validating shipped dashboards reference real metrics"
 dash_metrics="$(grep -hE '"expr"' "$CHART"/dashboards/*.json | grep -ohE '(k8s_|system_|container_)[a-z0-9_]+' | grep -vE '_name$' | sort -u)"
 missing=0
 for m in $dash_metrics; do
-  c="$(curl -s "http://localhost:18428/api/v1/query?query=count($m)" | grep -o '"result":\[[^]]*\]' | grep -c '"value"')"
-  if [ "$c" = "0" ]; then echo "  MISSING: $m"; missing=$((missing+1)); else echo "  ok: $m"; fi
+  # VM count() → the series count as a string, or "0" when the metric is absent.
+  n="$(curl -s "http://localhost:18428/api/v1/query?query=count($m)" \
+       | python3 -c 'import sys,json;r=json.load(sys.stdin)["data"]["result"];print(r[0]["value"][1] if r else "0")' 2>/dev/null || echo 0)"
+  if [ "$n" = "0" ]; then echo "  MISSING: $m"; missing=$((missing+1)); else echo "  ok: $m ($n series)"; fi
 done
 if [ "$missing" -ne 0 ]; then
   echo "FAIL: $missing dashboard metric(s) are absent from VictoriaMetrics — dashboards would render empty panels"
