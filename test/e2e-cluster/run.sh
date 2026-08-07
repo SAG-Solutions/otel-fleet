@@ -102,15 +102,24 @@ echo "PASS: cluster-monitoring scraped $kcount k8s_* + $scount system_* metric s
 # "name" (k8s_*_name tokens are labels, e.g. k8s_namespace_name, not metrics).
 echo "==> validating shipped dashboards reference real metrics"
 dash_metrics="$(grep -hE '"expr"' "$CHART"/dashboards/*.json | grep -ohE '(k8s_|system_|container_)[a-z0-9_]+' | grep -vE '_name$' | sort -u)"
-missing=0
-for m in $dash_metrics; do
-  # Use the series endpoint (no parens to URL-encode): non-empty data = exists.
-  n="$(curl -s "http://localhost:18428/api/v1/series?match[]=$m" \
-       | python3 -c 'import sys,json;print(len(json.load(sys.stdin).get("data",[])))' 2>/dev/null || echo 0)"
-  if [ "$n" = "0" ]; then echo "  MISSING: $m"; missing=$((missing+1)); else echo "  ok: $m ($n series)"; fi
+# Poll: the k8s_cluster receiver emits a bit later than kubeletstats/hostmetrics
+# (leader-election lease + informer sync + collection interval), so retry until
+# every dashboard metric has appeared, up to ~150s.
+missing_list=""
+for attempt in $(seq 1 30); do
+  missing_list=""
+  for m in $dash_metrics; do
+    n="$(curl -s "http://localhost:18428/api/v1/series?match[]=$m" \
+         | python3 -c 'import sys,json;print(len(json.load(sys.stdin).get("data",[])))' 2>/dev/null || echo 0)"
+    [ "$n" = "0" ] && missing_list="$missing_list $m"
+  done
+  [ -z "$missing_list" ] && break
+  echo "  attempt $attempt: still missing:$missing_list"
+  sleep 5
 done
-if [ "$missing" -ne 0 ]; then
-  echo "FAIL: $missing dashboard metric(s) are absent from VictoriaMetrics — dashboards would render empty panels"
+if [ -n "$missing_list" ]; then
+  echo "FAIL: dashboard metric(s) absent from VictoriaMetrics — dashboards would render empty panels:$missing_list"
+  echo "--- cluster collector logs ---"; $K -n "$NS" logs deploy/otel-fleet-cluster --tail=40 || true
   exit 1
 fi
 echo "PASS: all dashboard-referenced metrics exist in VictoriaMetrics"
