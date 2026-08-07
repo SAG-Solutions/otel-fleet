@@ -261,6 +261,27 @@ clusterMonitoring:
     resources:
       requests: { cpu: 200m, memory: 256Mi }
       limits: { memory: 512Mi }
+  # Target Allocator: ingest existing prometheus-operator ServiceMonitor and
+  # PodMonitor CRDs so kube-prometheus-stack users migrate without rewriting
+  # scrape config. When enabled, a standalone Target Allocator discovers those
+  # CRDs (and the annotation job) and hands scrape targets to the cluster
+  # collector, whose prometheus receiver switches to target_allocator mode.
+  # Requires the monitoring.coreos.com CRDs (ServiceMonitor/PodMonitor) to be
+  # installed in the cluster — they can be applied standalone, without the
+  # full Prometheus Operator.
+  targetAllocator:
+    enabled: false
+    image:
+      repository: ghcr.io/open-telemetry/opentelemetry-operator/target-allocator
+      tag: "0.156.0"
+      pullPolicy: IfNotPresent
+    # Empty selectors ({}) discover ALL ServiceMonitors/PodMonitors cluster-wide.
+    # Narrow with matchLabels to scope to a subset.
+    serviceMonitorSelector: {}
+    podMonitorSelector: {}
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 256Mi }
 
 serviceAccount:
   create: true

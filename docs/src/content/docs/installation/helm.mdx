@@ -293,6 +293,31 @@ hardened `podSecurityContext`/`securityContext`. Left disabled
 (`clusterMonitoring.enabled: false`, the default) the chart emits **zero**
 cluster-monitoring resources.
 
+### Reusing existing ServiceMonitors (Target Allocator)
+
+Migrating from kube-prometheus-stack and don't want to rewrite scrape config as
+annotations? Turn on the **Target Allocator** — a standalone controller that
+discovers your existing `ServiceMonitor` and `PodMonitor` CRDs and hands the
+resulting scrape targets to the cluster collector:
+
+```yaml
+clusterMonitoring:
+  enabled: true
+  targetAllocator:
+    enabled: true
+    # {} discovers every ServiceMonitor/PodMonitor; narrow with matchLabels.
+    serviceMonitorSelector: {}
+    podMonitorSelector: {}
+```
+
+When enabled, the chart deploys the Target Allocator, extends the
+cluster-monitoring `ClusterRole` with read access to `monitoring.coreos.com`
+resources, and switches the collector's `prometheus` receiver into
+`target_allocator` mode (the annotation job is served through the allocator
+too, so both discovery styles keep working). This requires the
+`ServiceMonitor`/`PodMonitor` CRDs to be installed in the cluster — they can be
+applied standalone, without the full Prometheus Operator.
+
 ### Dashboards and alerting
 
 The metrics land in VictoriaMetrics, which speaks the Prometheus query API. Two

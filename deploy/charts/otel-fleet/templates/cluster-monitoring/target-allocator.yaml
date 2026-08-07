@@ -1,0 +1,138 @@
+{{- if and .Values.clusterMonitoring.enabled .Values.clusterMonitoring.targetAllocator.enabled }}
+{{- /*
+Standalone OpenTelemetry Target Allocator. It watches prometheus-operator
+ServiceMonitor/PodMonitor CRDs (and the annotation scrape job below), then hands
+scrape targets to the cluster collector via http_sd. This lets kube-prometheus
+users keep their ServiceMonitors — the collector's prometheus receiver runs in
+target_allocator mode (see files/otelcol-cluster.yaml). Shares the
+cluster-monitoring ServiceAccount + ClusterRole (extended in rbac.yaml).
+*/}}
+{{- $ta := .Values.clusterMonitoring.targetAllocator }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-target-allocator
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-ta
+data:
+  targetallocator.yaml: |
+    collector_namespace: {{ .Release.Namespace }}
+    collector_selector:
+      matchLabels:
+        {{- include "otel-fleet.selector" . | nindent 8 }}
+        app.kubernetes.io/component: cluster-monitoring-cluster
+    listen_addr: ":8080"
+    allocation_strategy: consistent-hashing
+    filter_strategy: relabel-config
+    prometheus_cr:
+      enabled: true
+      pod_monitor_selector:
+        matchLabels: {{ toYaml $ta.podMonitorSelector | nindent 10 }}
+      service_monitor_selector:
+        matchLabels: {{ toYaml $ta.serviceMonitorSelector | nindent 10 }}
+    config:
+      scrape_configs:
+        # The annotation-based job (prometheus.io/scrape) is served by the TA
+        # too, so both discovery mechanisms flow through one collector.
+        - job_name: kubernetes-pods
+          scrape_interval: 30s
+          kubernetes_sd_configs:
+            - role: pod
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              action: keep
+              regex: "true"
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              action: replace
+              target_label: __metrics_path__
+              regex: (.+)
+            - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+              action: replace
+              regex: ([^:]+)(?::\d+)?;(\d+)
+              replacement: $1:$2
+              target_label: __address__
+            - action: labelmap
+              regex: __meta_kubernetes_pod_label_(.+)
+            - source_labels: [__meta_kubernetes_namespace]
+              action: replace
+              target_label: namespace
+            - source_labels: [__meta_kubernetes_pod_name]
+              action: replace
+              target_label: pod
+            - source_labels: [__meta_kubernetes_pod_node_name]
+              action: replace
+              target_label: node
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-target-allocator
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-ta
+spec:
+  # Singleton: the allocator is the single source of truth for target sharding.
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "otel-fleet.selector" . | nindent 6 }}
+      app.kubernetes.io/component: cluster-monitoring-ta
+  template:
+    metadata:
+      labels:
+        {{- include "otel-fleet.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster-monitoring-ta
+      annotations:
+        checksum/config: {{ .Files.Get "templates/cluster-monitoring/target-allocator.yaml" | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "otel-fleet.fullname" . }}-cluster-monitoring
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: target-allocator
+          image: {{ $ta.image.repository }}:{{ $ta.image.tag }}
+          imagePullPolicy: {{ $ta.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - { name: http, containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /livez, port: http }
+            initialDelaySeconds: 10
+          volumeMounts:
+            - { name: conf, mountPath: /conf, readOnly: true }
+          resources: {{- toYaml $ta.resources | nindent 12 }}
+      volumes:
+        - name: conf
+          configMap:
+            name: {{ include "otel-fleet.fullname" . }}-target-allocator
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "otel-fleet.fullname" . }}-target-allocator
+  labels:
+    {{- include "otel-fleet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-ta
+spec:
+  selector:
+    {{- include "otel-fleet.selector" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-monitoring-ta
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+{{- end }}

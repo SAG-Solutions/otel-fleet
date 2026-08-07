@@ -120,6 +120,12 @@ jobs:
           KCTX: kind-otelfleet-e2e
           COLLECTOR_IMAGE: otel-fleet-collector
           COLLECTOR_TAG: e2e
+      - name: Run Target Allocator e2e (ServiceMonitor ingest)
+        run: test/e2e-cluster/run-ta.sh
+        env:
+          KCTX: kind-otelfleet-e2e
+          COLLECTOR_IMAGE: otel-fleet-collector
+          COLLECTOR_TAG: e2e
 
   codegen-drift:
     runs-on: ubuntu-latest
@@ -230,6 +236,20 @@ jobs:
             --set clusterMonitoring.enabled=true | grep -q "kind: ClusterRole"
           helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set clusterMonitoring.enabled=true | grep -q "otel-fleet-cluster-monitoring"
+          # Target Allocator (ServiceMonitor/PodMonitor ingest): off by default;
+          # opt-in renders the TA workload + monitoring.coreos.com RBAC and
+          # switches the cluster collector's prometheus receiver to TA mode.
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true | grep -c 'component: cluster-monitoring-ta')" = "0"
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.targetAllocator.enabled=true \
+            | grep -q 'name: t-otel-fleet-target-allocator'
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.targetAllocator.enabled=true \
+            | grep -q 'servicemonitors'
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.targetAllocator.enabled=true \
+            | grep -q 'target_allocator:'
       - run: helm lint deploy/charts/otel-fleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |

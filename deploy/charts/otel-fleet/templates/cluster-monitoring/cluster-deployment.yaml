@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: cluster-monitoring-cluster
 data:
   config.yaml: |
-{{ .Files.Get "files/otelcol-cluster.yaml" | indent 4 }}
+{{ tpl (.Files.Get "files/otelcol-cluster.yaml") . | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -31,7 +31,7 @@ spec:
         {{- include "otel-fleet.labels" . | nindent 8 }}
         app.kubernetes.io/component: cluster-monitoring-cluster
       annotations:
-        checksum/config: {{ .Files.Get "files/otelcol-cluster.yaml" | sha256sum }}
+        checksum/config: {{ tpl (.Files.Get "files/otelcol-cluster.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ include "otel-fleet.fullname" . }}-cluster-monitoring
       {{- with .Values.imagePullSecrets }}
@@ -54,6 +54,13 @@ spec:
               value: {{ .Values.external.victoriaMetrics.remoteWriteUrl | quote }}
             - name: GOMEMLIMIT
               value: "450MiB"
+            {{- if .Values.clusterMonitoring.targetAllocator.enabled }}
+            # collector_id for the prometheus receiver's target_allocator mode:
+            # the Target Allocator shards targets to collectors by pod name.
+            - name: POD_NAME
+              valueFrom:
+                fieldRef: { fieldPath: metadata.name }
+            {{- end }}
           ports:
             - { name: telemetry, containerPort: 8888 }
             - { name: health, containerPort: 13133 }

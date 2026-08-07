@@ -70,6 +70,13 @@ rules:
   # Prometheus kubernetes_sd can be given raw kubelet /metrics access.
   - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
     verbs: ["get"]
+  {{- if .Values.clusterMonitoring.targetAllocator.enabled }}
+  # Target Allocator: discover prometheus-operator ServiceMonitor/PodMonitor
+  # (and probe/scrapeconfig) CRDs. Harmless if the CRDs are not installed.
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "podmonitors", "probes", "scrapeconfigs"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
