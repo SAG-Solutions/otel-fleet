@@ -19,7 +19,9 @@ extensions:
   # single replica (it simply always wins the lease).
   k8s_leader_elector:
     auth_type: serviceAccount
-    lease_name: otel-fleet-cluster-monitoring
+    # Release-scoped so two otel-fleet releases in one namespace don't contend
+    # for a single lease (every other cluster-monitoring object is fullname-scoped).
+    lease_name: {{ include "otel-fleet.fullname" . }}-cluster-monitoring
     lease_namespace: {{ .Release.Namespace }}
 
 receivers:

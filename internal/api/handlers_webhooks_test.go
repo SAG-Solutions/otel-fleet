@@ -42,7 +42,7 @@ func TestValidateChannelURLSecret(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			msg := validateChannelURLSecret(c.chType, c.url, c.secret)
+			msg := validateChannelURLSecret(c.chType, c.url, c.secret != "")
 			if (msg != "") != c.wantErr {
 				t.Errorf("validateChannelURLSecret(%q,%q,secret=%t) = %q; wantErr=%t", c.chType, c.url, c.secret != "", msg, c.wantErr)
 			}

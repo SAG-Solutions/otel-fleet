@@ -201,8 +201,9 @@ func (d *Dispatcher) render(wh store.Webhook, eventType string, p Payload) (url 
 		}
 		headers["Authorization"] = "GenieKey " + string(secret)
 		if p.Event == AlertResolved {
-			// Close the alert opened by the fire, addressed by its alias.
-			url = base + "/" + neturl.PathEscape(alertDedupKey(p)) + "/close?identifierType=alias"
+			// Close the alert opened by the fire, addressed by the SAME alias
+			// opsgenieCreateBody used (length-capped), else a long key won't match.
+			url = base + "/" + neturl.PathEscape(opsgenieAlias(p)) + "/close?identifierType=alias"
 			body, err = opsgenieCloseBody()
 		} else {
 			url = base

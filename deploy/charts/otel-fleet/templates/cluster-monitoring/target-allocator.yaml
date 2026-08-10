@@ -84,7 +84,10 @@ spec:
         {{- include "otel-fleet.labels" . | nindent 8 }}
         app.kubernetes.io/component: cluster-monitoring-ta
       annotations:
-        checksum/config: {{ .Files.Get "templates/cluster-monitoring/target-allocator.yaml" | sha256sum }}
+        # Hash the TA config inputs (selectors, image, resources) so a config
+        # change rolls the pod. NB: .Files.Get on a templates/ path returns ""
+        # (Helm excludes templates/ from .Files), which never changes.
+        checksum/config: {{ $ta | toYaml | sha256sum }}
     spec:
       serviceAccountName: {{ include "otel-fleet.fullname" . }}-cluster-monitoring
       {{- with .Values.imagePullSecrets }}

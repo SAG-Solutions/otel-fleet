@@ -48,14 +48,14 @@ func webhookType(t *apigen.WebhookType) (string, error) {
 // required and validated for webhook/slack; optional for pagerduty/opsgenie
 // (empty = default vendor endpoint) but validated when provided. PagerDuty and
 // Opsgenie require a secret (routing key / API key).
-func validateChannelURLSecret(chType, url, secret string) string {
+func validateChannelURLSecret(chType, url string, hasSecret bool) string {
 	if store.SecretedWebhookType(chType) {
 		if url != "" {
 			if err := webhooks.ValidateURL(url); err != nil {
 				return err.Error()
 			}
 		}
-		if secret == "" {
+		if !hasSecret {
 			if chType == store.WebhookTypePagerDuty {
 				return "PagerDuty channels require a secret (the integration routing key)"
 			}
@@ -119,7 +119,7 @@ func (s *Server) CreateWebhook(ctx context.Context, request apigen.CreateWebhook
 	if body.Secret != nil {
 		secret = *body.Secret
 	}
-	if msg := validateChannelURLSecret(chType, url, secret); msg != "" {
+	if msg := validateChannelURLSecret(chType, url, secret != ""); msg != "" {
 		return apigen.CreateWebhook400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: msg}}, nil
 	}
 
@@ -156,20 +156,40 @@ func (s *Server) CreateWebhook(ctx context.Context, request apigen.CreateWebhook
 
 func (s *Server) UpdateWebhook(ctx context.Context, request apigen.UpdateWebhookRequestObject) (apigen.UpdateWebhookResponseObject, error) {
 	body := request.Body
+	// Fetch the current channel so per-type validation runs against the
+	// EFFECTIVE state (a field kept absent inherits its stored value).
+	existing, err := s.store.GetWebhook(ctx, request.WebhookId)
+	if errors.Is(err, store.ErrNotFound) {
+		return apigen.UpdateWebhook404JSONResponse{NotFoundJSONResponse: apigen.NotFoundJSONResponse{Code: codeNotFound, Message: "webhook not found"}}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	upd := store.WebhookUpdate{Name: body.Name, URL: body.Url, Enabled: body.Enabled}
+	chType := existing.Type
 	if body.Type != nil {
 		ct, err := webhookType(body.Type)
 		if err != nil {
 			return nil, err
 		}
 		upd.Type = &ct
+		chType = ct
 	}
-	// An empty URL clears it (pagerduty/opsgenie then use the default vendor
-	// endpoint); any non-empty URL is validated.
-	if body.Url != nil && *body.Url != "" {
-		if err := webhooks.ValidateURL(*body.Url); err != nil {
-			return apigen.UpdateWebhook400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: err.Error()}}, nil
-		}
+	// Effective URL/secret after the patch: a nil field keeps the stored value;
+	// "" secret removes it. Validate the result per the effective type — this
+	// rejects clearing a webhook/slack URL and switching to pagerduty/opsgenie
+	// without a routing key / API key.
+	effURL := existing.URL
+	if body.Url != nil {
+		effURL = *body.Url
+	}
+	effHasSecret := len(existing.SecretEnc) > 0
+	if body.Secret != nil {
+		effHasSecret = *body.Secret != ""
+	}
+	if msg := validateChannelURLSecret(chType, effURL, effHasSecret); msg != "" {
+		return apigen.UpdateWebhook400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: msg}}, nil
 	}
 	if body.Events != nil {
 		events, err := validateWebhookEvents(*body.Events)

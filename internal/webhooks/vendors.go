@@ -126,11 +126,21 @@ func detailStrings(p Payload) map[string]string {
 	return out
 }
 
+// truncate caps s to n runes (not bytes), so a multi-byte UTF-8 character is
+// never split into an invalid trailing byte. The vendor limits (Opsgenie
+// message 130, alias 512, PagerDuty summary 1024) are character counts.
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	r := []rune(s)
+	if len(r) <= n {
 		return s
 	}
-	return s[:n]
+	return string(r[:n])
+}
+
+// opsgenieAlias is the alert alias — a stable, length-capped dedup key used for
+// BOTH create and close, so a long key still resolves the alert it opened.
+func opsgenieAlias(p Payload) string {
+	return truncate(alertDedupKey(p), 512)
 }
 
 // pagerDutyBody builds a PagerDuty Events API v2 event. A resolve event carries
@@ -163,7 +173,7 @@ func pagerDutyBody(p Payload, routingKey string) ([]byte, error) {
 func opsgenieCreateBody(p Payload) ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"message":  truncate(eventSummary(p), 130), // Opsgenie message cap
-		"alias":    truncate(alertDedupKey(p), 512),
+		"alias":    opsgenieAlias(p),
 		"priority": opsgeniePriority(p),
 		"source":   "otel-fleet",
 		"details":  detailStrings(p),
