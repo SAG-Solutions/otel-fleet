@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.9.0...v0.10.0) (2026-08-11)
+
+
+### Features
+
+* **regions:** multi-region Phase 1 — region model + registry ([4f24fa3](https://github.com/SAG-Solutions/otel-fleet/commit/4f24fa3d89320da820762c7bf7b9d479b8493518))
+* **regions:** multi-region Phase 2 — region-aware read routing ([0b4acb8](https://github.com/SAG-Solutions/otel-fleet/commit/0b4acb8e7fcee6f07530b56009e890cb52843bc1))
+* **regions:** Phase 2b — fan out fleet-wide reads across regions ([2405448](https://github.com/SAG-Solutions/otel-fleet/commit/2405448a5bba074c514e58ae5106bb5b23591e30))
+* **regions:** region-aware cluster-wide PromQL alerting (fire per region) ([6cf3052](https://github.com/SAG-Solutions/otel-fleet/commit/6cf3052d5ce5ee353e3ec2c9b93a66487df4835a))
+
 ## [0.9.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.8.0...v0.9.0) (2026-08-10)
 
 
