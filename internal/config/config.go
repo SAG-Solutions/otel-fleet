@@ -3,6 +3,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -24,6 +25,16 @@ type OIDCProvider struct {
 	ClientSecret string
 }
 
+// Region is one data-residency region: a named data plane with its own
+// telemetry stores. Telemetry for a customer pinned here stays in these stores.
+type Region struct {
+	Name               string `json:"name"`
+	DisplayName        string `json:"displayName,omitempty"`
+	ClickHouseAddr     string `json:"clickhouseAddr,omitempty"`
+	ClickHouseDatabase string `json:"clickhouseDatabase,omitempty"`
+	VictoriaMetricsURL string `json:"victoriaMetricsUrl,omitempty"`
+}
+
 // Config is the full runtime configuration of the control plane.
 type Config struct {
 	DatabaseURL string
@@ -34,6 +45,16 @@ type Config struct {
 	ClickHousePassword string
 
 	VictoriaMetricsURL string
+
+	// Regions is the data-residency region registry (multi-region Phase 1). Each
+	// region names a data plane with its own telemetry stores; a customer is
+	// pinned to one region. Configured via OTEL_FLEET_REGIONS (JSON array). When
+	// unset, a single "default" region is synthesized from the flat ClickHouse*/
+	// VictoriaMetrics settings above, so single-region deployments are unchanged.
+	// NOTE: Phase 1 is the model only — the query path still uses the flat store
+	// settings; region-aware read routing is Phase 2.
+	Regions       []Region
+	DefaultRegion string
 
 	// Role selects which listeners/workers this process runs:
 	//   all   — everything in one process (default; dev and small deployments)
@@ -221,7 +242,70 @@ func Load() (*Config, error) {
 		cfg.OIDCProviders = append(cfg.OIDCProviders, p)
 	}
 
+	if err := cfg.loadRegions(); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
+}
+
+// loadRegions builds the region registry from OTEL_FLEET_REGIONS (a JSON array
+// of Region), or synthesizes a single "default" region from the flat store
+// settings when unset. OTEL_FLEET_DEFAULT_REGION picks the default (first region
+// otherwise). Region names must be non-empty and unique, and the default must
+// exist.
+func (c *Config) loadRegions() error {
+	if raw := env("REGIONS", ""); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &c.Regions); err != nil {
+			return fmt.Errorf("OTEL_FLEET_REGIONS: invalid JSON: %w", err)
+		}
+	}
+	if len(c.Regions) == 0 {
+		// Single-region deployment: the flat store settings ARE the default region.
+		c.Regions = []Region{{
+			Name:               "default",
+			ClickHouseAddr:     c.ClickHouseAddr,
+			ClickHouseDatabase: c.ClickHouseDatabase,
+			VictoriaMetricsURL: c.VictoriaMetricsURL,
+		}}
+	}
+	seen := map[string]bool{}
+	for i, r := range c.Regions {
+		if strings.TrimSpace(r.Name) == "" {
+			return fmt.Errorf("OTEL_FLEET_REGIONS[%d]: name is required", i)
+		}
+		if seen[r.Name] {
+			return fmt.Errorf("OTEL_FLEET_REGIONS: duplicate region name %q", r.Name)
+		}
+		seen[r.Name] = true
+	}
+	c.DefaultRegion = env("DEFAULT_REGION", "")
+	if c.DefaultRegion == "" {
+		c.DefaultRegion = c.Regions[0].Name
+	}
+	if !c.HasRegion(c.DefaultRegion) {
+		return fmt.Errorf("OTEL_FLEET_DEFAULT_REGION %q is not a configured region", c.DefaultRegion)
+	}
+	return nil
+}
+
+// HasRegion reports whether name is a configured region.
+func (c *Config) HasRegion(name string) bool {
+	for _, r := range c.Regions {
+		if r.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// RegionNames returns the configured region names in order.
+func (c *Config) RegionNames() []string {
+	names := make([]string, len(c.Regions))
+	for i, r := range c.Regions {
+		names[i] = r.Name
+	}
+	return names
 }
 
 // RunsAPI reports whether this process serves the HTTP/gRPC request tier.

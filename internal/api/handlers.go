@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -67,6 +68,7 @@ func toCustomer(c store.Customer) apigen.Customer {
 		Name:                 c.Name,
 		ClientId:             c.ClientID,
 		Status:               apigen.CustomerStatus(c.Status),
+		Region:               c.Region,
 		RateLimitItemsPerSec: c.RateLimitItemsPerSec,
 		RetentionDays:        c.RetentionDays,
 		CreatedAt:            c.CreatedAt,
@@ -210,7 +212,16 @@ func (s *Server) CreateCustomer(ctx context.Context, request apigen.CreateCustom
 	if err := requireUnscoped(ctx); err != nil {
 		return nil, err
 	}
-	created, err := s.tenants.CreateCustomer(ctx, actorID(ctx), request.Body.Name, request.Body.Slug)
+	// Resolve + validate the data-residency region against the configured
+	// registry (empty = the server default).
+	region := s.cfg.DefaultRegion
+	if request.Body.Region != nil && *request.Body.Region != "" {
+		region = *request.Body.Region
+	}
+	if !s.cfg.HasRegion(region) {
+		return apigen.CreateCustomer400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: fmt.Sprintf("unknown region %q (configured: %s)", region, strings.Join(s.cfg.RegionNames(), ", "))}}, nil
+	}
+	created, err := s.tenants.CreateCustomer(ctx, actorID(ctx), request.Body.Name, request.Body.Slug, region)
 	switch {
 	case errors.Is(err, tenants.ErrInvalidName), errors.Is(err, tenants.ErrInvalidSlug):
 		return apigen.CreateCustomer400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: err.Error()}}, nil
@@ -223,6 +234,21 @@ func (s *Server) CreateCustomer(ctx context.Context, request apigen.CreateCustom
 		Customer:      toCustomer(created.Customer),
 		InitialApiKey: toAPIKeyCreated(created.Key, created.Secret),
 	}, nil
+}
+
+// ListRegions returns the configured data-residency regions (drives the
+// customer region selector). Available to any authenticated user.
+func (s *Server) ListRegions(ctx context.Context, _ apigen.ListRegionsRequestObject) (apigen.ListRegionsResponseObject, error) {
+	regions := make([]apigen.Region, 0, len(s.cfg.Regions))
+	for _, r := range s.cfg.Regions {
+		reg := apigen.Region{Name: r.Name}
+		if r.DisplayName != "" {
+			dn := r.DisplayName
+			reg.DisplayName = &dn
+		}
+		regions = append(regions, reg)
+	}
+	return apigen.ListRegions200JSONResponse{Regions: regions, DefaultRegion: s.cfg.DefaultRegion}, nil
 }
 
 func (s *Server) GetCustomer(ctx context.Context, request apigen.GetCustomerRequestObject) (apigen.GetCustomerResponseObject, error) {

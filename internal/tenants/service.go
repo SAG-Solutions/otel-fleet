@@ -52,7 +52,7 @@ type CreatedCustomer struct {
 // When slug is nil it is derived from the name and deduplicated with a numeric
 // suffix; an explicitly provided slug that already exists fails with
 // store.ErrSlugExists.
-func (s *Service) CreateCustomer(ctx context.Context, actor *uuid.UUID, name string, slug *string) (CreatedCustomer, error) {
+func (s *Service) CreateCustomer(ctx context.Context, actor *uuid.UUID, name string, slug *string, region string) (CreatedCustomer, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || len(name) > 200 {
 		return CreatedCustomer{}, ErrInvalidName
@@ -84,7 +84,7 @@ func (s *Service) CreateCustomer(ctx context.Context, actor *uuid.UUID, name str
 		}
 
 		customerID := uuid.New()
-		newCustomer := store.NewCustomer{ID: customerID, Slug: trySlug, Name: name, ClientID: clientID}
+		newCustomer := store.NewCustomer{ID: customerID, Slug: trySlug, Name: name, ClientID: clientID, Region: region}
 		newKey := store.NewAPIKey{
 			ID:         uuid.New(),
 			CustomerID: customerID,
@@ -100,7 +100,7 @@ func (s *Service) CreateCustomer(ctx context.Context, actor *uuid.UUID, name str
 				EntityType:  "customer",
 				EntityID:    customerID.String(),
 				CustomerID:  &customerID,
-				Payload:     map[string]string{"name": name, "slug": trySlug, "client_id": clientID},
+				Payload:     map[string]string{"name": name, "slug": trySlug, "client_id": clientID, "region": region},
 			},
 			{
 				ActorUserID: actor,

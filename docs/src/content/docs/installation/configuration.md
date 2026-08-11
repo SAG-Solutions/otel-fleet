@@ -17,6 +17,31 @@ prefixed `OTEL_FLEET_`. Source of truth: `internal/config/config.go`.
 | `OTEL_FLEET_CLICKHOUSE_PASSWORD` | `otel-fleet` | ClickHouse password. |
 | `OTEL_FLEET_VICTORIAMETRICS_URL` | `http://localhost:8428` | Prometheus-compatible query endpoint for collector self-telemetry (powers stage metrics and throughput charts). |
 
+### Data-residency regions (multi-region, Phase 1)
+
+A customer is pinned to a **region** for data residency. Configure the region
+registry with `OTEL_FLEET_REGIONS` (a JSON array); each region names a data
+plane with its own telemetry stores. Unset (the default), a single `default`
+region is synthesized from the `CLICKHOUSE_*` / `VICTORIAMETRICS_URL` settings
+above, so single-region deployments need no change.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OTEL_FLEET_REGIONS` | *(synthesized `default`)* | JSON array of regions, e.g. `[{"name":"eu","displayName":"Europe","clickhouseAddr":"eu-ch:9000","clickhouseDatabase":"otel","victoriaMetricsUrl":"http://eu-vm:8428"},{"name":"us","clickhouseAddr":"us-ch:9000","victoriaMetricsUrl":"http://us-vm:8428"}]`. Names must be unique and non-empty. |
+| `OTEL_FLEET_DEFAULT_REGION` | *(first region)* | Region assigned to new customers when none is specified; must be one of the configured regions. |
+
+New customers take the default region unless one is chosen at creation; the
+region is validated against the registry and returned on the customer. The
+configured regions are also served at `GET /api/v1/regions` (drives the UI
+selector).
+
+:::note[Phase 1 is the model only]
+Phase 1 adds the region registry and the per-customer region pin. The query
+path still reads from the flat `CLICKHOUSE_*` / `VICTORIAMETRICS_URL` stores;
+**region-aware read routing arrives in Phase 2**, at which point each region's
+own store endpoints (in the registry) are used.
+:::
+
 ## Listeners
 
 | Variable | Default | Description |

@@ -1001,6 +1001,9 @@ type Customer struct {
 	// RateLimitItemsPerSec Ingest quota in items/sec across signals; null = unlimited. Enforced at the gateway within the 30s auth cache.
 	RateLimitItemsPerSec *int `json:"rateLimitItemsPerSec,omitempty"`
 
+	// Region Data-residency region this customer is pinned to (one of the configured regions).
+	Region string `json:"region"`
+
 	// RetentionDays Telemetry retention override; null = global table TTL (30 days).
 	RetentionDays *int           `json:"retentionDays,omitempty"`
 	Slug          string         `json:"slug"`
@@ -1029,6 +1032,9 @@ type CustomerCost struct {
 // CustomerCreate defines model for CustomerCreate.
 type CustomerCreate struct {
 	Name string `json:"name"`
+
+	// Region Data-residency region to pin the customer to; must be a configured region. Defaults to the server's default region when omitted.
+	Region *string `json:"region,omitempty"`
 
 	// Slug URL-safe identifier; derived from name when omitted.
 	Slug *string `json:"slug,omitempty"`
@@ -1213,6 +1219,18 @@ type PipelineVersionSummary struct {
 
 // PipelineVersionSummaryValidationStatus defines model for PipelineVersionSummary.ValidationStatus.
 type PipelineVersionSummaryValidationStatus string
+
+// Region defines model for Region.
+type Region struct {
+	DisplayName *string `json:"displayName,omitempty"`
+	Name        string  `json:"name"`
+}
+
+// RegionList defines model for RegionList.
+type RegionList struct {
+	DefaultRegion string   `json:"defaultRegion"`
+	Regions       []Region `json:"regions"`
+}
 
 // RemoteConfigStatus defines model for RemoteConfigStatus.
 type RemoteConfigStatus string
@@ -1794,6 +1812,9 @@ type ServerInterface interface {
 	// Activate a version (deploys it to the forwarding tier; also used for rollback)
 	// (POST /api/v1/pipelines/{pipelineId}/versions/{version}/activate)
 	ActivatePipelineVersion(w http.ResponseWriter, r *http.Request, pipelineId openapi_types.UUID, version int)
+	// Configured data-residency regions and the default
+	// (GET /api/v1/regions)
+	ListRegions(w http.ResponseWriter, r *http.Request)
 	// Metric-threshold alert rules (admin only)
 	// (GET /api/v1/settings/alert-rules)
 	ListAlertRules(w http.ResponseWriter, r *http.Request)
@@ -2130,6 +2151,12 @@ func (_ Unimplemented) GetPipelineVersion(w http.ResponseWriter, r *http.Request
 // Activate a version (deploys it to the forwarding tier; also used for rollback)
 // (POST /api/v1/pipelines/{pipelineId}/versions/{version}/activate)
 func (_ Unimplemented) ActivatePipelineVersion(w http.ResponseWriter, r *http.Request, pipelineId openapi_types.UUID, version int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Configured data-residency regions and the default
+// (GET /api/v1/regions)
+func (_ Unimplemented) ListRegions(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3878,6 +3905,20 @@ func (siw *ServerInterfaceWrapper) ActivatePipelineVersion(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ListRegions operation middleware
+func (siw *ServerInterfaceWrapper) ListRegions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRegions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListAlertRules operation middleware
 func (siw *ServerInterfaceWrapper) ListAlertRules(w http.ResponseWriter, r *http.Request) {
 
@@ -4727,6 +4768,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/pipelines/{pipelineId}/versions/{version}/activate", wrapper.ActivatePipelineVersion)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/regions", wrapper.ListRegions)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/settings/alert-rules", wrapper.ListAlertRules)
@@ -7148,6 +7192,41 @@ func (response ActivatePipelineVersion404JSONResponse) VisitActivatePipelineVers
 	return err
 }
 
+type ListRegionsRequestObject struct {
+}
+
+type ListRegionsResponseObject interface {
+	VisitListRegionsResponse(w http.ResponseWriter) error
+}
+
+type ListRegions200JSONResponse RegionList
+
+func (response ListRegions200JSONResponse) VisitListRegionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListRegions401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListRegions401JSONResponse) VisitListRegionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListAlertRulesRequestObject struct {
 }
 
@@ -9057,6 +9136,9 @@ type StrictServerInterface interface {
 	// Activate a version (deploys it to the forwarding tier; also used for rollback)
 	// (POST /api/v1/pipelines/{pipelineId}/versions/{version}/activate)
 	ActivatePipelineVersion(ctx context.Context, request ActivatePipelineVersionRequestObject) (ActivatePipelineVersionResponseObject, error)
+	// Configured data-residency regions and the default
+	// (GET /api/v1/regions)
+	ListRegions(ctx context.Context, request ListRegionsRequestObject) (ListRegionsResponseObject, error)
 	// Metric-threshold alert rules (admin only)
 	// (GET /api/v1/settings/alert-rules)
 	ListAlertRules(ctx context.Context, request ListAlertRulesRequestObject) (ListAlertRulesResponseObject, error)
@@ -10292,6 +10374,30 @@ func (sh *strictHandler) ActivatePipelineVersion(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ActivatePipelineVersionResponseObject); ok {
 		if err := validResponse.VisitActivatePipelineVersionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListRegions operation middleware
+func (sh *strictHandler) ListRegions(w http.ResponseWriter, r *http.Request) {
+	var request ListRegionsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListRegions(ctx, request.(ListRegionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListRegions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListRegionsResponseObject); ok {
+		if err := validResponse.VisitListRegionsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

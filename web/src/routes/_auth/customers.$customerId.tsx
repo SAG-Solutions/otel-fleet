@@ -165,6 +165,10 @@ function CustomerHeader({ customer }: { customer: Customer }) {
           <code className="font-mono">{customer.slug}</code>
         </span>
         <span>
+          <span className="text-ink-3">region</span>{' '}
+          <code className="font-mono">{customer.region}</code>
+        </span>
+        <span>
           <span className="text-ink-3">since</span> {formatDate(customer.createdAt)}
         </span>
       </div>

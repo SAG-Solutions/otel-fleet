@@ -48,6 +48,10 @@ export type Customer = {
     clientId: string;
     status: 'active' | 'suspended' | 'deleted';
     /**
+     * Data-residency region this customer is pinned to (one of the configured regions).
+     */
+    region: string;
+    /**
      * Ingest quota in items/sec across signals; null = unlimited. Enforced at the gateway within the 30s auth cache.
      */
     rateLimitItemsPerSec?: number | null;
@@ -64,6 +68,20 @@ export type CustomerCreate = {
      * URL-safe identifier; derived from name when omitted.
      */
     slug?: string;
+    /**
+     * Data-residency region to pin the customer to; must be a configured region. Defaults to the server's default region when omitted.
+     */
+    region?: string;
+};
+
+export type Region = {
+    name: string;
+    displayName?: string;
+};
+
+export type RegionList = {
+    regions: Array<Region>;
+    defaultRegion: string;
 };
 
 export type ApiKey = {
@@ -1319,6 +1337,31 @@ export type GetCustomerThroughputResponses = {
 };
 
 export type GetCustomerThroughputResponse = GetCustomerThroughputResponses[keyof GetCustomerThroughputResponses];
+
+export type ListRegionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/regions';
+};
+
+export type ListRegionsErrors = {
+    /**
+     * Not authenticated
+     */
+    401: Error;
+};
+
+export type ListRegionsError = ListRegionsErrors[keyof ListRegionsErrors];
+
+export type ListRegionsResponses = {
+    /**
+     * The region registry (drives the customer region selector)
+     */
+    200: RegionList;
+};
+
+export type ListRegionsResponse = ListRegionsResponses[keyof ListRegionsResponses];
 
 export type GetComponentCatalogData = {
     body?: never;

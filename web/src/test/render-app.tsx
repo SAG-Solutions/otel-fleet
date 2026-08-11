@@ -42,6 +42,7 @@ export const testCustomer: Customer = {
   name: 'ACME Corp',
   clientId: 'cust_7f3a9b2c',
   status: 'active',
+  region: 'default',
   createdAt: '2026-07-01T09:00:00Z',
 }
 
@@ -51,6 +52,7 @@ export const testCustomer2: Customer = {
   name: 'Globex Inc',
   clientId: 'cust_2b1a9f3c',
   status: 'active',
+  region: 'default',
   createdAt: '2026-07-03T09:00:00Z',
 }
 

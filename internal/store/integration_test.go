@@ -66,7 +66,7 @@ func makeCustomer(t *testing.T) Customer {
 	id := uuid.New()
 	slug := "it-" + uniq()
 	cust, key, err := testPG.CreateCustomer(ctx,
-		NewCustomer{ID: id, Slug: slug, Name: "IT " + slug, ClientID: "cust_" + uniq()},
+		NewCustomer{ID: id, Slug: slug, Name: "IT " + slug, ClientID: "cust_" + uniq(), Region: "default"},
 		NewAPIKey{ID: uuid.New(), CustomerID: id, Name: "default", KeyPrefix: "otm_" + uniq(), KeyHash: []byte("hash")},
 		auditEntry("customer.create", "customer", id.String()))
 	if err != nil {

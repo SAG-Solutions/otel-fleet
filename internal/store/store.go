@@ -39,6 +39,9 @@ type Customer struct {
 	Name     string
 	ClientID string
 	Status   string
+	// Region is the data-residency region this customer is pinned to
+	// (multi-region Phase 1). Validated against the configured registry.
+	Region string
 	// RateLimitItemsPerSec is the ingest quota in items/sec across all
 	// signals; nil = unlimited.
 	RateLimitItemsPerSec *int
@@ -268,6 +271,7 @@ type NewCustomer struct {
 	Slug     string
 	Name     string
 	ClientID string
+	Region   string
 }
 
 // NewAPIKey is the insert payload for an API key.

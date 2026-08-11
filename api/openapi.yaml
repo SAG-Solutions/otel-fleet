@@ -316,6 +316,19 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/regions:
+    get:
+      tags: [customers]
+      operationId: listRegions
+      summary: Configured data-residency regions and the default
+      responses:
+        "200":
+          description: The region registry (drives the customer region selector)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegionList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/catalog/components:
     get:
       tags: [pipelines]
@@ -1553,7 +1566,7 @@ components:
 
     Customer:
       type: object
-      required: [id, slug, name, clientId, status, createdAt]
+      required: [id, slug, name, clientId, status, region, createdAt]
       properties:
         id: { type: string, format: uuid }
         slug: { type: string, example: acme }
@@ -1563,6 +1576,10 @@ components:
           example: cust_7f3a9b2c
           description: Stamped as resource attribute `tenant.id` on all ingested data.
         status: { type: string, enum: [active, suspended, deleted] }
+        region:
+          type: string
+          example: default
+          description: Data-residency region this customer is pinned to (one of the configured regions).
         rateLimitItemsPerSec:
           type: integer
           nullable: true
@@ -1584,6 +1601,25 @@ components:
           type: string
           pattern: "^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$"
           description: URL-safe identifier; derived from name when omitted.
+        region:
+          type: string
+          description: Data-residency region to pin the customer to; must be a configured region. Defaults to the server's default region when omitted.
+
+    Region:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: default }
+        displayName: { type: string }
+
+    RegionList:
+      type: object
+      required: [regions, defaultRegion]
+      properties:
+        regions:
+          type: array
+          items: { $ref: "#/components/schemas/Region" }
+        defaultRegion: { type: string }
 
     ApiKey:
       type: object

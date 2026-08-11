@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createCustomerMutation,
   listCustomersQueryKey,
+  listRegionsOptions,
 } from '@/api/generated/@tanstack/react-query.gen'
 import { deriveSlug, isValidSlug } from '@/lib/slug'
 import {
@@ -30,7 +31,15 @@ export function NewCustomerDialog({
 }) {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
+  const [region, setRegion] = useState('')
   const queryClient = useQueryClient()
+
+  const regionsQuery = useQuery({ ...listRegionsOptions(), enabled: open })
+  const regions = regionsQuery.data?.regions ?? []
+  // Only surface a region picker for genuinely multi-region deployments; with a
+  // single region the server just uses its default.
+  const multiRegion = regions.length > 1
+  const effectiveRegion = region || regionsQuery.data?.defaultRegion || ''
 
   const derived = deriveSlug(name)
   const effectiveSlug = slug.trim() === '' ? derived : slug.trim()
@@ -42,6 +51,7 @@ export function NewCustomerDialog({
       void queryClient.invalidateQueries({ queryKey: listCustomersQueryKey() })
       setName('')
       setSlug('')
+      setRegion('')
       onOpenChange(false)
       onCreated(data.customer, data.initialApiKey)
     },
@@ -54,6 +64,7 @@ export function NewCustomerDialog({
       body: {
         name: name.trim(),
         ...(slug.trim() !== '' ? { slug: slug.trim() } : {}),
+        ...(multiRegion && effectiveRegion !== '' ? { region: effectiveRegion } : {}),
       },
     })
   }
@@ -105,6 +116,27 @@ export function NewCustomerDialog({
               </p>
             )}
           </div>
+          {multiRegion && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="customer-region">Region</Label>
+              <select
+                id="customer-region"
+                className="h-9 rounded-md border border-line bg-surface px-3 text-sm text-ink"
+                value={effectiveRegion}
+                onChange={(e) => setRegion(e.target.value)}
+              >
+                {regions.map((r) => (
+                  <option key={r.name} value={r.name}>
+                    {r.displayName ?? r.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-ink-3">
+                Data residency: this tenant's telemetry stays in the selected region. Cannot be
+                changed after creation.
+              </p>
+            </div>
+          )}
           {create.isError && (
             <p role="alert" className="text-xs text-danger">
               Could not create the customer — the slug may already exist.

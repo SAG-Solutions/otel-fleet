@@ -27,11 +27,11 @@ var _ Store = (*PG)(nil)
 // Ping reports database reachability (used by /readyz).
 func (s *PG) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
 
-const customerCols = `id, slug, name, client_id, status, rate_limit_items_per_sec, retention_days, created_at, updated_at`
+const customerCols = `id, slug, name, client_id, status, region, rate_limit_items_per_sec, retention_days, created_at, updated_at`
 
 func scanCustomer(row pgx.Row) (Customer, error) {
 	var c Customer
-	err := row.Scan(&c.ID, &c.Slug, &c.Name, &c.ClientID, &c.Status,
+	err := row.Scan(&c.ID, &c.Slug, &c.Name, &c.ClientID, &c.Status, &c.Region,
 		&c.RateLimitItemsPerSec, &c.RetentionDays, &c.CreatedAt, &c.UpdatedAt)
 	return c, err
 }
@@ -76,10 +76,10 @@ func (s *PG) CreateCustomer(ctx context.Context, c NewCustomer, k NewAPIKey, ent
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
 		var err error
 		cust, err = scanCustomer(tx.QueryRow(ctx, `
-			INSERT INTO customers (id, slug, name, client_id)
-			VALUES ($1, $2, $3, $4)
+			INSERT INTO customers (id, slug, name, client_id, region)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING `+customerCols,
-			c.ID, c.Slug, c.Name, c.ClientID))
+			c.ID, c.Slug, c.Name, c.ClientID, c.Region))
 		switch {
 		case isUniqueViolation(err, "customers_slug_key"):
 			return ErrSlugExists
