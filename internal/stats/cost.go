@@ -33,7 +33,7 @@ type CustomerCost struct {
 // daily buckets for [from, to). TenantIds unknown to the control plane are
 // skipped; customers are sorted by bytes descending.
 func (s *Service) GetCost(ctx context.Context, from, to time.Time) ([]CustomerCost, error) {
-	rows, err := s.ch.Query(ctx, `
+	rows, err := s.stores.ClickHouse("").Query(ctx, `
 		SELECT TenantId, toDate(Minute) AS d, sum(Items) AS items, sum(Bytes) AS bytes
 		FROM ingest_counts_1m
 		WHERE Minute >= ? AND Minute < ?

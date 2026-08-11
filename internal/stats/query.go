@@ -31,7 +31,8 @@ type MetricSeries struct {
 // VictoriaMetrics' /api/v1/query_range and returns the matrix. Admin-only at
 // the API layer — it can read every metric, including per-tenant self-telemetry.
 func (s *Service) QueryRange(ctx context.Context, query string, from, to time.Time, step time.Duration) ([]MetricSeries, error) {
-	return s.queryRange(ctx, query, from, to, step, nil)
+	// Fleet-wide (admin, no customer): default region until Phase 2b.
+	return s.queryRange(ctx, s.stores.VM(""), query, from, to, step, nil)
 }
 
 // QueryRangeScoped is QueryRange with VictoriaMetrics `extra_filters[]` label
@@ -39,12 +40,13 @@ func (s *Service) QueryRange(ctx context.Context, query string, from, to time.Ti
 // per-tenant queries: the caller passes {tenant_id="<clientID>"} so a scoped
 // user can run arbitrary PromQL but only ever sees their own tenant's series
 // (no query-injection risk — VM enforces the filter, not string concatenation).
-func (s *Service) QueryRangeScoped(ctx context.Context, query string, from, to time.Time, step time.Duration, extraFilters []string) ([]MetricSeries, error) {
-	return s.queryRange(ctx, query, from, to, step, extraFilters)
+func (s *Service) QueryRangeScoped(ctx context.Context, region, query string, from, to time.Time, step time.Duration, extraFilters []string) ([]MetricSeries, error) {
+	// Customer-scoped: query the customer's region's VictoriaMetrics.
+	return s.queryRange(ctx, s.stores.VM(region), query, from, to, step, extraFilters)
 }
 
-func (s *Service) queryRange(ctx context.Context, query string, from, to time.Time, step time.Duration, extraFilters []string) ([]MetricSeries, error) {
-	if s.vmURL == "" {
+func (s *Service) queryRange(ctx context.Context, vmURL, query string, from, to time.Time, step time.Duration, extraFilters []string) ([]MetricSeries, error) {
+	if vmURL == "" {
 		return nil, ErrUpstreamUnavailable
 	}
 	vals := url.Values{
@@ -56,7 +58,7 @@ func (s *Service) queryRange(ctx context.Context, query string, from, to time.Ti
 	for _, f := range extraFilters {
 		vals.Add("extra_filters[]", f)
 	}
-	u := s.vmURL + "/api/v1/query_range?" + vals.Encode()
+	u := vmURL + "/api/v1/query_range?" + vals.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err

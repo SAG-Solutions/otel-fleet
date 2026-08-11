@@ -61,7 +61,7 @@ func (s *Server) QueryCustomerMetricsRange(ctx context.Context, request apigen.Q
 	}
 
 	filter := fmt.Sprintf(`{tenant_id=%q}`, cust.ClientID)
-	series, err := s.stats.QueryRangeScoped(ctx, p.Query, p.Start, p.End, step, []string{filter})
+	series, err := s.stats.QueryRangeScoped(ctx, cust.Region, p.Query, p.Start, p.End, step, []string{filter})
 	switch {
 	case errors.Is(err, stats.ErrBadQuery):
 		return apigen.QueryCustomerMetricsRange400JSONResponse{BadRequestJSONResponse: apigen.BadRequestJSONResponse{Code: codeBadRequest, Message: err.Error()}}, nil

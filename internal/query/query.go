@@ -14,6 +14,7 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 
+	"github.com/sag-solutions/otel-fleet/internal/regionstore"
 	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
@@ -28,22 +29,25 @@ type Store interface {
 
 // Service answers the explore endpoints.
 type Service struct {
-	ch    driver.Conn
-	store Store
-	log   *slog.Logger
+	stores *regionstore.Registry
+	store  Store
+	log    *slog.Logger
 }
 
-// New creates a query service.
-func New(ch driver.Conn, st Store, log *slog.Logger) *Service {
-	return &Service{ch: ch, store: st, log: log}
+// New creates a query service backed by the per-region store registry.
+func New(stores *regionstore.Registry, st Store, log *slog.Logger) *Service {
+	return &Service{stores: stores, store: st, log: log}
 }
 
-func (s *Service) tenant(ctx context.Context, customerID uuid.UUID) (string, error) {
+// tenant resolves a customer to its TenantId AND the ClickHouse connection for
+// that customer's data-residency region, so every read hits the region the
+// customer's telemetry was written to.
+func (s *Service) tenant(ctx context.Context, customerID uuid.UUID) (string, driver.Conn, error) {
 	c, err := s.store.GetCustomer(ctx, customerID)
 	if err != nil {
-		return "", err // store.ErrNotFound → 404
+		return "", nil, err // store.ErrNotFound → 404
 	}
-	return c.ClientID, nil
+	return c.ClientID, s.stores.ClickHouse(c.Region), nil
 }
 
 // --- logs ---
@@ -72,7 +76,7 @@ type LogQuery struct {
 
 // QueryLogs returns matching logs newest-first plus the next cursor.
 func (s *Service) QueryLogs(ctx context.Context, customerID uuid.UUID, q LogQuery) ([]LogRecord, *time.Time, error) {
-	tenant, err := s.tenant(ctx, customerID)
+	tenant, ch, err := s.tenant(ctx, customerID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -102,7 +106,7 @@ func (s *Service) QueryLogs(ctx context.Context, customerID uuid.UUID, q LogQuer
 	sql += ` ORDER BY Timestamp DESC LIMIT ?`
 	args = append(args, limit)
 
-	rows, err := s.ch.Query(ctx, sql, args...)
+	rows, err := ch.Query(ctx, sql, args...)
 	if err != nil {
 		s.log.Warn("query logs failed", "err", err)
 		return nil, nil, fmt.Errorf("%w: %v", ErrUpstreamUnavailable, err)
@@ -152,7 +156,7 @@ type TraceQuery struct {
 // QueryTraces lists traces newest-first (one row per trace from its root span),
 // enriched with span and error counts.
 func (s *Service) QueryTraces(ctx context.Context, customerID uuid.UUID, q TraceQuery) ([]TraceSummary, *time.Time, error) {
-	tenant, err := s.tenant(ctx, customerID)
+	tenant, ch, err := s.tenant(ctx, customerID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -182,7 +186,7 @@ func (s *Service) QueryTraces(ctx context.Context, customerID uuid.UUID, q Trace
 	sql += ` ORDER BY Timestamp DESC LIMIT ?`
 	args = append(args, limit)
 
-	rows, err := s.ch.Query(ctx, sql, args...)
+	rows, err := ch.Query(ctx, sql, args...)
 	if err != nil {
 		s.log.Warn("query traces failed", "err", err)
 		return nil, nil, fmt.Errorf("%w: %v", ErrUpstreamUnavailable, err)
@@ -206,7 +210,7 @@ func (s *Service) QueryTraces(ctx context.Context, customerID uuid.UUID, q Trace
 	}
 
 	if len(ids) > 0 {
-		counts, err := s.traceCounts(ctx, tenant, ids)
+		counts, err := s.traceCounts(ctx, ch, tenant, ids)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -228,8 +232,8 @@ func (s *Service) QueryTraces(ctx context.Context, customerID uuid.UUID, q Trace
 type spanCounts struct{ spans, errors int32 }
 
 // traceCounts aggregates span and error counts for a set of trace IDs in one query.
-func (s *Service) traceCounts(ctx context.Context, tenant string, ids []string) (map[string]spanCounts, error) {
-	rows, err := s.ch.Query(ctx, `
+func (s *Service) traceCounts(ctx context.Context, ch driver.Conn, tenant string, ids []string) (map[string]spanCounts, error) {
+	rows, err := ch.Query(ctx, `
 		SELECT TraceId, toInt32(count()), toInt32(countIf(StatusCode = 'STATUS_CODE_ERROR' OR StatusCode = 'Error'))
 		FROM otel.otel_traces
 		WHERE TenantId = ? AND TraceId IN (?)
@@ -266,11 +270,11 @@ type Span struct {
 
 // GetTrace returns all spans of a trace ordered by start time.
 func (s *Service) GetTrace(ctx context.Context, customerID uuid.UUID, traceID string) ([]Span, error) {
-	tenant, err := s.tenant(ctx, customerID)
+	tenant, ch, err := s.tenant(ctx, customerID)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.ch.Query(ctx, `
+	rows, err := ch.Query(ctx, `
 		SELECT SpanId, ParentSpanId, SpanName, ServiceName, SpanKind, Timestamp, Duration, StatusCode, StatusMessage, SpanAttributes
 		FROM otel.otel_traces
 		WHERE TenantId = ? AND TraceId = ?

@@ -16,9 +16,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 
+	"github.com/sag-solutions/otel-fleet/internal/regionstore"
 	"github.com/sag-solutions/otel-fleet/internal/store"
 )
 
@@ -38,22 +38,22 @@ type Store interface {
 
 // Service answers the stats endpoints.
 type Service struct {
-	ch    driver.Conn
-	store Store
-	vmURL string
-	httpc *http.Client
-	log   *slog.Logger
+	stores *regionstore.Registry
+	store  Store
+	httpc  *http.Client
+	log    *slog.Logger
 }
 
-// New creates a stats service. ch may point at an unreachable server; every
-// query maps connection failures to ErrUpstreamUnavailable.
-func New(ch driver.Conn, st Store, vmURL string, log *slog.Logger) *Service {
+// New creates a stats service backed by the per-region store registry. Any
+// region's stores may be unreachable; every query maps connection failures to
+// ErrUpstreamUnavailable. Customer-scoped reads route to the customer's region;
+// fleet-wide aggregates use the default region (Phase 2b fans them out).
+func New(stores *regionstore.Registry, st Store, log *slog.Logger) *Service {
 	return &Service{
-		ch:    ch,
-		store: st,
-		vmURL: vmURL,
-		httpc: &http.Client{Timeout: 10 * time.Second},
-		log:   log,
+		stores: stores,
+		store:  st,
+		httpc:  &http.Client{Timeout: 10 * time.Second},
+		log:    log,
 	}
 }
 
@@ -82,7 +82,8 @@ const topCustomersLimit = 5
 // allowed customers, and refused-request counts (fleet-wide, from VM) are
 // suppressed to avoid leaking other tenants' volume.
 func (s *Service) GetOverview(ctx context.Context, from, to time.Time, allowed map[uuid.UUID]bool) (Overview, error) {
-	rows, err := s.ch.Query(ctx, `
+	// Fleet-wide aggregate: default region only until Phase 2b fans out.
+	rows, err := s.stores.ClickHouse("").Query(ctx, `
 		SELECT TenantId, Signal, sum(Items) AS items
 		FROM ingest_counts_1m
 		WHERE Minute >= ? AND Minute < ?
@@ -175,7 +176,7 @@ func (s *Service) refusedRequests(ctx context.Context, from, to time.Time) int64
 	}
 	query := fmt.Sprintf(`sum(increase(otel_fleet_auth_requests_total{outcome!="ok"}[%ds]))`, rangeSecs)
 
-	u := s.vmURL + "/api/v1/query?" + url.Values{
+	u := s.stores.VM("") + "/api/v1/query?" + url.Values{
 		"query": {query},
 		"time":  {strconv.FormatInt(to.Unix(), 10)},
 	}.Encode()
@@ -259,7 +260,8 @@ func (s *Service) GetThroughput(ctx context.Context, customerID uuid.UUID, signa
 	}
 	q += ` GROUP BY Signal, bucket ORDER BY Signal, bucket`
 
-	rows, err := s.ch.Query(ctx, q, args...)
+	// Customer-scoped: read from the customer's region.
+	rows, err := s.stores.ClickHouse(cust.Region).Query(ctx, q, args...)
 	if err != nil {
 		s.log.Warn("stats throughput: clickhouse query failed", "err", err)
 		return nil, fmt.Errorf("%w: clickhouse: %v", ErrUpstreamUnavailable, err)

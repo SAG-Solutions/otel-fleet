@@ -52,7 +52,7 @@ func (s *Service) GetPipelineStages(ctx context.Context, q PipelineStageQuery) (
 	}
 
 	if len(q.Signals) > 0 {
-		rows, err := s.ch.Query(ctx, `
+		rows, err := s.stores.ClickHouse("").Query(ctx, `
 			SELECT Signal, sum(Items) AS items
 			FROM ingest_counts_1m
 			WHERE TenantId = ? AND Minute >= ? AND Minute < ? AND Signal IN ?
@@ -118,7 +118,7 @@ func (s *Service) GetPipelineStages(ctx context.Context, q PipelineStageQuery) (
 // vmSumBy runs an instant PromQL query and returns the value per `by` label.
 // ok=false on any failure — callers degrade to zeros.
 func (s *Service) vmSumBy(ctx context.Context, query, label string, at time.Time) (map[string]float64, bool) {
-	u := s.vmURL + "/api/v1/query?" + url.Values{
+	u := s.stores.VM("") + "/api/v1/query?" + url.Values{
 		"query": {query},
 		"time":  {strconv.FormatInt(at.Unix(), 10)},
 	}.Encode()

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
@@ -37,6 +38,7 @@ import (
 	"github.com/sag-solutions/otel-fleet/internal/pgnotify"
 	"github.com/sag-solutions/otel-fleet/internal/pipelines"
 	"github.com/sag-solutions/otel-fleet/internal/query"
+	"github.com/sag-solutions/otel-fleet/internal/regionstore"
 	"github.com/sag-solutions/otel-fleet/internal/retention"
 	"github.com/sag-solutions/otel-fleet/internal/stats"
 	"github.com/sag-solutions/otel-fleet/internal/store"
@@ -101,25 +103,40 @@ func run(log *slog.Logger) error {
 		log.Warn("OTEL_FLEET_MASTER_KEY not set: SSO provider management and pipeline secret fields are disabled")
 	}
 
-	// ClickHouse (lazy; stats endpoints degrade to 503 when unreachable).
-	chConn, err := clickhouse.Open(&clickhouse.Options{
-		Addr: []string{cfg.ClickHouseAddr},
-		Auth: clickhouse.Auth{
-			Database: cfg.ClickHouseDatabase,
-			Username: cfg.ClickHouseUser,
-			Password: cfg.ClickHousePassword,
-		},
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		return fmt.Errorf("clickhouse options: %w", err)
+	// Per-region telemetry stores (multi-region). Open one ClickHouse connection
+	// per configured region (lazy; stats endpoints degrade to 503 when
+	// unreachable) plus its VictoriaMetrics URL. Single-region deployments have
+	// one synthesized "default" region built from the flat store settings, so
+	// this opens exactly one connection as before. Regions share the global
+	// ClickHouse credentials; only the address/database vary per region.
+	chByRegion := map[string]driver.Conn{}
+	vmByRegion := map[string]string{}
+	for _, rg := range cfg.Regions {
+		conn, err := clickhouse.Open(&clickhouse.Options{
+			Addr: []string{rg.ClickHouseAddr},
+			Auth: clickhouse.Auth{
+				Database: rg.ClickHouseDatabase,
+				Username: cfg.ClickHouseUser,
+				Password: cfg.ClickHousePassword,
+			},
+			DialTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			return fmt.Errorf("clickhouse options (region %s): %w", rg.Name, err)
+		}
+		defer conn.Close() //nolint:errcheck
+		chByRegion[rg.Name] = conn
+		vmByRegion[rg.Name] = rg.VictoriaMetricsURL
 	}
-	defer chConn.Close() //nolint:errcheck
+	regionStores := regionstore.New(chByRegion, vmByRegion, cfg.DefaultRegion)
+	// The default region's handles back the fleet-wide reads + background workers
+	// (alerting, retention) until Phase 2b routes those per region.
+	chConn := regionStores.ClickHouse("")
 
 	// Services.
 	tenantsSvc := tenants.NewService(st)
-	statsSvc := stats.New(chConn, st, cfg.VictoriaMetricsURL, log)
-	querySvc := query.New(chConn, st, log)
+	statsSvc := stats.New(regionStores, st, log)
+	querySvc := query.New(regionStores, st, log)
 	ingestAuth := ingestauth.New(st, log, reg)
 
 	// Pipeline service: validator (real collector binary) + distributor.
@@ -173,8 +190,10 @@ func run(log *slog.Logger) error {
 	opampSrv := opamp.NewServer(st, pipelinesSvc, cfg.OpAMPAddr, cfg.OpAMPPublicEndpoint, opampTLS, log)
 	webhookDispatcher := webhooks.New(st, cipher, log)
 	opampSrv.Handler().SetEventSink(webhookDispatcher)
+	// Alerting + retention run against the default region for now (Phase 2b will
+	// make them region-aware — cluster-wide PromQL rules have no single region).
 	retentionSvc := retention.New(chConn, st, cfg.RetentionInterval, log)
-	alertingSvc := alerting.New(alerting.NewClickHouseSource(chConn), alerting.NewVMPromQLSource(cfg.VictoriaMetricsURL), st, webhookDispatcher, time.Minute, log)
+	alertingSvc := alerting.New(alerting.NewClickHouseSource(chConn), alerting.NewVMPromQLSource(regionStores.VM("")), st, webhookDispatcher, time.Minute, log)
 
 	// Login provider registry: database providers + the OTEL_FLEET_OIDC_* env
 	// provider, resolved per request under /auth/{name}/...

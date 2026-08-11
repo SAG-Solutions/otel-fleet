@@ -35,11 +35,19 @@ region is validated against the registry and returned on the customer. The
 configured regions are also served at `GET /api/v1/regions` (drives the UI
 selector).
 
-:::note[Phase 1 is the model only]
-Phase 1 adds the region registry and the per-customer region pin. The query
-path still reads from the flat `CLICKHOUSE_*` / `VICTORIAMETRICS_URL` stores;
-**region-aware read routing arrives in Phase 2**, at which point each region's
-own store endpoints (in the registry) are used.
+Each region's `clickhouseAddr` / `clickhouseDatabase` / `victoriaMetricsUrl`
+back its own telemetry stores (regions share the global `CLICKHOUSE_USER` /
+`CLICKHOUSE_PASSWORD`). The control plane opens one ClickHouse connection per
+region at startup.
+
+:::note[What routes per region today]
+**Customer-scoped reads route to the customer's region**: Explore (logs/traces),
+per-customer throughput, and the scoped metrics explorer query that customer's
+region's ClickHouse / VictoriaMetrics. **Still default-region only (Phase 2b):**
+fleet-wide aggregates that span customers (the admin overview and cost
+leaderboard), the admin ad-hoc PromQL panel, and the alerting evaluator +
+retention sweep — these need cross-region fan-out. Single-region deployments
+(one `default` region) are fully correct: everything resolves to the one region.
 :::
 
 ## Listeners
