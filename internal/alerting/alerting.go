@@ -32,11 +32,14 @@ type MetricSource interface {
 	Metric(ctx context.Context, metric string, since time.Time) (map[string]float64, error)
 }
 
-// chSource is the ClickHouse-backed MetricSource.
-type chSource struct{ ch CH }
+// chSource is the ClickHouse-backed MetricSource. It queries every region's
+// connection and merges the per-tenant results (customers are region-pinned, so
+// a tenant appears in exactly one region), so metric-threshold rules are
+// evaluated fleet-wide regardless of which region a customer lives in.
+type chSource struct{ chs []CH }
 
-// NewClickHouseSource builds a MetricSource over a ClickHouse connection.
-func NewClickHouseSource(ch CH) MetricSource { return &chSource{ch: ch} }
+// NewClickHouseSource builds a MetricSource over one connection per region.
+func NewClickHouseSource(chs []CH) MetricSource { return &chSource{chs: chs} }
 
 // Store is the persistence subset the evaluator needs.
 type Store interface {
@@ -287,21 +290,28 @@ func (c *chSource) Metric(ctx context.Context, metric string, since time.Time) (
 	default:
 		return nil, fmt.Errorf("unknown metric %q", metric)
 	}
-	rows, err := c.ch.Query(ctx, q, since)
-	if err != nil {
-		return nil, fmt.Errorf("clickhouse %s: %w", metric, err)
-	}
-	defer rows.Close()
 	out := map[string]float64{}
-	for rows.Next() {
-		var tenant string
-		var v uint64
-		if err := rows.Scan(&tenant, &v); err != nil {
+	for _, ch := range c.chs {
+		rows, err := ch.Query(ctx, q, since)
+		if err != nil {
+			return nil, fmt.Errorf("clickhouse %s: %w", metric, err)
+		}
+		for rows.Next() {
+			var tenant string
+			var v uint64
+			if err := rows.Scan(&tenant, &v); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			out[tenant] += float64(v)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
 			return nil, err
 		}
-		out[tenant] = float64(v)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func breach(comparison string, value, threshold float64) bool {

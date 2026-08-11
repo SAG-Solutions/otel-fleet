@@ -40,14 +40,17 @@ back its own telemetry stores (regions share the global `CLICKHOUSE_USER` /
 `CLICKHOUSE_PASSWORD`). The control plane opens one ClickHouse connection per
 region at startup.
 
-:::note[What routes per region today]
-**Customer-scoped reads route to the customer's region**: Explore (logs/traces),
-per-customer throughput, and the scoped metrics explorer query that customer's
-region's ClickHouse / VictoriaMetrics. **Still default-region only (Phase 2b):**
-fleet-wide aggregates that span customers (the admin overview and cost
-leaderboard), the admin ad-hoc PromQL panel, and the alerting evaluator +
-retention sweep — these need cross-region fan-out. Single-region deployments
-(one `default` region) are fully correct: everything resolves to the one region.
+:::note[What routes per region]
+**Customer-scoped reads** (Explore logs/traces, per-customer throughput, the
+scoped metrics explorer) hit the customer's region. **Fleet-wide aggregates**
+(admin overview, cost leaderboard, refused-request counts), the
+**metric-threshold alert evaluator**, and the **retention sweep** fan out across
+every region and merge / route per customer. **Still default-region only:** the
+admin ad-hoc PromQL panel and **cluster-wide PromQL alert rules**
+(`customer_id` NULL) — a cluster-wide PromQL rule has no single region, so its
+multi-region semantics (fire-per-region vs. aggregate) are an open design
+decision. Single-region deployments (one `default` region) are fully correct:
+everything resolves to the one region.
 :::
 
 ## Listeners

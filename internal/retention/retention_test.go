@@ -86,7 +86,7 @@ func TestRunOnceOnlyCustomersWithOverride(t *testing.T) {
 	ch := &fakeCH{}
 	st := &fakeStore{customers: []store.Customer{withOverride, noOverride}}
 
-	New(ch, st, 0, testLogger()).RunOnce(context.Background())
+	New(func(string) CH { return ch }, st, 0, testLogger()).RunOnce(context.Background())
 
 	// One mutation per table, for the override customer only.
 	if len(ch.stmts) != len(tables) {
@@ -111,7 +111,7 @@ func TestRunOnceNoAuditWhenAllMutationsFail(t *testing.T) {
 	ch := &fakeCH{failN: len(tables)} // every mutation fails
 	st := &fakeStore{customers: []store.Customer{c}}
 
-	New(ch, st, 0, testLogger()).RunOnce(context.Background())
+	New(func(string) CH { return ch }, st, 0, testLogger()).RunOnce(context.Background())
 
 	if len(st.audits) != 0 {
 		t.Errorf("no audit entry expected when nothing was submitted, got %+v", st.audits)

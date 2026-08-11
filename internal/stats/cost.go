@@ -33,39 +33,44 @@ type CustomerCost struct {
 // daily buckets for [from, to). TenantIds unknown to the control plane are
 // skipped; customers are sorted by bytes descending.
 func (s *Service) GetCost(ctx context.Context, from, to time.Time) ([]CustomerCost, error) {
-	rows, err := s.stores.ClickHouse("").Query(ctx, `
-		SELECT TenantId, toDate(Minute) AS d, sum(Items) AS items, sum(Bytes) AS bytes
-		FROM ingest_counts_1m
-		WHERE Minute >= ? AND Minute < ?
-		GROUP BY TenantId, d
-		ORDER BY TenantId, d`, from.UTC(), to.UTC())
-	if err != nil {
-		s.log.Warn("stats cost: clickhouse query failed", "err", err)
-		return nil, fmt.Errorf("%w: clickhouse: %v", ErrUpstreamUnavailable, err)
-	}
-	defer rows.Close()
-
+	// Fan out over every region and merge per tenant (customers are region-
+	// pinned, so tenant sets don't overlap across regions).
 	perTenant := map[string]*CustomerCost{}
 	var tenantOrder []string
-	for rows.Next() {
-		var tenantID string
-		var day time.Time
-		var items, bytes uint64
-		if err := rows.Scan(&tenantID, &day, &items, &bytes); err != nil {
-			return nil, fmt.Errorf("%w: clickhouse scan: %v", ErrUpstreamUnavailable, err)
+	for _, region := range s.stores.Names() {
+		rows, err := s.stores.ClickHouse(region).Query(ctx, `
+			SELECT TenantId, toDate(Minute) AS d, sum(Items) AS items, sum(Bytes) AS bytes
+			FROM ingest_counts_1m
+			WHERE Minute >= ? AND Minute < ?
+			GROUP BY TenantId, d
+			ORDER BY TenantId, d`, from.UTC(), to.UTC())
+		if err != nil {
+			s.log.Warn("stats cost: clickhouse query failed", "region", region, "err", err)
+			return nil, fmt.Errorf("%w: clickhouse (region %s): %v", ErrUpstreamUnavailable, region, err)
 		}
-		cc, ok := perTenant[tenantID]
-		if !ok {
-			cc = &CustomerCost{}
-			perTenant[tenantID] = cc
-			tenantOrder = append(tenantOrder, tenantID)
+		for rows.Next() {
+			var tenantID string
+			var day time.Time
+			var items, bytes uint64
+			if err := rows.Scan(&tenantID, &day, &items, &bytes); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("%w: clickhouse scan: %v", ErrUpstreamUnavailable, err)
+			}
+			cc, ok := perTenant[tenantID]
+			if !ok {
+				cc = &CustomerCost{}
+				perTenant[tenantID] = cc
+				tenantOrder = append(tenantOrder, tenantID)
+			}
+			cc.Items += int64(items)
+			cc.Bytes += int64(bytes)
+			cc.Days = append(cc.Days, CostDay{Date: day.UTC(), Items: int64(items), Bytes: int64(bytes)})
 		}
-		cc.Items += int64(items)
-		cc.Bytes += int64(bytes)
-		cc.Days = append(cc.Days, CostDay{Date: day.UTC(), Items: int64(items), Bytes: int64(bytes)})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: clickhouse: %v", ErrUpstreamUnavailable, err)
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return nil, fmt.Errorf("%w: clickhouse (region %s): %v", ErrUpstreamUnavailable, region, err)
+		}
 	}
 
 	// Map ClickHouse TenantId (= client_id) back to customers.

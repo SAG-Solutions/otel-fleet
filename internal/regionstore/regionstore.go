@@ -10,7 +10,11 @@
 // no single region both work unchanged.
 package regionstore
 
-import "github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+import (
+	"sort"
+
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+)
 
 // Registry maps region names to their ClickHouse connection and VictoriaMetrics
 // URL. It is read-only after construction; the connections are owned by the
@@ -46,6 +50,20 @@ func (r *Registry) VM(region string) string {
 	return r.vm[r.deflt]
 }
 
-// DefaultRegion is the fallback region name — used by fleet-wide reads that are
-// not scoped to a single customer/region (completed in Phase 2b).
+// DefaultRegion is the fallback region name.
 func (r *Registry) DefaultRegion() string { return r.deflt }
+
+// Names returns every configured region name, sorted for determinism. Fleet-
+// wide reads fan a query out over each region's stores and merge the results.
+func (r *Registry) Names() []string {
+	names := make([]string, 0, len(r.ch))
+	for n := range r.ch {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// Multi reports whether more than one region is configured (i.e. fleet-wide
+// reads must fan out rather than hitting a single store).
+func (r *Registry) Multi() bool { return len(r.ch) > 1 }

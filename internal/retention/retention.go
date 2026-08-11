@@ -46,16 +46,19 @@ type Store interface {
 
 // Service runs the nightly retention sweep.
 type Service struct {
-	ch       CH
+	// resolve returns the ClickHouse connection for a customer's region, so each
+	// customer's DELETE mutations run against the region its telemetry lives in.
+	resolve  func(region string) CH
 	store    Store
 	interval time.Duration
 	log      *slog.Logger
 }
 
-// New wires the retention job. interval comes from
-// OTEL_FLEET_RETENTION_INTERVAL (default 24h).
-func New(ch CH, st Store, interval time.Duration, log *slog.Logger) *Service {
-	return &Service{ch: ch, store: st, interval: interval, log: log}
+// New wires the retention job. resolve maps a customer's region to its
+// ClickHouse connection; interval comes from OTEL_FLEET_RETENTION_INTERVAL
+// (default 24h).
+func New(resolve func(region string) CH, st Store, interval time.Duration, log *slog.Logger) *Service {
+	return &Service{resolve: resolve, store: st, interval: interval, log: log}
 }
 
 // Run executes the sweep once shortly after startup and then on every
@@ -98,7 +101,7 @@ func (s *Service) RunOnce(ctx context.Context) {
 			continue
 		}
 		days := *c.RetentionDays
-		submitted, errs := s.applyCustomer(ctx, c.ClientID, days)
+		submitted, errs := s.applyCustomer(ctx, s.resolve(c.Region), c.ClientID, days)
 		s.log.Info("retention: sweep for customer",
 			"customer", c.ID, "client_id", c.ClientID, "retention_days", days,
 			"mutations_submitted", submitted, "errors", errs)
@@ -125,9 +128,9 @@ func (s *Service) RunOnce(ctx context.Context) {
 
 // applyCustomer submits one DELETE mutation per telemetry table and reports
 // how many were accepted.
-func (s *Service) applyCustomer(ctx context.Context, clientID string, days int) (submitted, errs int) {
+func (s *Service) applyCustomer(ctx context.Context, ch CH, clientID string, days int) (submitted, errs int) {
 	for _, stmt := range Statements(days) {
-		if err := s.ch.Exec(ctx, stmt, clientID); err != nil {
+		if err := ch.Exec(ctx, stmt, clientID); err != nil {
 			s.log.Error("retention: submit mutation failed", "client_id", clientID, "err", err)
 			errs++
 			continue

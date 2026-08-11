@@ -82,34 +82,37 @@ const topCustomersLimit = 5
 // allowed customers, and refused-request counts (fleet-wide, from VM) are
 // suppressed to avoid leaking other tenants' volume.
 func (s *Service) GetOverview(ctx context.Context, from, to time.Time, allowed map[uuid.UUID]bool) (Overview, error) {
-	// Fleet-wide aggregate: default region only until Phase 2b fans out.
-	rows, err := s.stores.ClickHouse("").Query(ctx, `
-		SELECT TenantId, Signal, sum(Items) AS items
-		FROM ingest_counts_1m
-		WHERE Minute >= ? AND Minute < ?
-		GROUP BY TenantId, Signal`, from.UTC(), to.UTC())
-	if err != nil {
-		s.log.Warn("stats overview: clickhouse query failed", "err", err)
-		return Overview{}, fmt.Errorf("%w: clickhouse: %v", ErrUpstreamUnavailable, err)
-	}
-	defer rows.Close()
-
-	// Accumulate per tenant and signal so a scoped caller's totals can be
-	// recomputed from only the allowed customers.
+	// Fleet-wide aggregate: fan the per-tenant/signal query out over every
+	// region and merge. Customers are pinned to one region, so tenants don't
+	// overlap across regions; the merge is a union.
 	perTenantSignal := map[string]map[string]int64{}
-	for rows.Next() {
-		var tenantID, signal string
-		var items uint64
-		if err := rows.Scan(&tenantID, &signal, &items); err != nil {
-			return Overview{}, fmt.Errorf("%w: clickhouse scan: %v", ErrUpstreamUnavailable, err)
+	for _, region := range s.stores.Names() {
+		rows, err := s.stores.ClickHouse(region).Query(ctx, `
+			SELECT TenantId, Signal, sum(Items) AS items
+			FROM ingest_counts_1m
+			WHERE Minute >= ? AND Minute < ?
+			GROUP BY TenantId, Signal`, from.UTC(), to.UTC())
+		if err != nil {
+			s.log.Warn("stats overview: clickhouse query failed", "region", region, "err", err)
+			return Overview{}, fmt.Errorf("%w: clickhouse (region %s): %v", ErrUpstreamUnavailable, region, err)
 		}
-		if perTenantSignal[tenantID] == nil {
-			perTenantSignal[tenantID] = map[string]int64{}
+		for rows.Next() {
+			var tenantID, signal string
+			var items uint64
+			if err := rows.Scan(&tenantID, &signal, &items); err != nil {
+				rows.Close()
+				return Overview{}, fmt.Errorf("%w: clickhouse scan: %v", ErrUpstreamUnavailable, err)
+			}
+			if perTenantSignal[tenantID] == nil {
+				perTenantSignal[tenantID] = map[string]int64{}
+			}
+			perTenantSignal[tenantID][signal] += int64(items)
 		}
-		perTenantSignal[tenantID][signal] += int64(items)
-	}
-	if err := rows.Err(); err != nil {
-		return Overview{}, fmt.Errorf("%w: clickhouse: %v", ErrUpstreamUnavailable, err)
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return Overview{}, fmt.Errorf("%w: clickhouse (region %s): %v", ErrUpstreamUnavailable, region, err)
+		}
 	}
 
 	// Map ClickHouse TenantId (= client_id) back to customers.
@@ -176,9 +179,26 @@ func (s *Service) refusedRequests(ctx context.Context, from, to time.Time) int64
 	}
 	query := fmt.Sprintf(`sum(increase(otel_fleet_auth_requests_total{outcome!="ok"}[%ds]))`, rangeSecs)
 
-	u := s.stores.VM("") + "/api/v1/query?" + url.Values{
+	// Sum across every region's VictoriaMetrics (dedup shared URLs).
+	total := int64(0)
+	seen := map[string]bool{}
+	for _, region := range s.stores.Names() {
+		vm := s.stores.VM(region)
+		if vm == "" || seen[vm] {
+			continue
+		}
+		seen[vm] = true
+		total += s.refusedRequestsFromVM(ctx, vm, query, to)
+	}
+	return total
+}
+
+// refusedRequestsFromVM runs the refused-requests query against one VM URL,
+// returning 0 on any failure (the dashboard must not break when VM is down).
+func (s *Service) refusedRequestsFromVM(ctx context.Context, vmURL, query string, at time.Time) int64 {
+	u := vmURL + "/api/v1/query?" + url.Values{
 		"query": {query},
-		"time":  {strconv.FormatInt(to.Unix(), 10)},
+		"time":  {strconv.FormatInt(at.Unix(), 10)},
 	}.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
