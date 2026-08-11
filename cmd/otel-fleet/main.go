@@ -187,16 +187,15 @@ func run(log *slog.Logger) error {
 	opampSrv := opamp.NewServer(st, pipelinesSvc, cfg.OpAMPAddr, cfg.OpAMPPublicEndpoint, opampTLS, log)
 	webhookDispatcher := webhooks.New(st, cipher, log)
 	opampSrv.Handler().SetEventSink(webhookDispatcher)
-	// Metric-threshold alert rules query every region's ClickHouse and merge
-	// (region-aware). Cluster-wide PromQL rules still evaluate against the
-	// default region's VictoriaMetrics — multi-region PromQL semantics are an
-	// open design question (see the multi-region proposal).
+	// Alerting is region-aware: metric-threshold rules query every region's
+	// ClickHouse and merge; cluster-wide PromQL rules are evaluated against each
+	// region's VictoriaMetrics and fire per region.
 	alertCHs := make([]alerting.CH, 0, len(regionStores.Names()))
 	for _, rg := range regionStores.Names() {
 		alertCHs = append(alertCHs, regionStores.ClickHouse(rg))
 	}
 	retentionSvc := retention.New(func(region string) retention.CH { return regionStores.ClickHouse(region) }, st, cfg.RetentionInterval, log)
-	alertingSvc := alerting.New(alerting.NewClickHouseSource(alertCHs), alerting.NewVMPromQLSource(regionStores.VM("")), st, webhookDispatcher, time.Minute, log)
+	alertingSvc := alerting.New(alerting.NewClickHouseSource(alertCHs), alerting.NewVMPromQLSource(vmByRegion), st, webhookDispatcher, time.Minute, log)
 
 	// Login provider registry: database providers + the OTEL_FLEET_OIDC_* env
 	// provider, resolved per request under /auth/{name}/...

@@ -45,12 +45,12 @@ region at startup.
 scoped metrics explorer) hit the customer's region. **Fleet-wide aggregates**
 (admin overview, cost leaderboard, refused-request counts), the
 **metric-threshold alert evaluator**, and the **retention sweep** fan out across
-every region and merge / route per customer. **Still default-region only:** the
-admin ad-hoc PromQL panel and **cluster-wide PromQL alert rules**
-(`customer_id` NULL) — a cluster-wide PromQL rule has no single region, so its
-multi-region semantics (fire-per-region vs. aggregate) are an open design
-decision. Single-region deployments (one `default` region) are fully correct:
-everything resolves to the one region.
+every region and merge / route per customer. **Cluster-wide PromQL alert rules**
+(`customer_id` NULL) are evaluated against **each region's** VictoriaMetrics and
+**fire per region** — the notification carries the region that breached. The one
+thing still default-region only is the **admin ad-hoc PromQL panel** (a single
+manual query has no region context). Single-region deployments (one `default`
+region) are fully correct: everything resolves to the one region.
 :::
 
 ## Listeners

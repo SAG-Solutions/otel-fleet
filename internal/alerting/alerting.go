@@ -54,13 +54,15 @@ type Notifier interface {
 	SendToChannels(ctx context.Context, channels []store.Webhook, p webhooks.Payload)
 }
 
-// PromQLSource evaluates an instant PromQL query against the metrics store
-// (VictoriaMetrics). It returns the single scalar value and whether the query
-// produced a result (empty result = no data, not a breach). Used for
-// cluster/infra-wide alert rules (metric == promql). May be nil when no metrics
-// store is configured — such rules are then skipped.
+// PromQLSource evaluates an instant PromQL query against a region's metrics
+// store (VictoriaMetrics). It returns the single scalar value and whether the
+// query produced a result (empty result = no data, not a breach). Used for
+// cluster/infra-wide alert rules (metric == promql), which are evaluated per
+// region (a cluster-wide rule has no single region, so it fires per region).
+// May be nil when no metrics store is configured — such rules are then skipped.
 type PromQLSource interface {
-	Query(ctx context.Context, query string) (value float64, ok bool, err error)
+	Regions() []string
+	Query(ctx context.Context, region, query string) (value float64, ok bool, err error)
 }
 
 // Service evaluates alert rules on an interval.
@@ -229,41 +231,49 @@ func (s *Service) evalPromQL(ctx context.Context, now time.Time, rule store.Aler
 		s.log.Warn("alerting: promql rule skipped, no metrics store configured", "rule", rule.Name)
 		return nil
 	}
-	value, ok, err := s.promql.Query(ctx, rule.Query)
-	if err != nil {
-		return err
-	}
-	breached := ok && breach(rule.Comparison, value, rule.Threshold)
-	key := rule.ID.String() + "|promql"
-
-	s.mu.Lock()
-	was := s.firing[key]
-	s.firing[key] = breached
-	s.mu.Unlock()
-
-	if breached == was {
-		return nil // no transition
-	}
-	event := webhooks.AlertResolved
-	if breached {
-		event = webhooks.AlertFiring
-	}
-	s.log.Info("alerting: transition", "rule", rule.Name, "metric", "promql", "query", rule.Query, "value", value, "threshold", rule.Threshold, "firing", breached)
+	// A cluster-wide PromQL rule has no single region, so evaluate it against
+	// each region's VictoriaMetrics and fire/resolve independently per region —
+	// the notification carries the region that breached. One region's query
+	// failing does not block the others.
 	channels := s.channelsFor(rule, byHookID)
-	if len(channels) > 0 {
-		s.notifier.SendToChannels(ctx, channels, webhooks.Payload{
-			Event:      event,
-			OccurredAt: now.UTC(),
-			Detail: map[string]any{
-				"rule":       rule.Name,
-				"severity":   rule.Severity,
-				"metric":     "promql",
-				"query":      rule.Query,
-				"comparison": rule.Comparison,
-				"threshold":  rule.Threshold,
-				"observed":   value,
-			},
-		})
+	for _, region := range s.promql.Regions() {
+		value, ok, err := s.promql.Query(ctx, region, rule.Query)
+		if err != nil {
+			s.log.Warn("alerting: promql query failed", "rule", rule.Name, "region", region, "err", err)
+			continue
+		}
+		breached := ok && breach(rule.Comparison, value, rule.Threshold)
+		key := rule.ID.String() + "|promql|" + region
+
+		s.mu.Lock()
+		was := s.firing[key]
+		s.firing[key] = breached
+		s.mu.Unlock()
+
+		if breached == was {
+			continue // no transition
+		}
+		event := webhooks.AlertResolved
+		if breached {
+			event = webhooks.AlertFiring
+		}
+		s.log.Info("alerting: transition", "rule", rule.Name, "metric", "promql", "region", region, "query", rule.Query, "value", value, "threshold", rule.Threshold, "firing", breached)
+		if len(channels) > 0 {
+			s.notifier.SendToChannels(ctx, channels, webhooks.Payload{
+				Event:      event,
+				OccurredAt: now.UTC(),
+				Detail: map[string]any{
+					"rule":       rule.Name,
+					"severity":   rule.Severity,
+					"metric":     "promql",
+					"region":     region,
+					"query":      rule.Query,
+					"comparison": rule.Comparison,
+					"threshold":  rule.Threshold,
+					"observed":   value,
+				},
+			})
+		}
 	}
 	return nil
 }

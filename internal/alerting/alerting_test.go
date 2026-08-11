@@ -38,12 +38,25 @@ func (f *fakeStore) ListActiveMaintenanceWindows(context.Context, time.Time) ([]
 type capturedSend struct {
 	event    string
 	channels int
+	detail   map[string]any
 }
 
 type fakeNotifier struct{ sends []capturedSend }
 
 func (n *fakeNotifier) SendToChannels(_ context.Context, channels []store.Webhook, p webhooks.Payload) {
-	n.sends = append(n.sends, capturedSend{event: p.Event, channels: len(channels)})
+	n.sends = append(n.sends, capturedSend{event: p.Event, channels: len(channels), detail: p.Detail})
+}
+
+// regionPromQL returns a different scalar per region, for fire-per-region tests.
+type regionPromQL struct {
+	regions []string
+	vals    map[string]float64
+	ok      map[string]bool
+}
+
+func (r *regionPromQL) Regions() []string { return r.regions }
+func (r *regionPromQL) Query(_ context.Context, region, _ string) (float64, bool, error) {
+	return r.vals[region], r.ok[region], nil
 }
 
 func discardLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
@@ -124,7 +137,10 @@ type fakePromQL struct {
 	ok  bool
 }
 
-func (f *fakePromQL) Query(context.Context, string) (float64, bool, error) { return f.val, f.ok, nil }
+func (f *fakePromQL) Regions() []string { return []string{"default"} }
+func (f *fakePromQL) Query(context.Context, string, string) (float64, bool, error) {
+	return f.val, f.ok, nil
+}
 
 func TestEvaluatePromQLRuleFiresOnceThenResolves(t *testing.T) {
 	chID := uuid.New()
@@ -166,6 +182,46 @@ func TestEvaluatePromQLRuleFiresOnceThenResolves(t *testing.T) {
 	must(t, svc.Evaluate(ctx, now))
 	if len(notifier.sends) != 2 {
 		t.Fatalf("no-data must not fire: %+v", notifier.sends)
+	}
+}
+
+func TestEvaluatePromQLRuleFiresPerRegion(t *testing.T) {
+	chID := uuid.New()
+	rule := store.AlertRule{
+		ID: uuid.New(), Name: "node cpu", Metric: store.AlertMetricPromQL,
+		Query: `avg(node_cpu_usage)`, Comparison: store.AlertComparisonAbove, Threshold: 0.8,
+		ChannelIDs: []uuid.UUID{chID}, Enabled: true,
+	}
+	// eu breaches, us is healthy.
+	pq := &regionPromQL{
+		regions: []string{"eu", "us"},
+		vals:    map[string]float64{"eu": 0.9, "us": 0.5},
+		ok:      map[string]bool{"eu": true, "us": true},
+	}
+	st := &fakeStore{rules: []store.AlertRule{rule}, hooks: []store.Webhook{{ID: chID, Enabled: true}}}
+	notifier := &fakeNotifier{}
+	svc := New(nil, pq, st, notifier, time.Minute, discardLog())
+	now := time.Unix(1_700_000_000, 0)
+
+	// Exactly one fire — for eu — carrying the region in the payload.
+	must(t, svc.Evaluate(context.Background(), now))
+	if len(notifier.sends) != 1 || notifier.sends[0].event != webhooks.AlertFiring {
+		t.Fatalf("expected one AlertFiring (eu only), got %+v", notifier.sends)
+	}
+	if notifier.sends[0].detail["region"] != "eu" {
+		t.Errorf("firing payload region = %v, want eu", notifier.sends[0].detail["region"])
+	}
+	// us now breaches too → a second, independent fire for us.
+	pq.vals["us"] = 0.95
+	must(t, svc.Evaluate(context.Background(), now))
+	if len(notifier.sends) != 2 || notifier.sends[1].detail["region"] != "us" {
+		t.Fatalf("expected a second fire for us, got %+v", notifier.sends)
+	}
+	// eu recovers → resolve for eu only.
+	pq.vals["eu"] = 0.1
+	must(t, svc.Evaluate(context.Background(), now))
+	if len(notifier.sends) != 3 || notifier.sends[2].event != webhooks.AlertResolved || notifier.sends[2].detail["region"] != "eu" {
+		t.Fatalf("expected AlertResolved for eu, got %+v", notifier.sends)
 	}
 }
 
