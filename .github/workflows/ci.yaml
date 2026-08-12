@@ -94,6 +94,59 @@ jobs:
           echo "=== control plane ==="; cat /tmp/cp.log || true
           echo "=== gateway ==="; docker compose -f deploy/compose/docker-compose.yaml logs --tail=120 gateway || true
 
+  # Two-region e2e: runs the control plane with OTEL_FLEET_REGIONS=[eu,us]
+  # backed by two ClickHouse instances, and proves region-aware read routing
+  # (each customer's Explore query hits only its own region) plus the
+  # fleet-wide overview fan-out (topCustomers aggregates across both regions).
+  # We seed each region's ClickHouse directly, so no gateway is needed.
+  multi-region-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Start data plane (postgres, two clickhouse regions, victoriametrics)
+        run: docker compose -f deploy/compose/docker-compose.yaml up -d postgres clickhouse clickhouse-us victoriametrics
+      - name: Wait for postgres + both clickhouse regions healthy
+        run: |
+          cd deploy/compose
+          for i in $(seq 1 40); do
+            pg=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q postgres)" 2>/dev/null || echo none)
+            eu=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q clickhouse)" 2>/dev/null || echo none)
+            us=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q clickhouse-us)" 2>/dev/null || echo none)
+            echo "postgres=$pg clickhouse(eu)=$eu clickhouse-us(us)=$us"
+            [ "$pg" = healthy ] && [ "$eu" = healthy ] && [ "$us" = healthy ] && exit 0
+            sleep 5
+          done
+          echo "::error::multi-region data plane did not become healthy"; exit 1
+      - name: Build and run the control plane (two regions)
+        run: |
+          go build -o /tmp/otel-fleet ./cmd/otel-fleet
+          OTEL_FLEET_DEV_LOGIN=true \
+          OTEL_FLEET_ADMIN_EMAILS=js@sag-solutions.com \
+          OTEL_FLEET_DATABASE_URL=postgres://otelfleet:otelfleet@localhost:5432/otelfleet \
+          OTEL_FLEET_CLICKHOUSE_USER=otelfleet \
+          OTEL_FLEET_CLICKHOUSE_PASSWORD=otelfleet \
+          OTEL_FLEET_DEFAULT_REGION=eu \
+          OTEL_FLEET_REGIONS='[{"name":"eu","clickhouseAddr":"localhost:9000","clickhouseDatabase":"otel","victoriaMetricsUrl":"http://localhost:8428"},{"name":"us","clickhouseAddr":"localhost:9001","clickhouseDatabase":"otel","victoriaMetricsUrl":"http://localhost:8428"}]' \
+          nohup /tmp/otel-fleet > /tmp/cp.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:9090/healthz >/dev/null 2>&1 && exit 0; sleep 2; done
+          echo "::error::control plane did not come up"; cat /tmp/cp.log; exit 1
+      - name: Run multi-region e2e
+        run: go test -tags=e2e ./test/e2e/... -run TestMultiRegion -v -timeout 180s
+        env:
+          OTEL_FLEET_E2E_URL: http://localhost:8080
+          OTEL_FLEET_E2E_MULTIREGION: "1"
+          OTEL_FLEET_E2E_CH_EU: localhost:9000
+          OTEL_FLEET_E2E_CH_US: localhost:9001
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== control plane ==="; cat /tmp/cp.log || true
+          echo "=== clickhouse(eu) ==="; docker compose -f deploy/compose/docker-compose.yaml logs --tail=60 clickhouse || true
+          echo "=== clickhouse-us(us) ==="; docker compose -f deploy/compose/docker-compose.yaml logs --tail=60 clickhouse-us || true
+
   # Real-cluster e2e for the cluster-monitoring bundle: spin up kind, load the
   # (slim) collector image, deploy the bundle + an in-cluster VictoriaMetrics,
   # and assert the DaemonSet + singleton actually scrape and remote-write k8s_*
