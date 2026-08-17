@@ -147,6 +147,58 @@ jobs:
           echo "=== clickhouse(eu) ==="; docker compose -f deploy/compose/docker-compose.yaml logs --tail=60 clickhouse || true
           echo "=== clickhouse-us(us) ==="; docker compose -f deploy/compose/docker-compose.yaml logs --tail=60 clickhouse-us || true
 
+  # Edge-agent enrollment e2e: mints a per-customer bootstrap token, starts the
+  # compose `edge` profile (real OpAMP supervisor + collector) with it, and
+  # polls the Fleet API until the agent enrolls, connects, and reports healthy
+  # bound to that customer. Proves the full OpAMP enrollment path (previously
+  # only hand-verified). The control plane serves OpAMP in plaintext by default
+  # (no OTEL_FLEET_ROLE / TLS env); the edge-agent dials host.docker.internal.
+  edge-agent-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Start data plane (postgres, clickhouse, victoriametrics)
+        run: docker compose -f deploy/compose/docker-compose.yaml up -d postgres clickhouse victoriametrics
+      - name: Build the edge-agent image (supervisor + collector)
+        run: docker compose -f deploy/compose/docker-compose.yaml --profile edge build edge-agent
+      - name: Wait for postgres + clickhouse healthy
+        run: |
+          cd deploy/compose
+          for i in $(seq 1 40); do
+            pg=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q postgres)" 2>/dev/null || echo none)
+            ch=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q clickhouse)" 2>/dev/null || echo none)
+            echo "postgres=$pg clickhouse=$ch"
+            [ "$pg" = healthy ] && [ "$ch" = healthy ] && exit 0
+            sleep 5
+          done
+          echo "::error::data plane did not become healthy"; exit 1
+      - name: Build and run the control plane (OpAMP served)
+        run: |
+          go build -o /tmp/otel-fleet ./cmd/otel-fleet
+          OTEL_FLEET_DEV_LOGIN=true \
+          OTEL_FLEET_ADMIN_EMAILS=js@sag-solutions.com \
+          OTEL_FLEET_DATABASE_URL=postgres://otelfleet:otelfleet@localhost:5432/otelfleet \
+          OTEL_FLEET_CLICKHOUSE_ADDR=localhost:9000 \
+          OTEL_FLEET_CLICKHOUSE_DATABASE=otel \
+          OTEL_FLEET_CLICKHOUSE_USER=otelfleet \
+          OTEL_FLEET_CLICKHOUSE_PASSWORD=otelfleet \
+          nohup /tmp/otel-fleet > /tmp/cp.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:9090/healthz >/dev/null 2>&1 && exit 0; sleep 2; done
+          echo "::error::control plane did not come up"; cat /tmp/cp.log; exit 1
+      - name: Run edge-agent enrollment e2e
+        run: go test -tags=e2e ./test/e2e/... -run TestEdgeAgent -v -timeout 300s
+        env:
+          OTEL_FLEET_E2E_URL: http://localhost:8080
+          OTEL_FLEET_E2E_EDGE_AGENT: "1"
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== control plane ==="; cat /tmp/cp.log || true
+          echo "=== edge-agent ==="; docker compose -f deploy/compose/docker-compose.yaml --profile edge logs --tail=150 edge-agent || true
+
   # Real-cluster e2e for the cluster-monitoring bundle: spin up kind, load the
   # (slim) collector image, deploy the bundle + an in-cluster VictoriaMetrics,
   # and assert the DaemonSet + singleton actually scrape and remote-write k8s_*
