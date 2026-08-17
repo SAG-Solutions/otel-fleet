@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/SAG-Solutions/otel-fleet/compare/v0.10.0...v0.10.1) (2026-08-17)
+
+
+### Miscellaneous Chores
+
+* release 0.10.1 ([53638d9](https://github.com/SAG-Solutions/otel-fleet/commit/53638d9f329db21caf7eda9edeaea1a5eac06cf8))
+
 ## [0.10.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.9.0...v0.10.0) (2026-08-11)
 
 
