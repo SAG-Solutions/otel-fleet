@@ -102,6 +102,14 @@ type Config struct {
 	// Admins adjust roles/grants afterward in the UI.
 	SCIMDefaultRole string
 
+	// SCIM group → role/tenant mapping prefixes. A SCIM group named
+	// SCIMGroupRolePrefix+"<role>" (e.g. "role:admin") sets a member's role;
+	// SCIMGroupCustomerPrefix+"<slug>" (e.g. "customer:acme") grants access to
+	// that customer. Env: OTEL_FLEET_SCIM_GROUP_ROLE_PREFIX (default "role:") /
+	// OTEL_FLEET_SCIM_GROUP_CUSTOMER_PREFIX (default "customer:").
+	SCIMGroupRolePrefix     string
+	SCIMGroupCustomerPrefix string
+
 	// MasterKeyBase64 is OTEL_FLEET_MASTER_KEY: the base64-encoded 32-byte key
 	// for envelope encryption of secrets at rest (auth-provider client
 	// secrets, pipeline exporter credentials). Empty = not configured; the
@@ -227,6 +235,8 @@ func Load() (*Config, error) {
 	}
 
 	cfg.SCIMDefaultRole = env("SCIM_DEFAULT_ROLE", "viewer")
+	cfg.SCIMGroupRolePrefix = env("SCIM_GROUP_ROLE_PREFIX", "role:")
+	cfg.SCIMGroupCustomerPrefix = env("SCIM_GROUP_CUSTOMER_PREFIX", "customer:")
 
 	if issuer := env("OIDC_ISSUER", ""); issuer != "" {
 		p := OIDCProvider{

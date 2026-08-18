@@ -327,9 +327,13 @@ func scanUserRow(row pgx.Row, u *User) error {
 }
 
 func (s *PG) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
+	// Also loads scim_managed (the Guard needs it) without widening userCols —
+	// that shared constant feeds several INSERT ... RETURNING scans, so adding a
+	// column there is a scan-drift hazard.
 	var u User
-	err := scanUserRow(s.pool.QueryRow(ctx, `
-		SELECT `+userCols+` FROM users WHERE id = $1`, id), &u)
+	err := s.pool.QueryRow(ctx, `
+		SELECT `+userCols+`, scim_managed FROM users WHERE id = $1`, id).Scan(
+		&u.ID, &u.Email, &u.DisplayName, &u.Role, &u.ExternalID, &u.DisabledAt, &u.LastLoginAt, &u.CreatedAt, &u.ScimManaged)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}

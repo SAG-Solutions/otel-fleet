@@ -19,6 +19,10 @@ var level = map[string]int{
 // Known reports whether role is a recognized role name.
 func Known(role string) bool { return level[role] != 0 }
 
+// Rank returns the privilege level of role (viewer<operator<admin), or 0 for an
+// unknown/empty role. Useful for picking the highest role among a set.
+func Rank(role string) int { return level[role] }
+
 // AtLeast reports whether role grants at least the privileges of min.
 // Unknown roles never satisfy anything.
 func AtLeast(role, min string) bool {

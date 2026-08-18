@@ -155,7 +155,10 @@ func Guard(sessions *auth.Sessions, users GuardStore, log *slog.Logger, metrics 
 					writeError(w, http.StatusInternalServerError, codeInternal, "internal server error")
 					return
 				}
-				if len(grants) == 0 {
+				// A SCIM-group-managed user is scoped to EXACTLY their grants —
+				// an empty set means no customer access (authoritative). Only the
+				// manually-managed default treats "no grants" as all-customers.
+				if len(grants) == 0 && !user.ScimManaged {
 					p.AllCustomers = true
 				} else {
 					p.AllowedCustomers = make(map[uuid.UUID]bool, len(grants))

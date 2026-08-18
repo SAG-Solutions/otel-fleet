@@ -30,6 +30,7 @@ import (
 
 const (
 	schemaUser         = "urn:ietf:params:scim:schemas:core:2.0:User"
+	schemaGroup        = "urn:ietf:params:scim:schemas:core:2.0:Group"
 	schemaListResponse = "urn:ietf:params:scim:api:messages:2.0:ListResponse"
 	schemaError        = "urn:ietf:params:scim:api:messages:2.0:Error"
 	schemaPatchOp      = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
@@ -44,18 +45,27 @@ type Store interface {
 	CreateSCIMUser(ctx context.Context, id uuid.UUID, email, role string, displayName, externalID *string, entries []audit.Entry) (store.UserWithIdentities, error) //nolint:lll
 	UpdateSCIMUser(ctx context.Context, id uuid.UUID, displayName, externalID *string, entries []audit.Entry) (store.UserWithIdentities, error)
 	UpdateUserAdmin(ctx context.Context, id uuid.UUID, upd store.UserUpdate, entries []audit.Entry) (store.UserWithIdentities, error)
+
+	// Groups (IdP-driven role/tenant mapping).
+	CreateSCIMGroup(ctx context.Context, id uuid.UUID, displayName string, externalID *string, members []uuid.UUID, entries []audit.Entry) (store.SCIMGroup, error) //nolint:lll
+	GetSCIMGroup(ctx context.Context, id uuid.UUID) (store.SCIMGroup, error)
+	ListSCIMGroups(ctx context.Context) ([]store.SCIMGroup, error)
+	UpdateSCIMGroup(ctx context.Context, id uuid.UUID, displayName, externalID *string, members *[]uuid.UUID, entries []audit.Entry) (store.SCIMGroup, []uuid.UUID, error) //nolint:lll
+	ModifySCIMGroupMembers(ctx context.Context, id uuid.UUID, add, remove []uuid.UUID, entries []audit.Entry) (store.SCIMGroup, []uuid.UUID, error)
+	DeleteSCIMGroup(ctx context.Context, id uuid.UUID, entries []audit.Entry) ([]uuid.UUID, error)
+	RecomputeSCIMUserAccess(ctx context.Context, userID uuid.UUID, m store.SCIMMapping, actor *uuid.UUID, entries []audit.Entry) error
 }
 
 // AuthFunc validates the request Authorization header and reports the caller's
 // role; ok=false rejects the request. SCIM requires an admin token.
 type AuthFunc func(ctx context.Context, authorization string) (role string, ok bool)
 
-// Server serves the SCIM 2.0 Users resource.
+// Server serves the SCIM 2.0 Users + Groups resources.
 type Server struct {
-	store       Store
-	auth        AuthFunc
-	defaultRole string
-	log         Logger
+	store   Store
+	auth    AuthFunc
+	mapping store.SCIMMapping
+	log     Logger
 }
 
 // Logger is the minimal logging surface (satisfied by *slog.Logger).
@@ -63,13 +73,14 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
-// New builds a SCIM server. defaultRole is the role assigned to provisioned
-// users (falls back to viewer if unknown).
-func New(st Store, auth AuthFunc, defaultRole string, log Logger) *Server {
-	if !authz.Known(defaultRole) {
-		defaultRole = authz.RoleViewer
+// New builds a SCIM server. mapping.DefaultRole is the role assigned to
+// provisioned users (falls back to viewer if unknown); mapping.RolePrefix /
+// CustomerPrefix drive group → role/tenant mapping.
+func New(st Store, auth AuthFunc, mapping store.SCIMMapping, log Logger) *Server {
+	if !authz.Known(mapping.DefaultRole) {
+		mapping.DefaultRole = authz.RoleViewer
 	}
-	return &Server{store: st, auth: auth, defaultRole: defaultRole, log: log}
+	return &Server{store: st, auth: auth, mapping: mapping, log: log}
 }
 
 // Router returns the /scim/v2 sub-router (mount it with the base path stripped).
@@ -85,6 +96,12 @@ func (s *Server) Router() http.Handler {
 	r.Put("/Users/{id}", s.putUser)
 	r.Patch("/Users/{id}", s.patchUser)
 	r.Delete("/Users/{id}", s.deleteUser)
+	r.Get("/Groups", s.listGroups)
+	r.Post("/Groups", s.createGroup)
+	r.Get("/Groups/{id}", s.getGroup)
+	r.Put("/Groups/{id}", s.putGroup)
+	r.Patch("/Groups/{id}", s.patchGroup)
+	r.Delete("/Groups/{id}", s.deleteGroup)
 	return r
 }
 
@@ -211,9 +228,9 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 		externalID = &p.ExternalID
 	}
 
-	u, err := s.store.CreateSCIMUser(r.Context(), uuid.New(), e, s.defaultRole, displayName, externalID, []audit.Entry{{
+	u, err := s.store.CreateSCIMUser(r.Context(), uuid.New(), e, s.mapping.DefaultRole, displayName, externalID, []audit.Entry{{
 		Action: "scim.user.create", EntityType: "user",
-		Payload: map[string]any{"email": e, "role": s.defaultRole, "via": "scim"},
+		Payload: map[string]any{"email": e, "role": s.mapping.DefaultRole, "via": "scim"},
 	}})
 	switch {
 	case errors.Is(err, store.ErrEmailExists), errors.Is(err, store.ErrConflict):
@@ -493,6 +510,13 @@ func (s *Server) resourceTypes(w http.ResponseWriter, _ *http.Request) {
 		"endpoint": "/Users",
 		"schema":   schemaUser,
 		"meta":     map[string]any{"resourceType": "ResourceType", "location": "/scim/v2/ResourceTypes/User"},
+	}, {
+		"schemas":  []string{"urn:ietf:params:scim:schemas:core:2.0:ResourceType"},
+		"id":       "Group",
+		"name":     "Group",
+		"endpoint": "/Groups",
+		"schema":   schemaGroup,
+		"meta":     map[string]any{"resourceType": "ResourceType", "location": "/scim/v2/ResourceTypes/Group"},
 	}})
 }
 
@@ -507,6 +531,14 @@ func (s *Server) schemas(w http.ResponseWriter, _ *http.Request) {
 			{"name": "emails", "type": "complex", "multiValued": true},
 		},
 		"meta": map[string]any{"resourceType": "Schema", "location": "/scim/v2/Schemas/" + schemaUser},
+	}, {
+		"id":   schemaGroup,
+		"name": "Group",
+		"attributes": []map[string]any{
+			{"name": "displayName", "type": "string", "required": true},
+			{"name": "members", "type": "complex", "multiValued": true},
+		},
+		"meta": map[string]any{"resourceType": "Schema", "location": "/scim/v2/Schemas/" + schemaGroup},
 	}})
 }
 

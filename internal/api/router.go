@@ -67,12 +67,18 @@ func NewRouter(d RouterDeps) http.Handler {
 		g.Get("/auth/{provider}/metadata", d.Auth.Metadata)
 	})
 
-	// SCIM 2.0 user provisioning for identity providers. Authenticated with an
-	// admin management-API token (not a session), so it sits outside the Guard.
+	// SCIM 2.0 user + group provisioning for identity providers. Authenticated
+	// with an admin management-API token (not a session), so it sits outside the
+	// Guard. Group membership maps to role/tenant grants via the configured
+	// prefixes (role:<role>, customer:<slug>).
 	scimSrv := scim.New(d.Store, func(ctx context.Context, authorization string) (string, bool) {
 		role, _, ok := authenticateAPIToken(ctx, d.Store, authorization)
 		return role, ok
-	}, d.Config.SCIMDefaultRole, d.Log)
+	}, store.SCIMMapping{
+		RolePrefix:     d.Config.SCIMGroupRolePrefix,
+		CustomerPrefix: d.Config.SCIMGroupCustomerPrefix,
+		DefaultRole:    d.Config.SCIMDefaultRole,
+	}, d.Log)
 	r.Mount("/scim/v2", scimSrv.Router())
 
 	strict := apigen.NewStrictHandlerWithOptions(d.Server, nil, apigen.StrictHTTPServerOptions{

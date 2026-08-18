@@ -378,6 +378,80 @@ func TestIntegrationBillingOverrides(t *testing.T) {
 	}
 }
 
+// TestIntegrationSCIMGroups guards SCIM group CRUD + the authoritative
+// role/tenant recompute (migration 0021), incl. GetCustomerBySlug and the
+// "managed but no group → default role, no grants" stickiness.
+func TestIntegrationSCIMGroups(t *testing.T) {
+	ctx := ctxT(t)
+	cust := makeCustomer(t)
+	mapping := SCIMMapping{RolePrefix: "role:", CustomerPrefix: "customer:", DefaultRole: "viewer"}
+
+	user, err := testPG.CreateInvitedUser(ctx, uuid.New(), "scimgrp-"+uniq()+"@example.com", "viewer", auditEntry("user.invite", "user", "u"))
+	if err != nil {
+		t.Fatalf("CreateInvitedUser: %v", err)
+	}
+
+	// GetCustomerBySlug resolves the customer a `customer:<slug>` group names.
+	bySlug, err := testPG.GetCustomerBySlug(ctx, cust.Slug)
+	if err != nil || bySlug.ID != cust.ID {
+		t.Fatalf("GetCustomerBySlug: %+v err=%v", bySlug, err)
+	}
+	if _, err := testPG.GetCustomerBySlug(ctx, "nope-"+uniq()); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetCustomerBySlug unknown: want ErrNotFound, got %v", err)
+	}
+
+	roleGroup, err := testPG.CreateSCIMGroup(ctx, uuid.New(), "role:operator", nil, []uuid.UUID{user.ID}, auditEntry("scim.group.create", "scim_group", "r"))
+	if err != nil {
+		t.Fatalf("CreateSCIMGroup role: %v", err)
+	}
+	custGroup, err := testPG.CreateSCIMGroup(ctx, uuid.New(), "customer:"+cust.Slug, nil, []uuid.UUID{user.ID}, auditEntry("scim.group.create", "scim_group", "c"))
+	if err != nil {
+		t.Fatalf("CreateSCIMGroup customer: %v", err)
+	}
+
+	recompute := func() {
+		if err := testPG.RecomputeSCIMUserAccess(ctx, user.ID, mapping, nil, auditEntry("scim.access.recompute", "user", user.ID.String())); err != nil {
+			t.Fatalf("RecomputeSCIMUserAccess: %v", err)
+		}
+	}
+	recompute()
+
+	got, err := testPG.GetUser(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetUser: %v", err)
+	}
+	if got.Role != "operator" || !got.ScimManaged {
+		t.Fatalf("after mapping: role=%q managed=%v", got.Role, got.ScimManaged)
+	}
+	grants, _ := testPG.ListUserCustomerIDs(ctx, user.ID)
+	if len(grants) != 1 || grants[0] != cust.ID {
+		t.Fatalf("grants = %v, want [%s]", grants, cust.ID)
+	}
+
+	// Remove from the customer group → still operator (role group), no access.
+	if _, _, err := testPG.ModifySCIMGroupMembers(ctx, custGroup.ID, nil, []uuid.UUID{user.ID}, auditEntry("scim.group.patch", "scim_group", "c")); err != nil {
+		t.Fatalf("ModifySCIMGroupMembers: %v", err)
+	}
+	recompute()
+	if grants, _ := testPG.ListUserCustomerIDs(ctx, user.ID); len(grants) != 0 {
+		t.Fatalf("grants after removal = %v, want empty (no access)", grants)
+	}
+
+	// Delete the role group → managed sticky: default role, still no grants.
+	former, err := testPG.DeleteSCIMGroup(ctx, roleGroup.ID, auditEntry("scim.group.delete", "scim_group", "r"))
+	if err != nil {
+		t.Fatalf("DeleteSCIMGroup: %v", err)
+	}
+	if len(former) != 1 || former[0] != user.ID {
+		t.Fatalf("delete former members = %v", former)
+	}
+	recompute()
+	got, _ = testPG.GetUser(ctx, user.ID)
+	if got.Role != "viewer" || !got.ScimManaged {
+		t.Fatalf("after deleting role group: role=%q managed=%v (want viewer/managed)", got.Role, got.ScimManaged)
+	}
+}
+
 // TestIntegrationAlertRules guards alert_rules CRUD incl. the channel_ids
 // UUID[] scan (migration 0014).
 func TestIntegrationAlertRules(t *testing.T) {

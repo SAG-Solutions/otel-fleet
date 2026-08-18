@@ -70,6 +70,10 @@ type User struct {
 	DisabledAt  *time.Time
 	LastLoginAt *time.Time
 	CreatedAt   time.Time
+	// ScimManaged is true when the user's role + tenant grants are governed by
+	// SCIM group membership (authoritative). Only loaded by GetUser (the Guard
+	// path); other user loads leave it false. See migration 0021.
+	ScimManaged bool
 }
 
 // UserWithIdentities is a user joined with the provider names of their linked
@@ -145,6 +149,26 @@ type BillingSettingsUpdate struct {
 	PricePerGiBMicro          *int64
 	PricePerMillionItemsMicro *int64
 	Currency                  *string
+}
+
+// SCIMGroup is an IdP-provisioned group. Members drives role/tenant mapping.
+type SCIMGroup struct {
+	ID          uuid.UUID
+	ExternalID  *string
+	DisplayName string
+	Members     []uuid.UUID // user ids
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// SCIMMapping configures how a group's DisplayName maps to a role / customer.
+// A group named RolePrefix+"admin" grants role admin; CustomerPrefix+"<slug>"
+// grants access to that customer. DefaultRole applies to a managed user with no
+// role group.
+type SCIMMapping struct {
+	RolePrefix     string
+	CustomerPrefix string
+	DefaultRole    string
 }
 
 // BillingOverride is a per-customer price override that supersedes the global
@@ -705,6 +729,19 @@ type Store interface {
 	// or an unknown customer id.
 	ListUserCustomerIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	SetUserCustomerGrants(ctx context.Context, userID uuid.UUID, customerIDs []uuid.UUID, entries []audit.Entry) error
+
+	// SCIM groups (IdP-driven role + tenant mapping). Mutations return the set
+	// of user IDs whose membership/mapping changed; the caller recomputes each
+	// via RecomputeSCIMUserAccess. GetCustomerBySlug maps a `customer:<slug>`
+	// group to a customer.
+	CreateSCIMGroup(ctx context.Context, id uuid.UUID, displayName string, externalID *string, members []uuid.UUID, entries []audit.Entry) (SCIMGroup, error)
+	GetSCIMGroup(ctx context.Context, id uuid.UUID) (SCIMGroup, error)
+	ListSCIMGroups(ctx context.Context) ([]SCIMGroup, error)
+	UpdateSCIMGroup(ctx context.Context, id uuid.UUID, displayName, externalID *string, members *[]uuid.UUID, entries []audit.Entry) (SCIMGroup, []uuid.UUID, error)
+	ModifySCIMGroupMembers(ctx context.Context, id uuid.UUID, add, remove []uuid.UUID, entries []audit.Entry) (SCIMGroup, []uuid.UUID, error)
+	DeleteSCIMGroup(ctx context.Context, id uuid.UUID, entries []audit.Entry) ([]uuid.UUID, error)
+	RecomputeSCIMUserAccess(ctx context.Context, userID uuid.UUID, m SCIMMapping, actor *uuid.UUID, entries []audit.Entry) error
+	GetCustomerBySlug(ctx context.Context, slug string) (Customer, error)
 
 	// Auth providers (database-managed SSO). Secrets arrive/leave encrypted.
 	ListAuthProviders(ctx context.Context, enabledOnly bool) ([]AuthProvider, error)
