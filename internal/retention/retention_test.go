@@ -80,6 +80,51 @@ func TestStatementsCoverAllTables(t *testing.T) {
 	}
 }
 
+func TestPurgeStatementsCoverAllTablesNoAgeBound(t *testing.T) {
+	stmts := PurgeStatements()
+	// One per telemetry table + the ingest_counts_1m usage rollup.
+	if len(stmts) != len(tables)+1 {
+		t.Fatalf("got %d purge statements, want %d", len(stmts), len(tables)+1)
+	}
+	for i, s := range stmts {
+		if !strings.Contains(s, "TenantId = ?") {
+			t.Errorf("purge %d must bind TenantId: %s", i, s)
+		}
+		if strings.Contains(s, "INTERVAL") {
+			t.Errorf("purge %d must NOT have an age bound (erasure): %s", i, s)
+		}
+		if !strings.Contains(s, "mutations_sync = 0") {
+			t.Errorf("purge %d must submit async: %s", i, s)
+		}
+	}
+	if !strings.Contains(strings.Join(stmts, "\n"), "ingest_counts_1m") {
+		t.Error("purge must include the ingest_counts_1m usage rollup")
+	}
+}
+
+func TestPurgeCustomer(t *testing.T) {
+	ch := &fakeCH{}
+	submitted, errs := PurgeCustomer(context.Background(), ch, "cust_x")
+	if submitted != len(tables)+1 || errs != 0 {
+		t.Fatalf("submitted=%d errs=%d, want %d/0", submitted, errs, len(tables)+1)
+	}
+	for _, a := range ch.args {
+		if len(a) != 1 || a[0] != "cust_x" {
+			t.Fatalf("each purge must bind the client id, got %v", a)
+		}
+	}
+	// A partial failure is counted, not fatal.
+	failing := &fakeCH{failN: 2}
+	sub, e := PurgeCustomer(context.Background(), failing, "cust_y")
+	if e != 2 || sub != len(tables)+1-2 {
+		t.Fatalf("failing purge submitted=%d errs=%d", sub, e)
+	}
+	// nil ch (purge disabled) is a no-op.
+	if s, e := PurgeCustomer(context.Background(), nil, "cust_z"); s != 0 || e != 0 {
+		t.Fatalf("nil ch should no-op, got %d/%d", s, e)
+	}
+}
+
 func TestRunOnceOnlyCustomersWithOverride(t *testing.T) {
 	withOverride := store.Customer{ID: uuid.New(), ClientID: "cust_a", Status: store.CustomerActive, RetentionDays: intp(3)}
 	noOverride := store.Customer{ID: uuid.New(), ClientID: "cust_b", Status: store.CustomerActive}

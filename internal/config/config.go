@@ -136,6 +136,12 @@ type Config struct {
 	// (OTEL_FLEET_RETENTION_INTERVAL, default 24h).
 	RetentionInterval time.Duration
 
+	// PurgeOnDelete erases a customer's telemetry from ClickHouse when the
+	// customer is deleted (right-to-erasure), instead of waiting for the table
+	// TTL. OTEL_FLEET_PURGE_ON_DELETE, default true. Set false to keep a
+	// retention hold (telemetry then expires via TTL only).
+	PurgeOnDelete bool
+
 	// Rate limiting for the public HTTP surface (per client IP, token bucket).
 	// RateLimit* applies to the whole API/SPA surface; AuthRateLimit* is a
 	// stricter bucket layered on the SSO browser endpoints (/auth/*). Disable
@@ -200,6 +206,9 @@ func Load() (*Config, error) {
 	}
 
 	var err error
+	if cfg.PurgeOnDelete, err = envBool("PURGE_ON_DELETE", true); err != nil {
+		return nil, err
+	}
 	if cfg.RateLimitEnabled, err = envBool("RATE_LIMIT_ENABLED", true); err != nil {
 		return nil, err
 	}

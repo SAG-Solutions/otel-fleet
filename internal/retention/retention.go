@@ -152,3 +152,35 @@ func Statements(days int) []string {
 	}
 	return out
 }
+
+// PurgeStatements returns DELETE mutation SQL that removes ALL of a tenant's
+// telemetry with no age bound — for erase-on-delete (right-to-erasure). It
+// covers every per-tenant signal table plus the ingest_counts_1m usage rollup,
+// so no tenant-identifiable rows remain. Each statement takes the TenantId as
+// its single parameter. Exported for tests + the delete path.
+func PurgeStatements() []string {
+	out := make([]string, 0, len(tables)+1)
+	for _, t := range tables {
+		out = append(out, fmt.Sprintf("ALTER TABLE otel.%s DELETE WHERE TenantId = ? SETTINGS mutations_sync = 0", t.name))
+	}
+	// Usage rollup that feeds cost/overview; also keyed by TenantId.
+	out = append(out, "ALTER TABLE otel.ingest_counts_1m DELETE WHERE TenantId = ? SETTINGS mutations_sync = 0")
+	return out
+}
+
+// PurgeCustomer submits every purge mutation for one tenant against ch. Errors
+// are returned as a count (mutations are async: mutations_sync=0), letting the
+// caller log without failing the delete. ch may be nil (purge disabled) → no-op.
+func PurgeCustomer(ctx context.Context, ch CH, clientID string) (submitted, errs int) {
+	if ch == nil {
+		return 0, 0
+	}
+	for _, stmt := range PurgeStatements() {
+		if err := ch.Exec(ctx, stmt, clientID); err != nil {
+			errs++
+			continue
+		}
+		submitted++
+	}
+	return submitted, errs
+}

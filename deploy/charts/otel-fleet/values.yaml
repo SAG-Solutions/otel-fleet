@@ -112,6 +112,10 @@ controlPlane:
     # authRps: 5
     # authBurst: 10
     # maxRequestBodyBytes: 4194304
+  # Erase a deleted customer's telemetry from ClickHouse immediately
+  # (right-to-erasure) instead of waiting for the table TTL. Unset = server
+  # default (true). Set false to keep a retention hold after deletion.
+  # purgeOnDelete: true
   # In-cluster TLS. When disabled the listeners are plaintext (terminate TLS
   # at an ingress in front). When enabled the pods serve TLS directly.
   tls:

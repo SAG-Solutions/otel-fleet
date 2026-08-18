@@ -53,6 +53,18 @@ manual query has no region context). Single-region deployments (one `default`
 region) are fully correct: everything resolves to the one region.
 :::
 
+### Data lifecycle & erasure
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OTEL_FLEET_RETENTION_INTERVAL` | `24h` | How often the per-customer retention sweep runs (min `1m`). Rows past a customer's `retentionDays` override are deleted ahead of the global 30-day table TTL. |
+| `OTEL_FLEET_PURGE_ON_DELETE` | `true` | On customer delete, immediately erase that tenant's telemetry from its region's ClickHouse — every signal table **and** the usage rollup — instead of waiting for the TTL (right-to-erasure). Set `false` to keep a retention hold; the data then expires via TTL only. |
+
+Deletion is a soft delete of the customer record (audit history is preserved and
+API keys are revoked); the telemetry erase is a set of async ClickHouse
+mutations submitted against the customer's region. In Helm, set
+`controlPlane.purgeOnDelete`.
+
 ## Listeners
 
 | Variable | Default | Description |

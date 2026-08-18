@@ -23,13 +23,21 @@ var (
 	ErrInvalidSlug = errors.New("slug must match ^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$")
 )
 
+// PurgeFunc erases a tenant's telemetry from its region's data store. Called
+// after a customer is deleted (right-to-erasure). It runs best-effort — a purge
+// failure is logged, not surfaced, since the customer is already deleted. nil
+// disables purge (telemetry then expires via the table TTL only).
+type PurgeFunc func(ctx context.Context, clientID, region string)
+
 // Service implements customer and API-key management.
 type Service struct {
 	store store.Store
+	purge PurgeFunc
 }
 
-// NewService creates a tenants service.
-func NewService(st store.Store) *Service { return &Service{store: st} }
+// NewService creates a tenants service. purge (may be nil) erases a deleted
+// customer's telemetry.
+func NewService(st store.Store, purge PurgeFunc) *Service { return &Service{store: st, purge: purge} }
 
 // NewClientID mints a tenant client ID ("cust_" + 8 hex chars).
 func NewClientID() (string, error) {
@@ -161,13 +169,26 @@ func (s *Service) UpdateCustomer(ctx context.Context, actor *uuid.UUID, id uuid.
 
 // DeleteCustomer soft-deletes a customer and revokes all of its API keys.
 func (s *Service) DeleteCustomer(ctx context.Context, actor *uuid.UUID, id uuid.UUID) error {
-	return s.store.SoftDeleteCustomer(ctx, id, []audit.Entry{{
+	// Resolve client id + region before the soft delete so we can purge the
+	// tenant's telemetry from the right region afterward. GetCustomer excludes
+	// already-deleted rows, so this also yields ErrNotFound (→ 404) as before.
+	cust, err := s.store.GetCustomer(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := s.store.SoftDeleteCustomer(ctx, id, []audit.Entry{{
 		ActorUserID: actor,
 		Action:      "customer.delete",
 		EntityType:  "customer",
 		EntityID:    id.String(),
 		CustomerID:  &id,
-	}})
+	}}); err != nil {
+		return err
+	}
+	if s.purge != nil {
+		s.purge(ctx, cust.ClientID, cust.Region)
+	}
+	return nil
 }
 
 // CreatedKey is the result of CreateAPIKey; Secret is returned exactly once.

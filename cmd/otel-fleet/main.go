@@ -131,7 +131,16 @@ func run(log *slog.Logger) error {
 	regionStores := regionstore.New(chByRegion, vmByRegion, cfg.DefaultRegion)
 
 	// Services.
-	tenantsSvc := tenants.NewService(st)
+	// Purge a deleted customer's telemetry from its region's ClickHouse
+	// (right-to-erasure), unless disabled — then it expires via the table TTL.
+	var purge tenants.PurgeFunc
+	if cfg.PurgeOnDelete {
+		purge = func(ctx context.Context, clientID, region string) {
+			submitted, errs := retention.PurgeCustomer(ctx, regionStores.ClickHouse(region), clientID)
+			log.Info("purge: submitted telemetry erase mutations", "client_id", clientID, "region", region, "submitted", submitted, "errors", errs)
+		}
+	}
+	tenantsSvc := tenants.NewService(st, purge)
 	statsSvc := stats.New(regionStores, st, log)
 	querySvc := query.New(regionStores, st, log)
 	ingestAuth := ingestauth.New(st, log, reg)

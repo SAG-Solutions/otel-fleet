@@ -78,6 +78,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- with .Values.controlPlane.opamp.publicEndpoint }}
 - { name: OTEL_FLEET_OPAMP_PUBLIC_ENDPOINT, value: {{ . | quote }} }
 {{- end }}
+{{- if hasKey .Values.controlPlane "purgeOnDelete" }}
+- { name: OTEL_FLEET_PURGE_ON_DELETE, value: {{ .Values.controlPlane.purgeOnDelete | quote }} }
+{{- end }}
 {{- with .Values.controlPlane.rateLimit }}
 {{- if hasKey . "enabled" }}
 - { name: OTEL_FLEET_RATE_LIMIT_ENABLED, value: {{ .enabled | quote }} }
