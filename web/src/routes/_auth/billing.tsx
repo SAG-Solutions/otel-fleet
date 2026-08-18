@@ -10,6 +10,7 @@ import {
   updateBillingSettingsMutation,
 } from '@/api/generated/@tanstack/react-query.gen'
 import { isPortalUser } from '@/hooks/use-me'
+import { BillingOverridesCard } from '@/features/billing/billing-overrides'
 import {
   formatBytes,
   formatCompact,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/format'
 import { apiErrorMessage } from '@/lib/api-error'
 import { AdminGate } from '@/components/admin-gate'
+import { Badge } from '@/components/ui/badge'
 import { StatTile, StatTileSkeleton } from '@/components/stat-tile'
 import { ErrorState } from '@/components/error-state'
 import { toast } from '@/components/toaster'
@@ -99,6 +101,8 @@ function BillingPage() {
         </div>
 
         <PricingCard query={settings} />
+
+        {settings.isSuccess && <BillingOverridesCard currency={settings.data.currency} />}
 
         {statement.isPending && <StatementSkeleton />}
         {statement.isError && (
@@ -313,13 +317,20 @@ function StatementBody({ statement }: { statement: BillingStatement }) {
             {lines.map((line) => (
               <TableRow key={line.customerId}>
                 <TableCell>
-                  <Link
-                    to="/customers/$customerId"
-                    params={{ customerId: line.customerId }}
-                    className="text-ink hover:text-accent"
-                  >
-                    {line.name}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to="/customers/$customerId"
+                      params={{ customerId: line.customerId }}
+                      className="text-ink hover:text-accent"
+                    >
+                      {line.name}
+                    </Link>
+                    {line.overridden && (
+                      <Badge variant="accent" title="Custom price override applied">
+                        override
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right font-mono text-[13px] text-ink-2">
                   {formatCompact(line.items)}
@@ -364,7 +375,7 @@ function csvCell(value: string | number): string {
 }
 
 function buildCsv(statement: BillingStatement): string {
-  const header = ['Customer', 'Items', 'Bytes', 'Volume cost', 'Items cost', 'Total']
+  const header = ['Customer', 'Items', 'Bytes', 'Volume cost', 'Items cost', 'Total', 'Overridden']
   const rows = statement.lines.map((line: BillingLine) => [
     line.name,
     line.items,
@@ -372,8 +383,9 @@ function buildCsv(statement: BillingStatement): string {
     microToUnit(line.bytesCostMicro).toFixed(2),
     microToUnit(line.itemsCostMicro).toFixed(2),
     microToUnit(line.totalMicro).toFixed(2),
+    line.overridden ? 'yes' : 'no',
   ])
-  const total = ['Total', '', '', '', '', microToUnit(statement.totalMicro).toFixed(2)]
+  const total = ['Total', '', '', '', '', microToUnit(statement.totalMicro).toFixed(2), '']
   return [header, ...rows, total].map((row) => row.map(csvCell).join(',')).join('\n')
 }
 

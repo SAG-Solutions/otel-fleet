@@ -35,6 +35,26 @@ describe('/billing as admin', () => {
     // Export button is available.
     expect(screen.getByRole('button', { name: /export csv/i })).toBeInTheDocument()
   })
+
+  it('lists per-customer price overrides and flags overridden statement rows', async () => {
+    renderApp('/billing?month=2026-07')
+
+    // The overrides card lists the fixture override (Globex): custom GiB rate,
+    // inherited (global) items rate.
+    const heading = await screen.findByText('Per-customer overrides')
+    const card = heading.closest('div.rounded-lg') as HTMLElement
+    const overrideRow = (await within(card).findByText('Globex Inc')).closest('tr') as HTMLElement
+    expect(within(overrideRow).getByText('1.00 EUR')).toBeInTheDocument()
+    expect(within(overrideRow).getByText('global')).toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: 'Add override' })).toBeInTheDocument()
+
+    // The overridden customer's statement row carries an "override" badge.
+    const statementRow = screen.getByRole('link', { name: 'Globex Inc' }).closest('tr') as HTMLElement
+    expect(within(statementRow).getByText('override')).toBeInTheDocument()
+    // ACME (no override) does not.
+    const acmeRow = screen.getByRole('link', { name: 'ACME Corp' }).closest('tr') as HTMLElement
+    expect(within(acmeRow).queryByText('override')).not.toBeInTheDocument()
+  })
 })
 
 describe('/billing as non-admin', () => {

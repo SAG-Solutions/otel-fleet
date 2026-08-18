@@ -40,7 +40,7 @@ func TestComputeStatement(t *testing.T) {
 		{CustomerID: globex, Name: "Globex", Bytes: 3 << 30, Items: 0},      // 3 GiB
 	}
 
-	st := Compute("2026-07", costs, settings)
+	st := Compute("2026-07", costs, settings, nil)
 
 	if st.Month != "2026-07" || st.Currency != "EUR" {
 		t.Fatalf("header: %+v", st)
@@ -66,8 +66,49 @@ func TestComputeStatement(t *testing.T) {
 }
 
 func TestComputeZeroPrices(t *testing.T) {
-	st := Compute("2026-07", []stats.CustomerCost{{Name: "x", Bytes: 1 << 40, Items: 1e9}}, store.BillingSettings{Currency: "USD"})
+	st := Compute("2026-07", []stats.CustomerCost{{Name: "x", Bytes: 1 << 40, Items: 1e9}}, store.BillingSettings{Currency: "USD"}, nil)
 	if st.TotalMicro != 0 || st.Lines[0].TotalMicro != 0 {
 		t.Errorf("zero price list should bill nothing, got %+v", st)
+	}
+}
+
+func TestComputeWithOverride(t *testing.T) {
+	acme := uuid.New()
+	globex := uuid.New()
+	settings := store.BillingSettings{
+		PricePerGiBMicro:          2_000_000, // €2.00 / GiB global
+		PricePerMillionItemsMicro: 500_000,   // €0.50 / 1e6 items global
+		Currency:                  "EUR",
+	}
+	costs := []stats.CustomerCost{
+		{CustomerID: acme, Name: "ACME", Bytes: 1 << 30, Items: 2_000_000},
+		{CustomerID: globex, Name: "Globex", Bytes: 1 << 30, Items: 2_000_000},
+	}
+	// ACME overrides ONLY the GiB rate to €5.00; its items rate inherits global.
+	gib := int64(5_000_000)
+	overrides := map[uuid.UUID]store.BillingOverride{
+		acme: {CustomerID: acme, PricePerGiBMicro: &gib},
+	}
+
+	st := Compute("2026-07", costs, settings, overrides)
+
+	byName := map[string]Line{}
+	for _, l := range st.Lines {
+		byName[l.Name] = l
+	}
+	// ACME: 1 GiB × 5_000_000 (override) + 2M items × 500_000/1e6 (global) = 6_000_000.
+	if a := byName["ACME"]; a.TotalMicro != 6_000_000 || a.BytesCostMicro != 5_000_000 || a.ItemsCostMicro != 1_000_000 || !a.Overridden {
+		t.Errorf("ACME override line = %+v", a)
+	}
+	// Globex: fully global → 2_000_000 + 1_000_000 = 3_000_000, not flagged.
+	if g := byName["Globex"]; g.TotalMicro != 3_000_000 || g.Overridden {
+		t.Errorf("Globex global line = %+v", g)
+	}
+	if st.TotalMicro != 9_000_000 {
+		t.Errorf("total = %d, want 9_000_000", st.TotalMicro)
+	}
+	// Header still reports the GLOBAL price list, not any override.
+	if st.PricePerGiBMicro != 2_000_000 {
+		t.Errorf("header should carry global price, got %d", st.PricePerGiBMicro)
 	}
 }

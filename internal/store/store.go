@@ -147,6 +147,17 @@ type BillingSettingsUpdate struct {
 	Currency                  *string
 }
 
+// BillingOverride is a per-customer price override that supersedes the global
+// price list for that customer. A nil price means "inherit the global rate for
+// this dimension", so an override may adjust just one of the two prices.
+type BillingOverride struct {
+	CustomerID                uuid.UUID
+	PricePerGiBMicro          *int64
+	PricePerMillionItemsMicro *int64
+	UpdatedAt                 time.Time
+	UpdatedBy                 *uuid.UUID
+}
+
 // Alert metric + comparison constants (mirror the alert_rules CHECKs).
 const (
 	AlertMetricIngestItems = "ingest_items"
@@ -682,6 +693,11 @@ type Store interface {
 	// Billing settings (singleton price list).
 	GetBillingSettings(ctx context.Context) (BillingSettings, error)
 	UpdateBillingSettings(ctx context.Context, upd BillingSettingsUpdate, actor *uuid.UUID, entries []audit.Entry) (BillingSettings, error)
+
+	// Per-customer billing price overrides (supersede the global price list).
+	ListBillingOverrides(ctx context.Context) ([]BillingOverride, error)
+	SetBillingOverride(ctx context.Context, customerID uuid.UUID, gibMicro, itemsMicro *int64, actor *uuid.UUID, entries []audit.Entry) (BillingOverride, error)
+	DeleteBillingOverride(ctx context.Context, customerID uuid.UUID, entries []audit.Entry) error
 
 	// Per-customer grants (tenant-scoped RBAC). ListUserCustomerIDs is on the
 	// request hot path (Guard); SetUserCustomerGrants replaces a user's full

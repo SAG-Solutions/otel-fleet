@@ -13,6 +13,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -328,6 +329,52 @@ func TestIntegrationBillingSettings(t *testing.T) {
 	got, err := testPG.UpdateBillingSettings(ctx, BillingSettingsUpdate{PricePerGiBMicro: &gib, PricePerMillionItemsMicro: &mil, Currency: &cur}, nil, auditEntry("billing.settings.update", "billing_settings", "singleton"))
 	if err != nil || got.PricePerGiBMicro != gib || got.Currency != "EUR" {
 		t.Fatalf("UpdateBillingSettings: %+v err=%v", got, err)
+	}
+}
+
+// TestIntegrationBillingOverrides guards the per-customer price overrides
+// (migration 0020): upsert (incl. a nil price = inherit), list, and delete
+// with the not-found path.
+func TestIntegrationBillingOverrides(t *testing.T) {
+	ctx := ctxT(t)
+	c := makeCustomer(t)
+
+	gib, mil := int64(5_000_000), int64(750_000)
+	got, err := testPG.SetBillingOverride(ctx, c.ID, &gib, &mil, nil, auditEntry("billing.override.set", "billing_price_override", c.ID.String()))
+	if err != nil || got.PricePerGiBMicro == nil || *got.PricePerGiBMicro != gib || got.PricePerMillionItemsMicro == nil || *got.PricePerMillionItemsMicro != mil {
+		t.Fatalf("SetBillingOverride: %+v err=%v", got, err)
+	}
+
+	// Upsert again with the items rate nil → inherit global for items only.
+	got, err = testPG.SetBillingOverride(ctx, c.ID, &gib, nil, nil, auditEntry("billing.override.set", "billing_price_override", c.ID.String()))
+	if err != nil || got.PricePerMillionItemsMicro != nil {
+		t.Fatalf("SetBillingOverride (inherit items): %+v err=%v", got, err)
+	}
+
+	list, err := testPG.ListBillingOverrides(ctx)
+	if err != nil {
+		t.Fatalf("ListBillingOverrides: %v", err)
+	}
+	found := false
+	for _, o := range list {
+		if o.CustomerID == c.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("override for %s not listed", c.ID)
+	}
+
+	// Unknown customer → ErrNotFound (FK violation mapped).
+	if _, err := testPG.SetBillingOverride(ctx, uuid.New(), &gib, nil, nil, auditEntry("billing.override.set", "billing_price_override", "x")); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("SetBillingOverride unknown customer: want ErrNotFound, got %v", err)
+	}
+
+	if err := testPG.DeleteBillingOverride(ctx, c.ID, auditEntry("billing.override.delete", "billing_price_override", c.ID.String())); err != nil {
+		t.Fatalf("DeleteBillingOverride: %v", err)
+	}
+	if err := testPG.DeleteBillingOverride(ctx, c.ID, auditEntry("billing.override.delete", "billing_price_override", c.ID.String())); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("DeleteBillingOverride (missing): want ErrNotFound, got %v", err)
 	}
 }
 

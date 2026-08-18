@@ -25,6 +25,9 @@ type Line struct {
 	BytesCostMicro int64
 	ItemsCostMicro int64
 	TotalMicro     int64
+	// Overridden is true when this customer's line used a per-customer price
+	// override (on at least one dimension) instead of the global rate.
+	Overridden bool
 }
 
 // Statement is a full period's bill across customers.
@@ -37,9 +40,11 @@ type Statement struct {
 	TotalMicro                int64
 }
 
-// Compute prices each customer's usage and totals the statement. Lines are
-// sorted by amount desc, then name.
-func Compute(month string, costs []stats.CustomerCost, settings store.BillingSettings) Statement {
+// Compute prices each customer's usage and totals the statement. The global
+// settings prices apply unless a customer has an entry in overrides, whose
+// non-nil price supersedes the global rate for that dimension. Lines are sorted
+// by amount desc, then name.
+func Compute(month string, costs []stats.CustomerCost, settings store.BillingSettings, overrides map[uuid.UUID]store.BillingOverride) Statement {
 	st := Statement{
 		Month:                     month,
 		Currency:                  settings.Currency,
@@ -48,8 +53,18 @@ func Compute(month string, costs []stats.CustomerCost, settings store.BillingSet
 		Lines:                     make([]Line, 0, len(costs)),
 	}
 	for _, c := range costs {
-		bytesCost := mulDiv(settings.PricePerGiBMicro, c.Bytes, bytesPerGiB)
-		itemsCost := mulDiv(settings.PricePerMillionItemsMicro, c.Items, 1_000_000)
+		gibPrice, itemsPrice := settings.PricePerGiBMicro, settings.PricePerMillionItemsMicro
+		overridden := false
+		if ov, ok := overrides[c.CustomerID]; ok {
+			if ov.PricePerGiBMicro != nil {
+				gibPrice, overridden = *ov.PricePerGiBMicro, true
+			}
+			if ov.PricePerMillionItemsMicro != nil {
+				itemsPrice, overridden = *ov.PricePerMillionItemsMicro, true
+			}
+		}
+		bytesCost := mulDiv(gibPrice, c.Bytes, bytesPerGiB)
+		itemsCost := mulDiv(itemsPrice, c.Items, 1_000_000)
 		total := bytesCost + itemsCost
 		st.Lines = append(st.Lines, Line{
 			CustomerID:     c.CustomerID,
@@ -59,6 +74,7 @@ func Compute(month string, costs []stats.CustomerCost, settings store.BillingSet
 			BytesCostMicro: bytesCost,
 			ItemsCostMicro: itemsCost,
 			TotalMicro:     total,
+			Overridden:     overridden,
 		})
 		st.TotalMicro += total
 	}

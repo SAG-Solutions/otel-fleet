@@ -1149,6 +1149,55 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /api/v1/settings/billing/overrides:
+    get:
+      tags: [billing]
+      operationId: listBillingOverrides
+      summary: List per-customer billing price overrides (admin only)
+      responses:
+        "200":
+          description: Overrides
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingOverrideList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/settings/billing/overrides/{customerId}:
+    parameters:
+      - { name: customerId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [billing]
+      operationId: setBillingOverride
+      summary: Set a customer's price override (admin only)
+      description: >-
+        Upserts a per-customer price override. A null (or omitted) price inherits
+        the global rate for that dimension; at least one price must be provided.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BillingOverrideUpdate" }
+      responses:
+        "200":
+          description: Saved override
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingOverride" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [billing]
+      operationId: deleteBillingOverride
+      summary: Remove a customer's price override, reverting to global pricing (admin only)
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/settings/webhooks:
     get:
       tags: [admin]
@@ -2095,7 +2144,7 @@ components:
 
     BillingLine:
       type: object
-      required: [customerId, name, items, bytes, bytesCostMicro, itemsCostMicro, totalMicro]
+      required: [customerId, name, items, bytes, bytesCostMicro, itemsCostMicro, totalMicro, overridden]
       properties:
         customerId: { type: string, format: uuid }
         name: { type: string }
@@ -2104,6 +2153,37 @@ components:
         bytesCostMicro: { type: integer, format: int64 }
         itemsCostMicro: { type: integer, format: int64 }
         totalMicro: { type: integer, format: int64 }
+        overridden: { type: boolean, description: True when a per-customer price override was applied to this line. }
+
+    BillingOverride:
+      type: object
+      required: [customerId, customerName, updatedAt]
+      description: >-
+        Per-customer price override. A null price inherits the global rate for
+        that dimension. Prices are integer micro-units of the global currency.
+      properties:
+        customerId: { type: string, format: uuid }
+        customerName: { type: string }
+        pricePerGibMicro: { type: integer, format: int64, nullable: true }
+        pricePerMillionItemsMicro: { type: integer, format: int64, nullable: true }
+        updatedAt: { type: string, format: date-time }
+
+    BillingOverrideList:
+      type: object
+      required: [overrides]
+      properties:
+        overrides:
+          type: array
+          items: { $ref: "#/components/schemas/BillingOverride" }
+
+    BillingOverrideUpdate:
+      type: object
+      description: >-
+        Prices for a per-customer override; null or omitted inherits the global
+        rate for that dimension. At least one price must be non-null.
+      properties:
+        pricePerGibMicro: { type: integer, format: int64, minimum: 0, nullable: true }
+        pricePerMillionItemsMicro: { type: integer, format: int64, minimum: 0, nullable: true }
 
     BillingStatement:
       type: object

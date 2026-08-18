@@ -554,6 +554,33 @@ export type BillingLine = {
     bytesCostMicro: number;
     itemsCostMicro: number;
     totalMicro: number;
+    /**
+     * True when a per-customer price override was applied to this line.
+     */
+    overridden: boolean;
+};
+
+/**
+ * Per-customer price override. A null price inherits the global rate for that dimension. Prices are integer micro-units of the global currency.
+ */
+export type BillingOverride = {
+    customerId: string;
+    customerName: string;
+    pricePerGibMicro?: number | null;
+    pricePerMillionItemsMicro?: number | null;
+    updatedAt: string;
+};
+
+export type BillingOverrideList = {
+    overrides: Array<BillingOverride>;
+};
+
+/**
+ * Prices for a per-customer override; null or omitted inherits the global rate for that dimension. At least one price must be non-null.
+ */
+export type BillingOverrideUpdate = {
+    pricePerGibMicro?: number | null;
+    pricePerMillionItemsMicro?: number | null;
 };
 
 export type BillingStatement = {
@@ -2781,6 +2808,109 @@ export type UpdateBillingSettingsResponses = {
 };
 
 export type UpdateBillingSettingsResponse = UpdateBillingSettingsResponses[keyof UpdateBillingSettingsResponses];
+
+export type ListBillingOverridesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/billing/overrides';
+};
+
+export type ListBillingOverridesErrors = {
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+};
+
+export type ListBillingOverridesError = ListBillingOverridesErrors[keyof ListBillingOverridesErrors];
+
+export type ListBillingOverridesResponses = {
+    /**
+     * Overrides
+     */
+    200: BillingOverrideList;
+};
+
+export type ListBillingOverridesResponse = ListBillingOverridesResponses[keyof ListBillingOverridesResponses];
+
+export type DeleteBillingOverrideData = {
+    body?: never;
+    path: {
+        customerId: string;
+    };
+    query?: never;
+    url: '/api/v1/settings/billing/overrides/{customerId}';
+};
+
+export type DeleteBillingOverrideErrors = {
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+    /**
+     * Resource not found
+     */
+    404: Error;
+};
+
+export type DeleteBillingOverrideError = DeleteBillingOverrideErrors[keyof DeleteBillingOverrideErrors];
+
+export type DeleteBillingOverrideResponses = {
+    /**
+     * Removed
+     */
+    204: void;
+};
+
+export type DeleteBillingOverrideResponse = DeleteBillingOverrideResponses[keyof DeleteBillingOverrideResponses];
+
+export type SetBillingOverrideData = {
+    body: BillingOverrideUpdate;
+    path: {
+        customerId: string;
+    };
+    query?: never;
+    url: '/api/v1/settings/billing/overrides/{customerId}';
+};
+
+export type SetBillingOverrideErrors = {
+    /**
+     * Validation error
+     */
+    400: Error;
+    /**
+     * Not authenticated
+     */
+    401: Error;
+    /**
+     * Insufficient role
+     */
+    403: Error;
+    /**
+     * Resource not found
+     */
+    404: Error;
+};
+
+export type SetBillingOverrideError = SetBillingOverrideErrors[keyof SetBillingOverrideErrors];
+
+export type SetBillingOverrideResponses = {
+    /**
+     * Saved override
+     */
+    200: BillingOverride;
+};
+
+export type SetBillingOverrideResponse = SetBillingOverrideResponses[keyof SetBillingOverrideResponses];
 
 export type ListWebhooksData = {
     body?: never;

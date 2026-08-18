@@ -888,7 +888,30 @@ type BillingLine struct {
 	Items          int64              `json:"items"`
 	ItemsCostMicro int64              `json:"itemsCostMicro"`
 	Name           string             `json:"name"`
-	TotalMicro     int64              `json:"totalMicro"`
+
+	// Overridden True when a per-customer price override was applied to this line.
+	Overridden bool  `json:"overridden"`
+	TotalMicro int64 `json:"totalMicro"`
+}
+
+// BillingOverride Per-customer price override. A null price inherits the global rate for that dimension. Prices are integer micro-units of the global currency.
+type BillingOverride struct {
+	CustomerId                openapi_types.UUID `json:"customerId"`
+	CustomerName              string             `json:"customerName"`
+	PricePerGibMicro          *int64             `json:"pricePerGibMicro,omitempty"`
+	PricePerMillionItemsMicro *int64             `json:"pricePerMillionItemsMicro,omitempty"`
+	UpdatedAt                 time.Time          `json:"updatedAt"`
+}
+
+// BillingOverrideList defines model for BillingOverrideList.
+type BillingOverrideList struct {
+	Overrides []BillingOverride `json:"overrides"`
+}
+
+// BillingOverrideUpdate Prices for a per-customer override; null or omitted inherits the global rate for that dimension. At least one price must be non-null.
+type BillingOverrideUpdate struct {
+	PricePerGibMicro          *int64 `json:"pricePerGibMicro,omitempty"`
+	PricePerMillionItemsMicro *int64 `json:"pricePerMillionItemsMicro,omitempty"`
 }
 
 // BillingSettings Metered-billing price list. Prices are integer micro-units of currency (1,000,000 micro = 1 unit of currency), avoiding float rounding.
@@ -1672,6 +1695,9 @@ type UpdateAuthProviderConfigJSONRequestBody = AuthProviderConfigUpdate
 // UpdateBillingSettingsJSONRequestBody defines body for UpdateBillingSettings for application/json ContentType.
 type UpdateBillingSettingsJSONRequestBody = BillingSettingsUpdate
 
+// SetBillingOverrideJSONRequestBody defines body for SetBillingOverride for application/json ContentType.
+type SetBillingOverrideJSONRequestBody = BillingOverrideUpdate
+
 // CreateMaintenanceWindowJSONRequestBody defines body for CreateMaintenanceWindow for application/json ContentType.
 type CreateMaintenanceWindowJSONRequestBody = MaintenanceWindowCreate
 
@@ -1857,6 +1883,15 @@ type ServerInterface interface {
 	// Update the metered-billing price list (admin only)
 	// (PUT /api/v1/settings/billing)
 	UpdateBillingSettings(w http.ResponseWriter, r *http.Request)
+	// List per-customer billing price overrides (admin only)
+	// (GET /api/v1/settings/billing/overrides)
+	ListBillingOverrides(w http.ResponseWriter, r *http.Request)
+	// Remove a customer's price override, reverting to global pricing (admin only)
+	// (DELETE /api/v1/settings/billing/overrides/{customerId})
+	DeleteBillingOverride(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID)
+	// Set a customer's price override (admin only)
+	// (PUT /api/v1/settings/billing/overrides/{customerId})
+	SetBillingOverride(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID)
 	// Alert maintenance windows (admin only)
 	// (GET /api/v1/settings/maintenance-windows)
 	ListMaintenanceWindows(w http.ResponseWriter, r *http.Request)
@@ -2241,6 +2276,24 @@ func (_ Unimplemented) GetBillingSettings(w http.ResponseWriter, r *http.Request
 // Update the metered-billing price list (admin only)
 // (PUT /api/v1/settings/billing)
 func (_ Unimplemented) UpdateBillingSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List per-customer billing price overrides (admin only)
+// (GET /api/v1/settings/billing/overrides)
+func (_ Unimplemented) ListBillingOverrides(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Remove a customer's price override, reverting to global pricing (admin only)
+// (DELETE /api/v1/settings/billing/overrides/{customerId})
+func (_ Unimplemented) DeleteBillingOverride(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Set a customer's price override (admin only)
+// (PUT /api/v1/settings/billing/overrides/{customerId})
+func (_ Unimplemented) SetBillingOverride(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4187,6 +4240,72 @@ func (siw *ServerInterfaceWrapper) UpdateBillingSettings(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// ListBillingOverrides operation middleware
+func (siw *ServerInterfaceWrapper) ListBillingOverrides(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListBillingOverrides(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteBillingOverride operation middleware
+func (siw *ServerInterfaceWrapper) DeleteBillingOverride(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "customerId" -------------
+	var customerId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "customerId", chi.URLParam(r, "customerId"), &customerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "customerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteBillingOverride(w, r, customerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetBillingOverride operation middleware
+func (siw *ServerInterfaceWrapper) SetBillingOverride(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "customerId" -------------
+	var customerId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "customerId", chi.URLParam(r, "customerId"), &customerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "customerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetBillingOverride(w, r, customerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListMaintenanceWindows operation middleware
 func (siw *ServerInterfaceWrapper) ListMaintenanceWindows(w http.ResponseWriter, r *http.Request) {
 
@@ -4813,6 +4932,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/api/v1/settings/billing", wrapper.UpdateBillingSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/settings/billing/overrides", wrapper.ListBillingOverrides)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/settings/billing/overrides/{customerId}", wrapper.DeleteBillingOverride)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/api/v1/settings/billing/overrides/{customerId}", wrapper.SetBillingOverride)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/settings/maintenance-windows", wrapper.ListMaintenanceWindows)
@@ -8098,6 +8226,192 @@ func (response UpdateBillingSettings403JSONResponse) VisitUpdateBillingSettingsR
 	return err
 }
 
+type ListBillingOverridesRequestObject struct {
+}
+
+type ListBillingOverridesResponseObject interface {
+	VisitListBillingOverridesResponse(w http.ResponseWriter) error
+}
+
+type ListBillingOverrides200JSONResponse BillingOverrideList
+
+func (response ListBillingOverrides200JSONResponse) VisitListBillingOverridesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBillingOverrides401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListBillingOverrides401JSONResponse) VisitListBillingOverridesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBillingOverrides403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListBillingOverrides403JSONResponse) VisitListBillingOverridesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteBillingOverrideRequestObject struct {
+	CustomerId openapi_types.UUID `json:"customerId"`
+}
+
+type DeleteBillingOverrideResponseObject interface {
+	VisitDeleteBillingOverrideResponse(w http.ResponseWriter) error
+}
+
+type DeleteBillingOverride204Response struct {
+}
+
+func (response DeleteBillingOverride204Response) VisitDeleteBillingOverrideResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteBillingOverride401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteBillingOverride401JSONResponse) VisitDeleteBillingOverrideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteBillingOverride403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteBillingOverride403JSONResponse) VisitDeleteBillingOverrideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteBillingOverride404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteBillingOverride404JSONResponse) VisitDeleteBillingOverrideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetBillingOverrideRequestObject struct {
+	CustomerId openapi_types.UUID `json:"customerId"`
+	Body       *SetBillingOverrideJSONRequestBody
+}
+
+type SetBillingOverrideResponseObject interface {
+	VisitSetBillingOverrideResponse(w http.ResponseWriter) error
+}
+
+type SetBillingOverride200JSONResponse BillingOverride
+
+func (response SetBillingOverride200JSONResponse) VisitSetBillingOverrideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetBillingOverride400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SetBillingOverride400JSONResponse) VisitSetBillingOverrideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetBillingOverride401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SetBillingOverride401JSONResponse) VisitSetBillingOverrideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetBillingOverride403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SetBillingOverride403JSONResponse) VisitSetBillingOverrideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetBillingOverride404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SetBillingOverride404JSONResponse) VisitSetBillingOverrideResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListMaintenanceWindowsRequestObject struct {
 }
 
@@ -9181,6 +9495,15 @@ type StrictServerInterface interface {
 	// Update the metered-billing price list (admin only)
 	// (PUT /api/v1/settings/billing)
 	UpdateBillingSettings(ctx context.Context, request UpdateBillingSettingsRequestObject) (UpdateBillingSettingsResponseObject, error)
+	// List per-customer billing price overrides (admin only)
+	// (GET /api/v1/settings/billing/overrides)
+	ListBillingOverrides(ctx context.Context, request ListBillingOverridesRequestObject) (ListBillingOverridesResponseObject, error)
+	// Remove a customer's price override, reverting to global pricing (admin only)
+	// (DELETE /api/v1/settings/billing/overrides/{customerId})
+	DeleteBillingOverride(ctx context.Context, request DeleteBillingOverrideRequestObject) (DeleteBillingOverrideResponseObject, error)
+	// Set a customer's price override (admin only)
+	// (PUT /api/v1/settings/billing/overrides/{customerId})
+	SetBillingOverride(ctx context.Context, request SetBillingOverrideRequestObject) (SetBillingOverrideResponseObject, error)
 	// Alert maintenance windows (admin only)
 	// (GET /api/v1/settings/maintenance-windows)
 	ListMaintenanceWindows(ctx context.Context, request ListMaintenanceWindowsRequestObject) (ListMaintenanceWindowsResponseObject, error)
@@ -10788,6 +11111,89 @@ func (sh *strictHandler) UpdateBillingSettings(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateBillingSettingsResponseObject); ok {
 		if err := validResponse.VisitUpdateBillingSettingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListBillingOverrides operation middleware
+func (sh *strictHandler) ListBillingOverrides(w http.ResponseWriter, r *http.Request) {
+	var request ListBillingOverridesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListBillingOverrides(ctx, request.(ListBillingOverridesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListBillingOverrides")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListBillingOverridesResponseObject); ok {
+		if err := validResponse.VisitListBillingOverridesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteBillingOverride operation middleware
+func (sh *strictHandler) DeleteBillingOverride(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID) {
+	var request DeleteBillingOverrideRequestObject
+
+	request.CustomerId = customerId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteBillingOverride(ctx, request.(DeleteBillingOverrideRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteBillingOverride")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteBillingOverrideResponseObject); ok {
+		if err := validResponse.VisitDeleteBillingOverrideResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetBillingOverride operation middleware
+func (sh *strictHandler) SetBillingOverride(w http.ResponseWriter, r *http.Request, customerId openapi_types.UUID) {
+	var request SetBillingOverrideRequestObject
+
+	request.CustomerId = customerId
+
+	var body SetBillingOverrideJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetBillingOverride(ctx, request.(SetBillingOverrideRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetBillingOverride")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetBillingOverrideResponseObject); ok {
+		if err := validResponse.VisitSetBillingOverrideResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

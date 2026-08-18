@@ -12,6 +12,7 @@ import type {
   ApiToken,
   AuditEntry,
   AuthProviderConfig,
+  BillingOverride,
   BillingSettings,
   BillingStatement,
   BootstrapToken,
@@ -400,6 +401,7 @@ export const testBillingStatement: BillingStatement = {
       bytesCostMicro: 1_000_000,
       itemsCostMicro: 6_000_000,
       totalMicro: 7_000_000,
+      overridden: false,
     },
     {
       customerId: testCustomer2.id,
@@ -409,10 +411,21 @@ export const testBillingStatement: BillingStatement = {
       bytesCostMicro: 500_000,
       itemsCostMicro: 3_000_000,
       totalMicro: 3_500_000,
+      overridden: true,
     },
   ],
   totalMicro: 10_500_000,
 }
+
+export const testBillingOverrides: BillingOverride[] = [
+  {
+    customerId: testCustomer2.id,
+    customerName: testCustomer2.name,
+    pricePerGibMicro: 1_000_000,
+    pricePerMillionItemsMicro: null,
+    updatedAt: '2026-07-15T07:00:00Z',
+  },
+]
 
 const testThroughput = {
   series: (['logs', 'traces', 'metrics'] as const).map((signal) => ({
@@ -577,6 +590,8 @@ export function stubApi(
           return json({ windows: testMaintenanceWindows })
         case '/api/v1/settings/billing':
           return json(testBillingSettings)
+        case '/api/v1/settings/billing/overrides':
+          return json({ overrides: testBillingOverrides })
         case '/api/v1/billing/statement':
           return json(testBillingStatement)
         case '/api/v1/metrics/query_range':
