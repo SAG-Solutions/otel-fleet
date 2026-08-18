@@ -102,6 +102,13 @@ export default defineConfig({
         },
         { label: 'Architecture', slug: 'architecture' },
         {
+          label: 'Operations',
+          items: [
+            { label: 'Sizing & capacity', slug: 'operations/sizing' },
+            { label: 'Runbooks', slug: 'operations/runbooks' },
+          ],
+        },
+        {
           label: 'Reference',
           items: [{ label: 'REST API', slug: 'reference/api' }],
         },
