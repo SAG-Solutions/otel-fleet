@@ -72,3 +72,27 @@ denials, OpAMP connected agents, Go/process runtime) tells you when the control
 plane needs more headroom. For the data plane, watch ClickHouse disk/merge
 metrics and VM active-series. Set the [alerts](/otel-fleet/operations/runbooks/#recommended-control-plane-alerts)
 so you're paged before saturation, not after.
+
+A repeatable load harness lives in [`test/load/`](https://github.com/SAG-Solutions/otel-fleet/tree/main/test/load):
+an ingest test (`ingest.sh`, via `telemetrygen`) and an API test (`apiload`,
+throughput + latency percentiles). Run it against production-like hardware for
+numbers you can size on.
+
+### Indicative baseline
+
+Very rough, single control-plane process, rate limiting off, **on a dev laptop
+with every component (control plane, ClickHouse, PostgreSQL) contending for the
+same cores** — a lower bound, not a capacity claim. Dedicated nodes will do
+better; the point is the *shape*:
+
+| Endpoint | Throughput | p50 / p99 | Bound by |
+| --- | --- | --- | --- |
+| `/api/v1/me` (auth + session) | ~12,000 req/s | 4 ms / 7 ms | PostgreSQL session lookup |
+| `/api/v1/stats/overview` (fleet aggregate, 10 tenants) | ~1,200 req/s | 28 ms / 220 ms | ClickHouse `GROUP BY` |
+
+The cheap auth path is ~10× the aggregate-read path: control-plane capacity is
+dominated by **query cost**, not the framework. Scale the API tier for read
+concurrency and give ClickHouse headroom; the auth/session path is rarely the
+bottleneck. Gather ingest throughput with `test/load/ingest.sh` on real hardware
+— on a laptop the gateway and ClickHouse contend, so that number isn't
+meaningful.
