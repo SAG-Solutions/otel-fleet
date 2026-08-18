@@ -79,7 +79,7 @@ func (c *client) createCustomer(t *testing.T, name, region string) (id, clientID
 	var created struct {
 		Customer struct {
 			ID       string `json:"id"`
-			ClientID string `json:"clientId"`
+			ClientID string `json:"tenantId"`
 			Region   string `json:"region"`
 		} `json:"customer"`
 	}
@@ -88,7 +88,7 @@ func (c *client) createCustomer(t *testing.T, name, region string) (id, clientID
 		t.Fatalf("customer region = %q, want %q", created.Customer.Region, region)
 	}
 	if created.Customer.ID == "" || created.Customer.ClientID == "" {
-		t.Fatalf("missing id/clientId: %s", data)
+		t.Fatalf("missing id/tenantId: %s", data)
 	}
 	return created.Customer.ID, created.Customer.ClientID
 }

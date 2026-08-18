@@ -46,20 +46,20 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/* Shared control-plane container env; role is prepended by the caller. */}}
 {{- define "otel-fleet.controlPlaneEnv" -}}
-{{- if .Values.external.databaseUrlSecret }}
+{{- if .Values.external.databaseUrlSecretName }}
 - name: OTEL_FLEET_DATABASE_URL
   valueFrom:
-    secretKeyRef: { name: {{ .Values.external.databaseUrlSecret | quote }}, key: OTEL_FLEET_DATABASE_URL }
+    secretKeyRef: { name: {{ .Values.external.databaseUrlSecretName | quote }}, key: OTEL_FLEET_DATABASE_URL }
 {{- else }}
-- { name: OTEL_FLEET_DATABASE_URL, value: {{ required "external.databaseUrl or external.databaseUrlSecret is required" .Values.external.databaseUrl | quote }} }
+- { name: OTEL_FLEET_DATABASE_URL, value: {{ required "external.databaseUrl or external.databaseUrlSecretName is required" .Values.external.databaseUrl | quote }} }
 {{- end }}
 - { name: OTEL_FLEET_CLICKHOUSE_ADDR, value: {{ .Values.external.clickhouse.addr | quote }} }
 - { name: OTEL_FLEET_CLICKHOUSE_DATABASE, value: {{ .Values.external.clickhouse.database | quote }} }
 - { name: OTEL_FLEET_CLICKHOUSE_USER, value: {{ .Values.external.clickhouse.user | quote }} }
-{{- if .Values.external.clickhouse.passwordSecret }}
+{{- if .Values.external.clickhouse.passwordSecretName }}
 - name: OTEL_FLEET_CLICKHOUSE_PASSWORD
   valueFrom:
-    secretKeyRef: { name: {{ .Values.external.clickhouse.passwordSecret | quote }}, key: OTEL_FLEET_CLICKHOUSE_PASSWORD }
+    secretKeyRef: { name: {{ .Values.external.clickhouse.passwordSecretName | quote }}, key: OTEL_FLEET_CLICKHOUSE_PASSWORD }
 {{- else }}
 - { name: OTEL_FLEET_CLICKHOUSE_PASSWORD, value: {{ .Values.external.clickhouse.password | quote }} }
 {{- end }}
@@ -101,12 +101,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - { name: OTEL_FLEET_MAX_REQUEST_BODY_BYTES, value: {{ .maxRequestBodyBytes | quote }} }
 {{- end }}
 {{- end }}
-{{- with .Values.controlPlane.masterKeySecret }}
+{{- with .Values.controlPlane.masterKeySecretName }}
 - name: OTEL_FLEET_MASTER_KEY
   valueFrom:
     secretKeyRef: { name: {{ . | quote }}, key: OTEL_FLEET_MASTER_KEY }
 {{- end }}
-{{- with .Values.controlPlane.masterKeySecondarySecret }}
+{{- with .Values.controlPlane.masterKeySecondarySecretName }}
 - name: OTEL_FLEET_MASTER_KEY_SECONDARY
   valueFrom:
     secretKeyRef: { name: {{ . | quote }}, key: OTEL_FLEET_MASTER_KEY_SECONDARY }
@@ -118,7 +118,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - { name: OTEL_FLEET_OIDC_ISSUER, value: {{ .Values.controlPlane.oidc.issuer | quote }} }
 - { name: OTEL_FLEET_OIDC_CLIENT_ID, value: {{ .Values.controlPlane.oidc.clientId | quote }} }
 - { name: OTEL_FLEET_OIDC_NAME, value: {{ .Values.controlPlane.oidc.displayName | quote }} }
-{{- with .Values.controlPlane.oidc.clientSecretRef }}
+{{- with .Values.controlPlane.oidc.clientSecretName }}
 - name: OTEL_FLEET_OIDC_CLIENT_SECRET
   valueFrom:
     secretKeyRef: { name: {{ . | quote }}, key: OTEL_FLEET_OIDC_CLIENT_SECRET }
@@ -136,7 +136,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - { name: OTEL_FLEET_GRPC_CLIENT_CA_FILE, value: /etc/otel-fleet/grpc-tls/ca.crt }
 {{- end }}
 {{- end }}
-{{- if .Values.controlPlane.tls.opampClientCASecret }}
+{{- if .Values.controlPlane.tls.opampClientCASecretName }}
 - { name: OTEL_FLEET_OPAMP_CLIENT_CA_FILE, value: /etc/otel-fleet/opamp-client-ca/ca.crt }
 {{- end }}
 {{- end }}
@@ -154,7 +154,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- with .Values.controlPlane.tls.grpcSecretName }}
 - { name: grpc-tls, mountPath: /etc/otel-fleet/grpc-tls, readOnly: true }
 {{- end }}
-{{- with .Values.controlPlane.tls.opampClientCASecret }}
+{{- with .Values.controlPlane.tls.opampClientCASecretName }}
 - { name: opamp-client-ca, mountPath: /etc/otel-fleet/opamp-client-ca, readOnly: true }
 {{- end }}
 {{- end }}
@@ -169,7 +169,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- with .Values.controlPlane.tls.grpcSecretName }}
 - { name: grpc-tls, secret: { secretName: {{ . | quote }} } }
 {{- end }}
-{{- with .Values.controlPlane.tls.opampClientCASecret }}
+{{- with .Values.controlPlane.tls.opampClientCASecretName }}
 - { name: opamp-client-ca, secret: { secretName: {{ . | quote }} } }
 {{- end }}
 {{- end }}

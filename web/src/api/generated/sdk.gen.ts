@@ -114,7 +114,7 @@ export const getStatsOverview = <ThrowOnError extends boolean = false>(options: 
 /**
  * Scoped range PromQL query for one customer's metrics
  *
- * Runs a range PromQL query against VictoriaMetrics, scoped to this customer: the server applies an `extra_filters[]` matcher (tenant_id="<clientId>") to every selector, so the caller can run any PromQL but only ever sees this tenant's series. Requires access to the customer (portal users can query their own tenant).
+ * Runs a range PromQL query against VictoriaMetrics, scoped to this customer: the server applies an `extra_filters[]` matcher (tenant_id="<tenantId>") to every selector, so the caller can run any PromQL but only ever sees this tenant's series. Requires access to the customer (portal users can query their own tenant).
  *
  */
 export const queryCustomerMetricsRange = <ThrowOnError extends boolean = false>(options: Options<QueryCustomerMetricsRangeData, ThrowOnError>): RequestResult<QueryCustomerMetricsRangeResponses, QueryCustomerMetricsRangeErrors, ThrowOnError> => (options.client ?? client).get<QueryCustomerMetricsRangeResponses, QueryCustomerMetricsRangeErrors, ThrowOnError>({ url: '/api/v1/customers/{customerId}/metrics/query_range', ...options });

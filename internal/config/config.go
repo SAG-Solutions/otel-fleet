@@ -46,13 +46,14 @@ type Config struct {
 
 	VictoriaMetricsURL string
 
-	// Regions is the data-residency region registry (multi-region Phase 1). Each
-	// region names a data plane with its own telemetry stores; a customer is
-	// pinned to one region. Configured via OTEL_FLEET_REGIONS (JSON array). When
-	// unset, a single "default" region is synthesized from the flat ClickHouse*/
-	// VictoriaMetrics settings above, so single-region deployments are unchanged.
-	// NOTE: Phase 1 is the model only — the query path still uses the flat store
-	// settings; region-aware read routing is Phase 2.
+	// Regions is the data-residency region registry. Each region names a data
+	// plane with its own telemetry stores; a customer is pinned to one region.
+	// Configured via OTEL_FLEET_REGIONS (JSON array). When unset, a single
+	// "default" region is synthesized from the flat ClickHouse*/VictoriaMetrics
+	// settings above, so single-region deployments are unchanged. Region-aware
+	// read routing, fleet-wide fan-out, and per-region retention/alerting are all
+	// wired through this registry; the one region-unaware surface is the admin
+	// ad-hoc PromQL panel (a manual query has no region context).
 	Regions       []Region
 	DefaultRegion string
 

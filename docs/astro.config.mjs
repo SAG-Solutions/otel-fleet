@@ -107,6 +107,7 @@ export default defineConfig({
             { label: 'Sizing & capacity', slug: 'operations/sizing' },
             { label: 'Runbooks', slug: 'operations/runbooks' },
             { label: 'Security model', slug: 'operations/security-model' },
+            { label: 'Stability & versioning', slug: 'operations/stability' },
           ],
         },
         {

@@ -27,7 +27,7 @@ describe('tenant self-service portal', () => {
 
     // Overview renders the scoped customer (its name + client id).
     expect(await screen.findAllByText(testCustomer.name)).not.toHaveLength(0)
-    expect(screen.getByText(testCustomer.clientId)).toBeInTheDocument()
+    expect(screen.getByText(testCustomer.tenantId)).toBeInTheDocument()
   })
 
   it('shows the full admin nav for an admin', async () => {

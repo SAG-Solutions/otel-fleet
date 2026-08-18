@@ -15,7 +15,7 @@ cluster:
 
 | Service | Used for | Values key |
 | --- | --- | --- |
-| PostgreSQL | control-plane state (customers, keys, pipelines, users, audit) | `external.databaseUrl` / `external.databaseUrlSecret` |
+| PostgreSQL | control-plane state (customers, keys, pipelines, users, audit) | `external.databaseUrl` / `external.databaseUrlSecretName` |
 | ClickHouse | telemetry storage (tenant-keyed schema) | `external.clickhouse.*` |
 | Prometheus-compatible TSDB (e.g. VictoriaMetrics) | collector self-telemetry, powers all throughput charts | `external.victoriaMetrics.*` |
 
@@ -35,12 +35,12 @@ Minimal `my-values.yaml`:
 
 ```yaml
 external:
-  databaseUrlSecret: otel-fleet-db   # Secret with key OTEL_FLEET_DATABASE_URL
+  databaseUrlSecretName: otel-fleet-db   # Secret with key OTEL_FLEET_DATABASE_URL
   clickhouse:
     addr: clickhouse.data:9000
     database: otel
     user: otelfleet
-    passwordSecret: otel-fleet-ch    # Secret with key OTEL_FLEET_CLICKHOUSE_PASSWORD
+    passwordSecretName: otel-fleet-ch    # Secret with key OTEL_FLEET_CLICKHOUSE_PASSWORD
     exporterEndpoint: "tcp://clickhouse.data:9000?database=otel&username=otelfleet&password=..."
   victoriaMetrics:
     url: http://victoriametrics.monitoring:8428
@@ -170,12 +170,12 @@ controlPlane:
   tls:
     enabled: true
     publicSecretName: cp-tls        # serves wss:// on :4320 (and HTTPS on :8080)
-    opampClientCASecret: opamp-ca   # ca.crt → OpAMP requires + verifies agent client certs (mTLS)
+    opampClientCASecretName: opamp-ca   # ca.crt → OpAMP requires + verifies agent client certs (mTLS)
 ```
 
 With `controlPlane.tls.enabled` + `publicSecretName`, the in-pod OpAMP listener
 serves `wss://` directly (no TLS-terminating proxy needed). Adding
-`opampClientCASecret` makes it **require and verify an agent client certificate**
+`opampClientCASecretName` makes it **require and verify an agent client certificate**
 (mTLS) on top of the enrollment token — pair it with the agent chart's
 `opamp.tls.clientCertSecret`. `loadBalancerSourceRanges` restricts who can reach
 the endpoint at the cloud load balancer. (For the REST/UI ingress, use your
@@ -464,7 +464,7 @@ The control plane needs `OTEL_FLEET_MASTER_KEY` (base64, 32 bytes —
 see the [configuration reference](/otel-fleet/installation/configuration/#secrets-encryption).
 
 Create the Secret and point the chart at it with
-`controlPlane.masterKeySecret`:
+`controlPlane.masterKeySecretName`:
 
 ```sh
 kubectl -n otel-fleet create secret generic otel-fleet-master-key \
@@ -473,7 +473,7 @@ kubectl -n otel-fleet create secret generic otel-fleet-master-key \
 
 ```yaml
 controlPlane:
-  masterKeySecret: otel-fleet-master-key
+  masterKeySecretName: otel-fleet-master-key
 ```
 
 Without the key the server runs, but saving an SSO provider or a pipeline
@@ -481,11 +481,11 @@ with password fields fails with a clear error. Losing the key makes stored
 secrets unrecoverable — keep it in a secret manager.
 
 :::tip[Key rotation]
-To rotate, put the new key in `masterKeySecret` and the previous one in a
-Secret referenced by `controlPlane.masterKeySecondarySecret` (key
+To rotate, put the new key in `masterKeySecretName` and the previous one in a
+Secret referenced by `controlPlane.masterKeySecondarySecretName` (key
 `OTEL_FLEET_MASTER_KEY_SECONDARY`). Old ciphertexts keep decrypting; run
 **Settings → SSO → Encryption at rest → “Re-encrypt under current key”**, then
-clear `masterKeySecondarySecret`. Full steps in the
+clear `masterKeySecondarySecretName`. Full steps in the
 [configuration reference](/otel-fleet/installation/configuration/#key-rotation).
 :::
 

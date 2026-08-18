@@ -75,7 +75,7 @@ export function NewCustomerDialog({
         <DialogHeader>
           <DialogTitle>New customer</DialogTitle>
           <DialogDescription>
-            Creates the tenant, a client ID, and an initial API key for OTLP ingest.
+            Creates the tenant with a tenant ID and an initial API key for OTLP ingest.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-4">

@@ -41,7 +41,7 @@ CREATE="$(curl -sf -b "$JAR" -X POST "$BASE/api/v1/customers" \
   -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
   -d "{\"name\":\"Load $SLUG\",\"slug\":\"$SLUG\"}")"
 KEY="$(echo "$CREATE" | jq -r .initialApiKey.secret)"
-CLIENT_ID="$(echo "$CREATE" | jq -r .customer.clientId)"
+CLIENT_ID="$(echo "$CREATE" | jq -r .customer.tenantId)"
 [ -n "$KEY" ] && [ "$KEY" != null ] || { echo "failed to mint API key: $CREATE" >&2; exit 1; }
 echo "   customer=$CLIENT_ID slug=$SLUG"
 

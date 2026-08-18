@@ -66,7 +66,7 @@ func toCustomer(c store.Customer) apigen.Customer {
 		Id:                   c.ID,
 		Slug:                 c.Slug,
 		Name:                 c.Name,
-		ClientId:             c.ClientID,
+		TenantId:             c.ClientID,
 		Status:               apigen.CustomerStatus(c.Status),
 		Region:               c.Region,
 		RateLimitItemsPerSec: c.RateLimitItemsPerSec,

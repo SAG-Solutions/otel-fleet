@@ -38,8 +38,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/* Secret name holding the bootstrap token (existing or chart-managed). */}}
 {{- define "otel-fleet-agent.tokenSecret" -}}
-{{- if .Values.bootstrapToken.existingSecret -}}
-{{- .Values.bootstrapToken.existingSecret -}}
+{{- if .Values.bootstrapToken.existingSecretName -}}
+{{- .Values.bootstrapToken.existingSecretName -}}
 {{- else -}}
 {{- include "otel-fleet-agent.fullname" . -}}
 {{- end -}}

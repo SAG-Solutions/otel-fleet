@@ -271,7 +271,7 @@ export const queryCustomerMetricsRangeQueryKey = (options: Options<QueryCustomer
 /**
  * Scoped range PromQL query for one customer's metrics
  *
- * Runs a range PromQL query against VictoriaMetrics, scoped to this customer: the server applies an `extra_filters[]` matcher (tenant_id="<clientId>") to every selector, so the caller can run any PromQL but only ever sees this tenant's series. Requires access to the customer (portal users can query their own tenant).
+ * Runs a range PromQL query against VictoriaMetrics, scoped to this customer: the server applies an `extra_filters[]` matcher (tenant_id="<tenantId>") to every selector, so the caller can run any PromQL but only ever sees this tenant's series. Requires access to the customer (portal users can query their own tenant).
  *
  */
 export const queryCustomerMetricsRangeOptions = (options: Options<QueryCustomerMetricsRangeData>) => queryOptions<QueryCustomerMetricsRangeResponse, QueryCustomerMetricsRangeError, QueryCustomerMetricsRangeResponse, ReturnType<typeof queryCustomerMetricsRangeQueryKey>>({
@@ -321,7 +321,7 @@ export const queryCustomerMetricsRangeInfiniteQueryKey = (options: Options<Query
 /**
  * Scoped range PromQL query for one customer's metrics
  *
- * Runs a range PromQL query against VictoriaMetrics, scoped to this customer: the server applies an `extra_filters[]` matcher (tenant_id="<clientId>") to every selector, so the caller can run any PromQL but only ever sees this tenant's series. Requires access to the customer (portal users can query their own tenant).
+ * Runs a range PromQL query against VictoriaMetrics, scoped to this customer: the server applies an `extra_filters[]` matcher (tenant_id="<tenantId>") to every selector, so the caller can run any PromQL but only ever sees this tenant's series. Requires access to the customer (portal users can query their own tenant).
  *
  */
 export const queryCustomerMetricsRangeInfiniteOptions = (options: Options<QueryCustomerMetricsRangeData>) => {

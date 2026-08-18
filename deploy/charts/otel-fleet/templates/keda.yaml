@@ -20,7 +20,7 @@ spec:
     - type: cpu
       metricType: Utilization
       metadata:
-        value: {{ .Values.gateway.autoscaling.cpuUtilization | quote }}
+        value: {{ .Values.gateway.autoscaling.targetCPUUtilizationPercentage | quote }}
     {{- if gt (int .Values.gateway.autoscaling.ingestRatePerReplica) 0 }}
     - type: prometheus
       metadata:
@@ -51,7 +51,7 @@ spec:
     - type: cpu
       metricType: Utilization
       metadata:
-        value: {{ .Values.forwarding.autoscaling.cpuUtilization | quote }}
+        value: {{ .Values.forwarding.autoscaling.targetCPUUtilizationPercentage | quote }}
     - type: prometheus
       metadata:
         serverAddress: {{ .Values.keda.prometheusAddress | quote }}

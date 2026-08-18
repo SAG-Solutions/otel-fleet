@@ -35,7 +35,7 @@ describe('/ (dashboard)', () => {
 })
 
 describe('/customers', () => {
-  it('renders the customer grid with client ID and status', async () => {
+  it('renders the customer grid with tenant ID and status', async () => {
     renderApp('/customers')
     expect(await screen.findByRole('link', { name: 'ACME Corp' })).toBeInTheDocument()
     expect(screen.getByText('cust_7f3a9b2c')).toBeInTheDocument()

@@ -157,8 +157,8 @@ function CustomerHeader({ customer }: { customer: Customer }) {
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink-2">
         <span className="inline-flex items-center gap-1">
           <span className="text-ink-3">client ID</span>
-          <code className="font-mono">{customer.clientId}</code>
-          <CopyButton value={customer.clientId} label="Copy client ID" />
+          <code className="font-mono">{customer.tenantId}</code>
+          <CopyButton value={customer.tenantId} label="Copy tenant ID" />
         </span>
         <span>
           <span className="text-ink-3">slug</span>{' '}

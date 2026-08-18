@@ -68,7 +68,7 @@ customer pages are built on these plus per-request accepted/refused counts.
 
 The customer detail page has a **Metrics** tab that runs PromQL directly
 against VictoriaMetrics, scoped to that tenant: the server applies an
-`extra_filters[] tenant_id="<clientId>"` matcher to every selector, so any
+`extra_filters[] tenant_id="<tenantId>"` matcher to every selector, so any
 query — curated panels or ad-hoc — only ever returns that customer's series
 (the scoping is enforced by VictoriaMetrics, not string concatenation, so it is
 injection-safe). Portal users get the same, limited to their own customer.

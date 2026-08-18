@@ -9,7 +9,7 @@ spec:
   # distinct OpAMP agent with its own persistent state.
   serviceName: {{ include "otel-fleet-agent.fullname" . }}-headless
   {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.replicas }}
   {{- end }}
   selector:
     matchLabels:

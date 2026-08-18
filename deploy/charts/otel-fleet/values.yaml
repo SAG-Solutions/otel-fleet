@@ -50,15 +50,15 @@ podDisruptionBudget:
   maxUnavailable: 1
 
 external:
-  # postgres://user:pass@host:5432/otelfleet — or set existingSecret below.
+  # postgres://user:pass@host:5432/otelfleet — or set databaseUrlSecretName below.
   databaseUrl: ""
   # Name of a Secret with key OTEL_FLEET_DATABASE_URL; takes precedence.
-  databaseUrlSecret: ""
+  databaseUrlSecretName: ""
   clickhouse:
     addr: "clickhouse:9000"           # native protocol host:port
     database: otel
     user: otelfleet
-    passwordSecret: ""                # Secret with key OTEL_FLEET_CLICKHOUSE_PASSWORD
+    passwordSecretName: ""                # Secret with key OTEL_FLEET_CLICKHOUSE_PASSWORD
     password: ""                      # inline fallback (dev only)
     # DSN used by the gateway collector's clickhouse exporter.
     exporterEndpoint: "tcp://clickhouse:9000?database=otel&username=otelfleet&password=otelfleet"
@@ -84,12 +84,12 @@ controlPlane:
   # `openssl rand -base64 32`). Required for storing SSO providers and
   # pipeline credentials (encrypted at rest); without it those features
   # return a clear error.
-  masterKeySecret: ""
+  masterKeySecretName: ""
   # Secret with key OTEL_FLEET_MASTER_KEY_SECONDARY (comma-separated old keys)
-  # for zero-downtime key rotation: set the new key in masterKeySecret and the
+  # for zero-downtime key rotation: set the new key in masterKeySecretName and the
   # previous one here, re-encrypt (Settings → SSO → Encryption at rest), then
   # clear this. See the configuration reference → Key rotation.
-  masterKeySecondarySecret: ""
+  masterKeySecondarySecretName: ""
   oidc:
     # Env-defined fallback OIDC provider; additional providers (Google,
     # Microsoft, GitHub, generic OIDC) are managed in the UI under
@@ -97,7 +97,7 @@ controlPlane:
     issuer: ""
     clientId: ""
     displayName: SSO
-    clientSecretRef: ""   # Secret with key OTEL_FLEET_OIDC_CLIENT_SECRET
+    clientSecretName: ""   # Secret with key OTEL_FLEET_OIDC_CLIENT_SECRET
   # Extra environment variables for the control-plane container (verbatim
   # EnvVar entries), e.g. proxy settings.
   extraEnv: []
@@ -133,7 +133,7 @@ controlPlane:
     # (:4320) requires and verifies an agent client cert signed by this CA
     # (mTLS), on top of the enrollment token. Pair with the agent chart's
     # opamp.tls.clientCertSecret.
-    opampClientCASecret: ""
+    opampClientCASecretName: ""
     # Optionally let cert-manager issue the two secrets from an Issuer.
     certManager:
       enabled: false
@@ -209,7 +209,7 @@ gateway:
   autoscaling:
     minReplicas: 2
     maxReplicas: 10
-    cpuUtilization: 70   # scale on CPU %
+    targetCPUUtilizationPercentage: 70   # scale on CPU %
     # Optional: also scale on ingest rate per pod (needs the Prometheus
     # scaler pointed at the metrics store). 0 disables this trigger.
     ingestRatePerReplica: 0
@@ -230,7 +230,7 @@ forwarding:
   autoscaling:
     minReplicas: 1        # can scale to 0 when no tenant has forwarding pipelines
     maxReplicas: 6
-    cpuUtilization: 70
+    targetCPUUtilizationPercentage: 70
     # Prometheus scaler on max exporter queue fill ratio across the tier.
     queueUtilization: 0.7
 
@@ -354,7 +354,7 @@ backup:
     storage:
       size: 10Gi
       storageClassName: ""
-    # DATABASE_URL source: reuse external.databaseUrl / external.databaseUrlSecret.
+    # DATABASE_URL source: reuse external.databaseUrl / external.databaseUrlSecretName.
   clickhouse:
     enabled: false
     schedule: "0 3 * * *"

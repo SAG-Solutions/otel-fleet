@@ -43,9 +43,9 @@ export type Customer = {
     slug: string;
     name: string;
     /**
-     * Stamped as resource attribute `tenant.id` on all ingested data.
+     * This customer's tenant identifier — stamped as resource attribute `tenant.id` on all ingested data.
      */
-    clientId: string;
+    tenantId: string;
     status: 'active' | 'suspended' | 'deleted';
     /**
      * Data-residency region this customer is pinned to (one of the configured regions).
@@ -56,7 +56,7 @@ export type Customer = {
      */
     rateLimitItemsPerSec?: number | null;
     /**
-     * Telemetry retention override; null = global table TTL (30 days).
+     * Telemetry retention override in days; null = global table TTL. Values above the global TTL are capped server-side.
      */
     retentionDays?: number | null;
     createdAt: string;

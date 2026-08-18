@@ -1015,8 +1015,6 @@ type CatalogPreset struct {
 
 // Customer defines model for Customer.
 type Customer struct {
-	// ClientId Stamped as resource attribute `tenant.id` on all ingested data.
-	ClientId  string             `json:"clientId"`
 	CreatedAt time.Time          `json:"createdAt"`
 	Id        openapi_types.UUID `json:"id"`
 	Name      string             `json:"name"`
@@ -1027,10 +1025,13 @@ type Customer struct {
 	// Region Data-residency region this customer is pinned to (one of the configured regions).
 	Region string `json:"region"`
 
-	// RetentionDays Telemetry retention override; null = global table TTL (30 days).
+	// RetentionDays Telemetry retention override in days; null = global table TTL. Values above the global TTL are capped server-side.
 	RetentionDays *int           `json:"retentionDays,omitempty"`
 	Slug          string         `json:"slug"`
 	Status        CustomerStatus `json:"status"`
+
+	// TenantId This customer's tenant identifier — stamped as resource attribute `tenant.id` on all ingested data.
+	TenantId string `json:"tenantId"`
 }
 
 // CustomerStatus defines model for Customer.Status.

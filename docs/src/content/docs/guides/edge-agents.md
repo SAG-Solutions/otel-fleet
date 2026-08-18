@@ -60,7 +60,7 @@ helm install otel-fleet-agent deploy/charts/otel-fleet-agent \
 
 Apps then send OTLP to `http://otel-fleet-agent.<namespace>:4318` (gRPC `:4317`)
 — no per-app API key; the agent forwards under the customer it enrolled with.
-Use `bootstrapToken.existingSecret` instead of an inline value to source the
+Use `bootstrapToken.existingSecretName` instead of an inline value to source the
 token from a Secret.
 
 **Securing a public OpAMP endpoint** — when the control plane's OpAMP endpoint
@@ -70,7 +70,7 @@ agent chart:
 ```sh
 helm install otel-fleet-agent deploy/charts/otel-fleet-agent \
   --set opamp.endpoint=wss://otel-fleet.example.com/v1/opamp \
-  --set bootstrapToken.existingSecret=otel-fleet-bootstrap \
+  --set bootstrapToken.existingSecretName=otel-fleet-bootstrap \
   --set opamp.tls.caCert="$(cat corp-ca.pem)" \        # verify a private-CA server cert
   --set opamp.tls.clientCertSecret=agent-mtls \          # present a client cert (mTLS)
   --set networkPolicy.enabled=true \                     # restrict who reaches the agent's OTLP ports
@@ -99,10 +99,10 @@ region's OpAMP endpoint (see the
 ```sh
 helm install agent-eu deploy/charts/otel-fleet-agent \
   --set opamp.endpoint=wss://eu.otel-fleet.example.com/v1/opamp --set region=eu \
-  --set bootstrapToken.existingSecret=otel-fleet-bootstrap
+  --set bootstrapToken.existingSecretName=otel-fleet-bootstrap
 helm install agent-us deploy/charts/otel-fleet-agent \
   --set opamp.endpoint=wss://us.otel-fleet.example.com/v1/opamp --set region=us \
-  --set bootstrapToken.existingSecret=otel-fleet-bootstrap
+  --set bootstrapToken.existingSecretName=otel-fleet-bootstrap
 ```
 
 ## Lifecycle

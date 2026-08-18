@@ -59,13 +59,13 @@ const columns = [
     header: 'Slug',
     cell: (info) => <span className="font-mono text-xs text-ink-2">{info.getValue()}</span>,
   }),
-  columnHelper.accessor('clientId', {
-    header: 'Client ID',
+  columnHelper.accessor('tenantId', {
+    header: 'Tenant ID',
     enableSorting: false,
     cell: (info) => (
       <span className="inline-flex items-center gap-1">
         <code className="font-mono text-xs text-ink-2">{info.getValue()}</code>
-        <CopyButton value={info.getValue()} label="Copy client ID" />
+        <CopyButton value={info.getValue()} label="Copy tenant ID" />
       </span>
     ),
   }),
@@ -98,7 +98,7 @@ function CustomersPage() {
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.slug.toLowerCase().includes(q) ||
-        c.clientId.toLowerCase().includes(q),
+        c.tenantId.toLowerCase().includes(q),
     )
   }, [customers, search])
 
@@ -108,7 +108,7 @@ function CustomersPage() {
         <div>
           <h1 className="text-lg font-semibold text-ink">Customers</h1>
           <p className="text-[13px] text-ink-2">
-            Tenants of the ingest fleet — each with its own client ID and API keys.
+            Tenants of the ingest fleet — each with its own tenant ID and API keys.
           </p>
         </div>
         {canMutate(me) && (

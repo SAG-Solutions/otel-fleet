@@ -4,7 +4,7 @@ Region endpoint : {{ .Values.opamp.endpoint }}
 {{- if .Values.region }}
 Region label    : {{ .Values.region }}
 {{- end }}
-Agents (replicas): {{ .Values.replicaCount }}
+Agents (replicas): {{ .Values.replicas }}
 
 1. The agent enrolls with the control plane over OpAMP and receives its
    pipeline config remotely. Watch it appear under Fleet:

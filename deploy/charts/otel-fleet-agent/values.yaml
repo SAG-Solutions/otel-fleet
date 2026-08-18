@@ -37,7 +37,7 @@ opamp:
 # the agent its own per-agent token, so this is only used to enroll.
 bootstrapToken:
   value: ""
-  existingSecret: "" # a Secret holding the token under secretKey
+  existingSecretName: "" # a Secret holding the token under secretKey
   secretKey: OTEL_FLEET_BOOTSTRAP_TOKEN
 
 # Region this agent belongs to — surfaced as a pod label/annotation for
@@ -47,7 +47,7 @@ region: ""
 # Number of distinct agents to run. Each replica is a separate OpAMP instance
 # with its own persistent identity (StatefulSet + per-pod PVC). Ignored when
 # autoscaling.enabled (the HPA owns the replica count).
-replicaCount: 1
+replicas: 1
 
 # Horizontal autoscaling of the agent fleet (adds/removes agent instances).
 autoscaling:

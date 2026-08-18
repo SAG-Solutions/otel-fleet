@@ -56,12 +56,12 @@ spec:
                   find /backup -name 'otel-fleet-*.dump' -mtime +{{ .Values.backup.postgres.retentionDays }} -delete
                   ls -lh /backup
               env:
-                {{- if .Values.external.databaseUrlSecret }}
+                {{- if .Values.external.databaseUrlSecretName }}
                 - name: OTEL_FLEET_DATABASE_URL
                   valueFrom:
-                    secretKeyRef: { name: {{ .Values.external.databaseUrlSecret | quote }}, key: OTEL_FLEET_DATABASE_URL }
+                    secretKeyRef: { name: {{ .Values.external.databaseUrlSecretName | quote }}, key: OTEL_FLEET_DATABASE_URL }
                 {{- else }}
-                - { name: OTEL_FLEET_DATABASE_URL, value: {{ required "external.databaseUrl or external.databaseUrlSecret is required for backup" .Values.external.databaseUrl | quote }} }
+                - { name: OTEL_FLEET_DATABASE_URL, value: {{ required "external.databaseUrl or external.databaseUrlSecretName is required for backup" .Values.external.databaseUrl | quote }} }
                 {{- end }}
               volumeMounts:
                 - { name: backup, mountPath: /backup }

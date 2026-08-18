@@ -269,7 +269,7 @@ paths:
       description: >
         Runs a range PromQL query against VictoriaMetrics, scoped to this
         customer: the server applies an `extra_filters[]` matcher
-        (tenant_id="<clientId>") to every selector, so the caller can run any
+        (tenant_id="<tenantId>") to every selector, so the caller can run any
         PromQL but only ever sees this tenant's series. Requires access to the
         customer (portal users can query their own tenant).
       parameters:
@@ -1615,15 +1615,15 @@ components:
 
     Customer:
       type: object
-      required: [id, slug, name, clientId, status, region, createdAt]
+      required: [id, slug, name, tenantId, status, region, createdAt]
       properties:
         id: { type: string, format: uuid }
         slug: { type: string, example: acme }
         name: { type: string, example: ACME Corp }
-        clientId:
+        tenantId:
           type: string
           example: cust_7f3a9b2c
-          description: Stamped as resource attribute `tenant.id` on all ingested data.
+          description: This customer's tenant identifier — stamped as resource attribute `tenant.id` on all ingested data.
         status: { type: string, enum: [active, suspended, deleted] }
         region:
           type: string
@@ -1637,8 +1637,7 @@ components:
           type: integer
           nullable: true
           minimum: 1
-          maximum: 30
-          description: Telemetry retention override; null = global table TTL (30 days).
+          description: Telemetry retention override in days; null = global table TTL. Values above the global TTL are capped server-side.
         createdAt: { type: string, format: date-time }
 
     CustomerCreate:
