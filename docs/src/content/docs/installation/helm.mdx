@@ -402,6 +402,37 @@ It runs recording-only — no notifier or Alertmanager, since alerting stays
 native in otel-fleet. Add your own groups to the rules file. Uses
 `external.victoriaMetrics.url` for both querying and remote-write.
 
+### Control-plane health dashboard
+
+To watch **otel-fleet itself** (as opposed to the Kubernetes cluster it
+monitors), the chart ships a curated **Control plane** Grafana dashboard. It is
+independent of `clusterMonitoring` — it reads the control plane's own `/metrics`
+(exposed on the ops port `:9090`), so scrape the control plane into your
+Prometheus/VictoriaMetrics first. Enable it and a sidecar-enabled Grafana
+imports it automatically:
+
+```yaml
+controlPlaneDashboard:
+  enabled: true
+  label: grafana_dashboard   # your Grafana sidecar's discovery label
+  labelValue: "1"
+```
+
+The dashboard covers request rate, **5xx error ratio**, latency quantiles
+(p50/p95/p99), **denied requests by reason** (`unauthenticated`,
+`requires_admin`, `csrf`, `insufficient_role`, `tenant_scope`, `rate_limited`,
+…), **OpAMP connected agents**, and Go/process runtime. It binds to a
+`datasource` variable, so pick your VictoriaMetrics datasource on open.
+
+The underlying control-plane metrics are:
+
+| Metric | Meaning |
+|---|---|
+| `otel_fleet_http_requests_total{method,status}` | request count by method + status class (2xx/3xx/4xx/5xx) |
+| `otel_fleet_http_request_duration_seconds{method}` | request latency histogram |
+| `otel_fleet_http_denied_total{reason}` | guard/rate-limiter denials by reason |
+| `otel_fleet_opamp_connected_agents` | agents with a live OpAMP connection (OpAMP tier only) |
+
 ## Secrets encryption (`OTEL_FLEET_MASTER_KEY`)
 
 The control plane needs `OTEL_FLEET_MASTER_KEY` (base64, 32 bytes —

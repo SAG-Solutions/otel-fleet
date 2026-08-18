@@ -1,0 +1,180 @@
+{
+  "uid": "otelfleet-control-plane",
+  "title": "otel-fleet / Control plane",
+  "tags": [
+    "otel-fleet",
+    "control-plane"
+  ],
+  "editable": true,
+  "schemaVersion": 39,
+  "timezone": "",
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Data source",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "OpAMP connected agents",
+      "description": "Agents with a live OpAMP connection to the control plane (otel_fleet_opamp_connected_agents). Absent on the API-only tier.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "sum(otel_fleet_opamp_connected_agents)", "range": true, "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Request rate",
+      "description": "Control-plane HTTP requests per second (all methods/status).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "thresholds" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "sum(rate(otel_fleet_http_requests_total[5m]))", "range": true, "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "5xx error ratio",
+      "description": "Share of requests returning a 5xx over the last 5m (a server-error SLI).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "sum(rate(otel_fleet_http_requests_total{status=\"5xx\"}[5m])) / clamp_min(sum(rate(otel_fleet_http_requests_total[5m])), 1)", "range": true, "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Uptime",
+      "description": "Time since the current control-plane process started.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "thresholds" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "max(time() - process_start_time_seconds)", "range": true, "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request rate by status class",
+      "description": "sum by (status) rate of otel_fleet_http_requests_total.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 15, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "sum by (status) (rate(otel_fleet_http_requests_total[5m]))", "range": true, "refId": "A", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request latency",
+      "description": "Quantiles of otel_fleet_http_request_duration_seconds across all methods.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "histogram_quantile(0.50, sum(rate(otel_fleet_http_request_duration_seconds_bucket[5m])) by (le))", "range": true, "refId": "A", "legendFormat": "p50" },
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "histogram_quantile(0.95, sum(rate(otel_fleet_http_request_duration_seconds_bucket[5m])) by (le))", "range": true, "refId": "B", "legendFormat": "p95" },
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "histogram_quantile(0.99, sum(rate(otel_fleet_http_request_duration_seconds_bucket[5m])) by (le))", "range": true, "refId": "C", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Denied requests by reason",
+      "description": "Guard/rate-limiter denials (otel_fleet_http_denied_total): unauthenticated, requires_admin, csrf, insufficient_role, tenant_scope, rate_limited, ...",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 15, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "sum by (reason) (rate(otel_fleet_http_denied_total[5m]))", "range": true, "refId": "A", "legendFormat": "{{reason}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request rate by method",
+      "description": "sum by (method) rate of otel_fleet_http_requests_total.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "sum by (method) (rate(otel_fleet_http_requests_total[5m]))", "range": true, "refId": "A", "legendFormat": "{{method}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Goroutines",
+      "description": "go_goroutines per control-plane instance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 20, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "go_goroutines", "range": true, "refId": "A", "legendFormat": "{{instance}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Heap in use",
+      "description": "go_memstats_heap_inuse_bytes per control-plane instance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 8, "y": 20, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "go_memstats_heap_inuse_bytes", "range": true, "refId": "A", "legendFormat": "{{instance}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Process CPU & memory",
+      "description": "CPU cores used (rate of process_cpu_seconds_total) and resident memory.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 16, "y": 20, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "resident memory" }, "properties": [ { "id": "unit", "value": "bytes" }, { "id": "custom.axisPlacement", "value": "right" } ] },
+          { "matcher": { "id": "byName", "options": "cpu cores" }, "properties": [ { "id": "unit", "value": "short" } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "sum(rate(process_cpu_seconds_total[5m]))", "range": true, "refId": "A", "legendFormat": "cpu cores" },
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "editorMode": "code", "expr": "sum(process_resident_memory_bytes)", "range": true, "refId": "B", "legendFormat": "resident memory" }
+      ]
+    }
+  ]
+}

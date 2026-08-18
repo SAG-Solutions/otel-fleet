@@ -383,6 +383,15 @@ jobs:
           helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set clusterMonitoring.enabled=true --set clusterMonitoring.recordingRules.enabled=true \
             | grep -q 'image: victoriametrics/vmalert'
+          # Control-plane health dashboard: off by default; opt-in renders one
+          # sidecar-labelled ConfigMap, independent of clusterMonitoring, and the
+          # cluster-monitoring dashboards must NOT double-ship it.
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            | grep -c 'component: control-plane-dashboard')" = "0"
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set controlPlaneDashboard.enabled=true | grep -c 'component: control-plane-dashboard')" = "1"
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.dashboards.enabled=true | grep -c 'control-plane.json')" = "0"
       - run: helm lint deploy/charts/otel-fleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |

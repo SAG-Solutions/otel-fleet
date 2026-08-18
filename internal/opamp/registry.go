@@ -39,6 +39,14 @@ func newRegistry() *registry {
 	return &registry{byUID: map[string]*agentConn{}, byConn: map[types.Connection]string{}}
 }
 
+// count returns the number of currently connected agents (for the connected
+// gauge). O(1) under the lock.
+func (r *registry) count() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.byUID)
+}
+
 // get returns a snapshot copy of the state for uid (nil when unknown).
 func (r *registry) get(uid []byte) *agentConn {
 	r.mu.Lock()

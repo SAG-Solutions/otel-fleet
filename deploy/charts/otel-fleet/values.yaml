@@ -241,6 +241,21 @@ keda:
 
 # Opt-in cluster-monitoring bundle: an OpenTelemetry-native alternative to
 # kube-prometheus-stack's metrics collection. Two collectors (both running the
+# Curated Grafana dashboard for the control plane's OWN health/SLOs (request
+# rate, 5xx error ratio, latency, denials by reason, OpAMP connected agents,
+# Go/process runtime). Independent of clusterMonitoring — it reads the control
+# plane's /metrics. Opt-in: needs a sidecar-enabled Grafana (it discovers the
+# ConfigMap by the label below) and the control plane scraped into your
+# Prometheus/VictoriaMetrics.
+controlPlaneDashboard:
+  enabled: false
+  label: grafana_dashboard    # sidecar discovery label key
+  labelValue: "1"
+  folderAnnotation: ""        # e.g. "grafana_folder" to file it in a folder
+  folder: otel-fleet
+
+# --- Cluster monitoring (kube-prometheus-stack replacement) --------------------
+# When enabled, an OpenTelemetry cluster-monitoring bundle (built on the
 # otel-fleet collector distro) remote-write to external.victoriaMetrics:
 #   - a DaemonSet (per node): hostmetrics (~node-exporter) + kubeletstats
 #     (~cAdvisor), reading the host filesystem read-only at /hostfs.

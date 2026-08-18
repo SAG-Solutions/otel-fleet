@@ -1,0 +1,30 @@
+{{- if .Values.controlPlaneDashboard.enabled }}
+{{- /*
+Curated Grafana dashboard for the control plane's OWN health/SLOs (request rate,
+5xx error ratio, latency quantiles, guard/rate-limiter denials by reason, OpAMP
+connected agents, Go/process runtime). Independent of cluster-monitoring — it
+reads the control plane's /metrics (scraped into VictoriaMetrics). Wrapped in a
+ConfigMap carrying the Grafana sidecar discovery label so a sidecar-enabled
+Grafana imports it automatically; panels bind to a `datasource` variable.
+*/}}
+{{- $d := .Values.controlPlaneDashboard }}
+{{- range $path, $_ := .Files.Glob "dashboards/control-plane/*.json" }}
+{{- $slug := trimSuffix ".json" (base $path) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "otel-fleet.fullname" $ }}-dashboard-{{ $slug }}
+  labels:
+    {{- include "otel-fleet.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: control-plane-dashboard
+    {{ $d.label }}: {{ $d.labelValue | quote }}
+  {{- if $d.folderAnnotation }}
+  annotations:
+    {{ $d.folderAnnotation }}: {{ $d.folder | quote }}
+  {{- end }}
+data:
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}

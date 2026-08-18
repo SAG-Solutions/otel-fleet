@@ -42,6 +42,9 @@ func NewRouter(d RouterDeps) http.Handler {
 	r.Use(chimw.RealIP)
 	r.Use(requestLogger(d.Log))
 	r.Use(chimw.Recoverer)
+	// Throughput + latency metrics across the whole surface (includes denied and
+	// rate-limited responses, which return down-chain from the guards below).
+	r.Use(newHTTPMetrics(d.Registry).middleware)
 	// Per-IP rate limiting across the whole surface; a stricter bucket is
 	// layered onto the SSO endpoints below. Must sit behind RealIP.
 	var authLimit func(http.Handler) http.Handler

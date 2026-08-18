@@ -187,6 +187,15 @@ func run(log *slog.Logger) error {
 	opampSrv := opamp.NewServer(st, pipelinesSvc, cfg.OpAMPAddr, cfg.OpAMPPublicEndpoint, opampTLS, log)
 	webhookDispatcher := webhooks.New(st, cipher, log)
 	opampSrv.Handler().SetEventSink(webhookDispatcher)
+	// Live OpAMP connection count for the control-plane health dashboard. Only
+	// meaningful on a process that actually serves OpAMP (mode=all|opamp), so the
+	// gauge is absent on the API-only tier rather than reporting a constant 0.
+	if cfg.RunsOpAMP() {
+		reg.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+			Name: "otel_fleet_opamp_connected_agents",
+			Help: "Agents with a live OpAMP connection to this control-plane process.",
+		}, func() float64 { return float64(opampSrv.ConnectedCount()) }))
+	}
 	// Alerting is region-aware: metric-threshold rules query every region's
 	// ClickHouse and merge; cluster-wide PromQL rules are evaluated against each
 	// region's VictoriaMetrics and fire per region.

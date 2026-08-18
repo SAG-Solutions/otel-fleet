@@ -56,6 +56,10 @@ func (s *Server) EdgeConfigChanged(ctx context.Context, customerID uuid.UUID) (p
 // IsConnected reports whether an agent has a live OpAMP connection.
 func (s *Server) IsConnected(instanceUID []byte) bool { return s.handler.IsConnected(instanceUID) }
 
+// ConnectedCount is the number of agents with a live OpAMP connection to this
+// process (drives the otel_fleet_opamp_connected_agents gauge).
+func (s *Server) ConnectedCount() int { return s.handler.reg.count() }
+
 // Start begins accepting OpAMP connections on the configured address.
 func (s *Server) Start() error {
 	settings := server.StartSettings{
