@@ -51,6 +51,12 @@ func NewRouter(d RouterDeps) http.Handler {
 	if d.Config.RateLimitEnabled {
 		r.Use(newIPRateLimiter(d.Config.RateLimitRPS, d.Config.RateLimitBurst).middleware(d.Log, secMetrics))
 		authLimit = newIPRateLimiter(d.Config.AuthRateLimitRPS, d.Config.AuthRateLimitBurst).middleware(d.Log, secMetrics)
+		// The limiter is in-memory and per-replica: the effective ceiling scales
+		// with replica count. Front with an ingress/proxy limiter for a global
+		// cap (see the rate-limiting configuration reference).
+		d.Log.Info("rate limiting enabled (per-replica, in-memory)",
+			"rps", d.Config.RateLimitRPS, "burst", d.Config.RateLimitBurst,
+			"auth_rps", d.Config.AuthRateLimitRPS, "auth_burst", d.Config.AuthRateLimitBurst)
 	}
 	r.Use(d.Sessions.Manager.LoadAndSave)
 

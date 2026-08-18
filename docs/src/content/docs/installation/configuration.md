@@ -107,6 +107,28 @@ chi's RealIP), so run behind a trusted proxy that sets them.
 Exceeded limits return `429` with a `Retry-After` header. In Helm set these
 under `controlPlane.rateLimit` (only keys you set are passed through).
 
+:::caution[Scope: per replica]
+The limiter is **in-memory and per control-plane replica** — with N API
+replicas the effective ceiling per IP is roughly **N × the configured rate**.
+This is a deliberate design choice (no shared Redis/DB dependency); the in-app
+limiter is a per-instance backstop against a single misbehaving client, not a
+cluster-wide quota.
+
+For a **global** limit across replicas, enforce it at the fronting proxy /
+ingress and treat the in-app limiter as defense-in-depth (or disable it with
+`OTEL_FLEET_RATE_LIMIT_ENABLED=false`). Example (ingress-nginx):
+
+```yaml
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
+```
+
+Single-replica deployments (`controlPlane.mode: all`, or `api.replicas: 1`) get
+exactly the configured rate.
+:::
+
 ### Denial audit
 
 Every denied request (401 unauthenticated/unknown/disabled, 403 admin-only /
