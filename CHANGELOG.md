@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.13.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.12.0...v0.13.0) (2026-08-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* renamed API field Customer.clientId -> tenantId; renamed Helm values (see above) in both otel-fleet and otel-fleet-agent charts. Update API clients and values files when upgrading from 0.x.
+
+### Features
+
+* pre-1.0 API/env/Helm cleanup + stability contract ([bbac0a1](https://github.com/SAG-Solutions/otel-fleet/commit/bbac0a14639ee1996bd653743cbc22b3702e1ced))
+
 ## [0.12.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.11.0...v0.12.0) (2026-08-18)
 
 
