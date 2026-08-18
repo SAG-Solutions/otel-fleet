@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.11.0...v0.12.0) (2026-08-18)
+
+
+### Features
+
+* **tenants:** erase tenant telemetry on customer delete (right-to-erasure) ([6d2e617](https://github.com/SAG-Solutions/otel-fleet/commit/6d2e6174bb039d952fbcf90d95fcc49dc7efe50f))
+
 ## [0.11.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.10.1...v0.11.0) (2026-08-18)
 
 
