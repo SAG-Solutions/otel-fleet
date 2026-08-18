@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.10.1...v0.11.0) (2026-08-18)
+
+
+### Features
+
+* **billing:** per-customer price overrides ([eaa4a5a](https://github.com/SAG-Solutions/otel-fleet/commit/eaa4a5ae5727729146b16e872531cbc75715e0d8))
+* **observability:** control-plane HTTP metrics + health dashboard ([d367c36](https://github.com/SAG-Solutions/otel-fleet/commit/d367c36df3429e7219550b5ee32d99f1cf955cd5))
+* **scim:** Groups → authoritative role + tenant mapping ([ef48675](https://github.com/SAG-Solutions/otel-fleet/commit/ef48675eaea36ffb6187dce98500212de9db0d90))
+
 ## [0.10.1](https://github.com/SAG-Solutions/otel-fleet/compare/v0.10.0...v0.10.1) (2026-08-17)
 
 
