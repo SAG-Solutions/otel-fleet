@@ -424,6 +424,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # syft: exercises the `sboms` stanza in the snapshot so SBOM config errors
+      # surface pre-tag, not at release time.
+      - uses: anchore/sbom-action/download-syft@v0
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"

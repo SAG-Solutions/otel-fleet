@@ -95,6 +95,30 @@ The **control plane always bundles the full distro** for `otelcol validate`, so
 authoring a Datadog/Kafka/… pipeline in the UI still validates even when your
 gateways run slim — that pipeline just needs a full-image collector to run.
 
+### Verifying artifacts
+
+Every release is signed and carries supply-chain attestations:
+
+- **Images** — cosign keyless signature + a buildkit **SBOM** and max-mode
+  **SLSA build provenance** attestation, attached to the image index.
+
+  ```sh
+  IMG=ghcr.io/sag-solutions/otel-fleet:<version>
+  # signature (issuer = GitHub Actions OIDC on this repo)
+  cosign verify "$IMG" \
+    --certificate-identity-regexp 'https://github.com/SAG-Solutions/otel-fleet/.*' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  # attestations
+  cosign download sbom "$IMG"
+  cosign verify-attestation --type slsaprovenance "$IMG" \
+    --certificate-identity-regexp 'https://github.com/SAG-Solutions/otel-fleet/.*' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  ```
+
+- **Binaries & charts** — each release archive ships an SPDX `*.sbom.json`
+  next to it on the GitHub Release, and the Helm charts are cosign-signed in
+  GHCR (verify the chart the same way as an image).
+
 ## Control plane
 
 Two topologies, selected by `controlPlane.mode`:

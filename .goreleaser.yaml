@@ -64,6 +64,11 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
+# One SPDX SBOM per release archive (syft), uploaded alongside the binaries.
+sboms:
+  - id: archives
+    artifacts: archive
+
 changelog:
   sort: asc
   use: github
@@ -96,6 +101,11 @@ release:
   mode: append
   footer: |
     ---
+
+    **Supply chain**: release archives ship an SPDX SBOM (`*.sbom.json`);
+    container images carry a buildkit SBOM + max-mode SLSA build provenance
+    attestation and are cosign-signed (keyless). See the docs → verifying
+    artifacts.
 
     **Container images** (multi-arch, cosign-signed):
 

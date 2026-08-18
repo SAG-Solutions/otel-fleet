@@ -44,6 +44,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # syft powers the goreleaser `sboms` stanza (one SPDX SBOM per archive).
+      - uses: anchore/sbom-action/download-syft@v0
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
@@ -100,6 +102,10 @@ jobs:
           build-args: ${{ matrix.buildArgs }}
           platforms: linux/amd64,linux/arm64
           push: true
+          # Supply-chain attestations attached to the image index: an SBOM
+          # (buildkit/syft) and max-mode SLSA build provenance.
+          sbom: true
+          provenance: mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ matrix.image }}:${{ steps.version.outputs.version }}
             ${{ env.REGISTRY }}/${{ matrix.image }}:latest
