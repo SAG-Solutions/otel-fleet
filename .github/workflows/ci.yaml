@@ -383,6 +383,15 @@ jobs:
           helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set clusterMonitoring.enabled=true --set clusterMonitoring.recordingRules.enabled=true \
             | grep -q 'image: victoriametrics/vmalert'
+          # vmalert: extra rule ConfigMaps (PrometheusRule migration) + optional Alertmanager notifier.
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.recordingRules.enabled=true \
+            --set 'clusterMonitoring.recordingRules.additionalRuleConfigMaps={my-rules}' \
+            --set clusterMonitoring.recordingRules.notifierUrl=http://am:9093 \
+            | grep -q 'rules-extra/my-rules/\*.yaml'
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.recordingRules.enabled=true \
+            --set clusterMonitoring.recordingRules.notifierUrl=http://am:9093 | grep -q 'notifier.url=http://am:9093'
           # Control-plane health dashboard: off by default; opt-in renders one
           # sidecar-labelled ConfigMap, independent of clusterMonitoring, and the
           # cluster-monitoring dashboards must NOT double-ship it.

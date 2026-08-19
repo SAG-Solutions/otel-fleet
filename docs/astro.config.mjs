@@ -108,6 +108,7 @@ export default defineConfig({
             { label: 'Runbooks', slug: 'operations/runbooks' },
             { label: 'Security model', slug: 'operations/security-model' },
             { label: 'Stability & versioning', slug: 'operations/stability' },
+            { label: 'Migrating from kube-prometheus-stack', slug: 'operations/migrating-from-kube-prometheus' },
           ],
         },
         {

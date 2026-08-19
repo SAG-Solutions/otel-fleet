@@ -329,6 +329,17 @@ clusterMonitoring:
       tag: "v1.103.0"
       pullPolicy: IfNotPresent
     evaluationInterval: 30s
+    # Bring your own rule files (recording and/or alerting) from ConfigMaps you
+    # create — the migration path for existing kube-prometheus-stack rules: a
+    # PrometheusRule's `.spec` is Prometheus rule format, which vmalert reads
+    # natively, so copy `.spec` into a ConfigMap (any number of *.yaml keys) and
+    # list it here. See the "Migrating from kube-prometheus-stack" guide.
+    additionalRuleConfigMaps: []   # e.g. [my-kube-mixin-rules, my-app-rules]
+    # Optional Alertmanager URL. When set, vmalert ALSO evaluates alerting rules
+    # from additionalRuleConfigMaps and routes them here — a bridge for kps users
+    # who keep their Alertmanager + PrometheusRule alerts. Empty (default) =
+    # recording-only; alerting stays native in otel-fleet (Settings -> Alert rules).
+    notifierUrl: ""
     resources:
       requests: { cpu: 50m, memory: 96Mi }
       limits: { memory: 192Mi }

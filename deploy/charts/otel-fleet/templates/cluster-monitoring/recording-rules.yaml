@@ -54,8 +54,14 @@ spec:
           {{- end }}
           args:
             - --rule=/etc/vmalert/rules/recording-rules.yaml
+            {{- range $rr.additionalRuleConfigMaps }}
+            - --rule=/etc/vmalert/rules-extra/{{ . }}/*.yaml
+            {{- end }}
             - --datasource.url={{ $vm }}
             - --remoteWrite.url={{ $vm }}
+            {{- if $rr.notifierUrl }}
+            - --notifier.url={{ $rr.notifierUrl }}
+            {{- end }}
             - --evaluationInterval={{ $rr.evaluationInterval }}
           ports:
             - { name: http, containerPort: 8880 }
@@ -67,11 +73,19 @@ spec:
             initialDelaySeconds: 10
           volumeMounts:
             - { name: rules, mountPath: /etc/vmalert/rules, readOnly: true }
+            {{- range $rr.additionalRuleConfigMaps }}
+            - { name: extra-{{ . }}, mountPath: /etc/vmalert/rules-extra/{{ . }}, readOnly: true }
+            {{- end }}
           resources: {{- toYaml $rr.resources | nindent 12 }}
       volumes:
         - name: rules
           configMap:
             name: {{ include "otel-fleet.fullname" . }}-recording-rules
+        {{- range $rr.additionalRuleConfigMaps }}
+        - name: extra-{{ . }}
+          configMap:
+            name: {{ . }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
