@@ -71,6 +71,8 @@ customer's own backends — managed through a web UI.
 | [![Fleet](docs/public/assets/screenshots/fleet.png)](docs/public/assets/screenshots/fleet.png) | [![Billing](docs/public/assets/screenshots/billing.png)](docs/public/assets/screenshots/billing.png) |
 | **Tenant portal** — scoped self-service view for a customer's own users | **Alerting** — metric-threshold + PromQL rules with severities and channels |
 | [![Tenant portal](docs/public/assets/screenshots/portal.png)](docs/public/assets/screenshots/portal.png) | [![Alert rules](docs/public/assets/screenshots/alert-rules.png)](docs/public/assets/screenshots/alert-rules.png) |
+| **Metrics** — per-tenant PromQL over VictoriaMetrics, scoped to the customer | **Pipeline graph** — the same pipeline as a visual receiver→processor→exporter DAG |
+| [![Metrics explorer](docs/public/assets/screenshots/metrics-explorer.png)](docs/public/assets/screenshots/metrics-explorer.png) | [![Pipeline graph](docs/public/assets/screenshots/pipeline-graph.png)](docs/public/assets/screenshots/pipeline-graph.png) |
 
 ## Architecture
 
