@@ -9,11 +9,14 @@ logs, traces and metrics from multiple customers via OTLP, attribute every
 datapoint to a tenant, store it in ClickHouse and/or forward it to each
 customer's own backends — managed through a web UI.
 
-> **Status: pre-1.0.** Under active development, not yet production-ready:
-> single control-plane replica (OpAMP is process-sticky), plaintext internal
-> listeners, and possible breaking changes between minors. The
-> [docs](https://sag-solutions.github.io/otel-fleet/) are honest about the
-> limitations.
+> **Status: 1.0 — production-ready.** From v1.0.0 the REST API (`/api/v1`), the
+> `OTEL_FLEET_` environment surface, and the Helm chart values follow
+> [Semantic Versioning](https://sag-solutions.github.io/otel-fleet/operations/stability/).
+> Runs HA (stateless API tier + leader-elected OpAMP tier), TLS/mTLS on every
+> listener, per-tenant isolation and quotas, and ships cosign-signed images with
+> SBOM + SLSA provenance. See the
+> [security model](https://sag-solutions.github.io/otel-fleet/operations/security-model/)
+> and [sizing guide](https://sag-solutions.github.io/otel-fleet/operations/sizing/).
 
 ## Features
 
@@ -32,20 +35,42 @@ customer's own backends — managed through a web UI.
   full configs remotely, and revert locally if a pushed config crash-loops.
 - **Accurate throughput metrics** — ground-truth ingest counters per tenant plus
   per-pipeline-stage sent/failed/queued from collector self-telemetry.
-- **SSO, RBAC, audit** — Google, Microsoft Entra ID, GitHub, generic OIDC;
-  roles admin/operator/viewer; user invites; queryable audit log. Secrets
-  (SSO client secrets, pipeline credentials) AES-256-GCM-encrypted at rest.
+- **Enterprise auth** — SSO (Google, Microsoft Entra ID, GitHub, generic OIDC) +
+  **SAML**; roles admin/operator/viewer with per-customer tenant scoping;
+  **SCIM 2.0** provisioning, including **group → role/tenant mapping**; user
+  invites; queryable audit log. Secrets AES-256-GCM-encrypted at rest with
+  zero-downtime key rotation.
+- **Self-service tenant portal** — scoped customer users get a purpose-built
+  portal (their usage, API keys, agent enrollment, pipelines) — never the
+  fleet-wide admin console.
+- **Multi-region / data residency** — pin a customer to a region; its telemetry
+  is written, read, retained, and alerted on only in that region's stores.
+  Fleet-wide views fan out and merge. Deleting a customer purges its telemetry
+  (right-to-erasure).
+- **Native alerting** — metric-threshold and PromQL rules (per region), firing
+  to Slack / PagerDuty / Opsgenie / signed webhooks, with severities and
+  maintenance windows — no Alertmanager.
+- **Metered billing** — priced monthly statements per customer with
+  per-customer price overrides and CSV export.
+- **Kubernetes monitoring** — an OpenTelemetry-native replacement for the
+  kube-prometheus-stack (cluster/node/pod metrics → VictoriaMetrics, Target
+  Allocator, recording rules, curated Grafana dashboards).
+- **Runs in production** — HA control plane, KEDA autoscaling, backup/restore,
+  NetworkPolicies, rate limiting, a control-plane health dashboard, and
+  cosign-signed images with SBOM + SLSA provenance.
 
 ## Screenshots
 
 |  |  |
 |---|---|
-| **Pipeline builder** — schema-driven form with a live, validated YAML preview | **Dashboard** — fleet-wide ingest and top customers by volume |
-| [![Pipeline builder](docs/public/assets/screenshots/pipeline-builder.png)](docs/public/assets/screenshots/pipeline-builder.png) | [![Dashboard](docs/public/assets/screenshots/dashboard.png)](docs/public/assets/screenshots/dashboard.png) |
+| **Dashboard** — fleet-wide ingest and top customers by volume | **Pipeline builder** — schema-driven form with a live, validated YAML preview |
+| [![Dashboard](docs/public/assets/screenshots/dashboard.png)](docs/public/assets/screenshots/dashboard.png) | [![Pipeline builder](docs/public/assets/screenshots/pipeline-builder.png)](docs/public/assets/screenshots/pipeline-builder.png) |
 | **Explore** — search a tenant's stored logs on the read path | **Explore** — root-span trace list with span and error counts |
 | [![Explore logs](docs/public/assets/screenshots/explore-logs.png)](docs/public/assets/screenshots/explore-logs.png) | [![Explore traces](docs/public/assets/screenshots/explore-traces.png)](docs/public/assets/screenshots/explore-traces.png) |
-| **Fleet** — every collector managed over OpAMP, with config sync status |  |
-| [![Fleet](docs/public/assets/screenshots/fleet.png)](docs/public/assets/screenshots/fleet.png) |  |
+| **Fleet** — every collector managed over OpAMP, with config sync status | **Billing** — metered statements with per-customer price overrides |
+| [![Fleet](docs/public/assets/screenshots/fleet.png)](docs/public/assets/screenshots/fleet.png) | [![Billing](docs/public/assets/screenshots/billing.png)](docs/public/assets/screenshots/billing.png) |
+| **Tenant portal** — scoped self-service view for a customer's own users | **Alerting** — metric-threshold + PromQL rules with severities and channels |
+| [![Tenant portal](docs/public/assets/screenshots/portal.png)](docs/public/assets/screenshots/portal.png) | [![Alert rules](docs/public/assets/screenshots/alert-rules.png)](docs/public/assets/screenshots/alert-rules.png) |
 
 ## Architecture
 
@@ -88,7 +113,7 @@ OTEL_FLEET_API_KEY=otm_... docker compose \
 
 ```sh
 helm install otel-fleet oci://ghcr.io/sag-solutions/charts/otel-fleet \
-  --namespace otel-fleet --create-namespace --values my-values.yaml
+  --version 1.0.0 --namespace otel-fleet --create-namespace --values my-values.yaml
 ```
 
 **Hacking on otel-fleet** (Go 1.26+, Node 24+ with pnpm, Docker):
@@ -125,7 +150,8 @@ docs/                documentation site (Astro Starlight)
 - **Security:** privately to security@sag-solutions.com — see
   [SECURITY.md](SECURITY.md).
 - **Code of conduct:** [Contributor Covenant 2.1](CODE_OF_CONDUCT.md).
-- **Releases:** tagged `v*`, images + chart on GHCR, cosign-signed — see
+- **Releases:** tagged `v*`, images + charts on GHCR, cosign-signed with SBOM +
+  SLSA provenance ([verifying artifacts](https://sag-solutions.github.io/otel-fleet/installation/helm/#verifying-artifacts)) — see
   [RELEASING.md](RELEASING.md).
 
 ## License
