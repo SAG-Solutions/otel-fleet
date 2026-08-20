@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/SAG-Solutions/otel-fleet/compare/v1.0.0...v1.1.0) (2026-08-20)
+
+
+### Features
+
+* **alerting:** severity-based inhibition in the native evaluator ([e9c1902](https://github.com/SAG-Solutions/otel-fleet/commit/e9c19025555053b6bb5a658cb1de279e50c60c6c))
+* **cluster-monitoring:** kube-prometheus migration path (own rules + Alertmanager bridge) + guide ([b9fec59](https://github.com/SAG-Solutions/otel-fleet/commit/b9fec59e98338e3dad4fe42840f6cbc4aa9d7982))
+* **cluster-monitoring:** OTel-native cluster dashboard + starter alert pack ([d8bbbc7](https://github.com/SAG-Solutions/otel-fleet/commit/d8bbbc765144a9945a0d3dbc294a0c85469c6309))
+
+
+### Bug Fixes
+
+* **demo:** grant admin in the demo compose so the documented flow works ([a3fa73b](https://github.com/SAG-Solutions/otel-fleet/commit/a3fa73b77507b535759289abac76ead6dca31215))
+
 ## [1.0.0](https://github.com/SAG-Solutions/otel-fleet/compare/v0.13.0...v1.0.0) (2026-08-18)
 
 
