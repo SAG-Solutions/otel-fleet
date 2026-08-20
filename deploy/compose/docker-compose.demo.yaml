@@ -84,6 +84,10 @@ services:
       dockerfile: Dockerfile
     environment:
       OTEL_FLEET_DEV_LOGIN: "true" # demo: password-less login with any email
+      # Log in as admin@example.com for full (admin) access — the demo flow
+      # (create a customer + API key) needs it. Any other email signs in as a
+      # read-only viewer.
+      OTEL_FLEET_ADMIN_EMAILS: admin@example.com
       OTEL_FLEET_DATABASE_URL: postgres://otelfleet:otelfleet@postgres:5432/otelfleet?sslmode=disable
       OTEL_FLEET_CLICKHOUSE_ADDR: clickhouse:9000
       OTEL_FLEET_CLICKHOUSE_DATABASE: otel

@@ -101,7 +101,7 @@ components, `tenantauth` and `tenantstamp`. Full story:
 
 ```sh
 docker compose -f deploy/compose/docker-compose.demo.yaml up -d --build
-open http://localhost:8080    # dev login: any email
+open http://localhost:8080    # dev login as admin@example.com (admin); any other email = read-only viewer
 ```
 
 Create a customer + API key in the UI (shown once!), then generate traffic:
