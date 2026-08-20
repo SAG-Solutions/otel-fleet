@@ -81,6 +81,25 @@ clusterMonitoring:
 Update the `expr:`s to the OTel metric names above. **Recording** rules write
 their series straight back to VictoriaMetrics.
 
+### Starter alert pack
+
+The bundle ships a small **OTel-native starter alert pack**
+(`files/cluster-alerts.yaml`) — collection-health `absent()` alerts, a
+namespace-lost-all-pods alert, and a tunable cluster-CPU alert, all built on the
+recording-rule rollups so they're safe on any cluster. Turn it on (it evaluates
+in the same vmalert, so it routes via `notifierUrl`):
+
+```yaml
+clusterMonitoring:
+  recordingRules:
+    enabled: true
+    clusterAlerts: { enabled: true }
+    notifierUrl: http://alertmanager.monitoring.svc:9093   # or recreate natively
+```
+
+It's a starter set, not the full kubernetes-mixin — extend it with your own
+rules via `additionalRuleConfigMaps`.
+
 ### Keeping Alertmanager (optional bridge)
 
 If you'd rather keep your existing Alertmanager and `PrometheusRule` *alerts*
@@ -121,8 +140,10 @@ your own dashboards to the OTel metric names above.
 Set expectations honestly:
 
 - **A batteries-included alert/dashboard corpus** equal to the full
-  kubernetes-mixin. You bring the rules (migrated as above) and dashboards; the
-  bundle ships a curated starter set, not the entire mixin.
+  kubernetes-mixin. The bundle ships a curated starter set — the **Kubernetes
+  Cluster / Nodes / Workloads** dashboards and the starter alert pack above — not
+  the entire mixin; bring the rest via `additionalRuleConfigMaps` and your own
+  dashboards.
 - **Alertmanager routing/grouping/inhibition** inside otel-fleet's native
   alerting — it has channels, severities, and maintenance windows. Keep
   Alertmanager via `notifierUrl` if you rely on routing trees or inhibition.

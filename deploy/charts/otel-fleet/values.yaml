@@ -340,6 +340,14 @@ clusterMonitoring:
     # who keep their Alertmanager + PrometheusRule alerts. Empty (default) =
     # recording-only; alerting stays native in otel-fleet (Settings -> Alert rules).
     notifierUrl: ""
+    # Ship the curated starter cluster alert pack (files/cluster-alerts.yaml):
+    # collection-health (absent) + namespace-lost-pods + a tunable CPU alert,
+    # built only on the recording-rule rollups so it's safe on any cluster.
+    # These are ALERTING rules — set notifierUrl (Alertmanager) to route them, or
+    # recreate the equivalents natively under Settings -> Alert rules. Requires
+    # recordingRules.enabled (same vmalert workload).
+    clusterAlerts:
+      enabled: false
     resources:
       requests: { cpu: 50m, memory: 96Mi }
       limits: { memory: 192Mi }

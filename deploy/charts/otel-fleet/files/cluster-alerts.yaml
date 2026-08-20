@@ -1,0 +1,48 @@
+# Starter cluster alert pack (OTel-native), opt-in via
+# clusterMonitoring.clusterAlerts.enabled. These are vmalert ALERTING rules, so
+# they route to clusterMonitoring.recordingRules.notifierUrl (your Alertmanager)
+# — set it, or recreate the equivalents as native PromQL alert rules under
+# Settings -> Alert rules (see the "Migrating from kube-prometheus-stack" guide).
+#
+# Every rule is built ONLY on series this bundle is known to produce (the
+# recording-rule rollups the cluster-e2e verifies), so the pack is safe on any
+# cluster. Absolute thresholds are cluster-specific — tune them.
+groups:
+  - name: otel-fleet-cluster
+    rules:
+      # Collection health — the most robust signal: the node/pod rollups stop
+      # appearing when the DaemonSet / cluster tier is down or can't reach VM.
+      - alert: OtelFleetClusterNodeMetricsAbsent
+        expr: absent(cluster:node_cpu_usage:sum)
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: Cluster node metrics are absent
+          description: cluster:node_cpu_usage:sum has produced no data for 10m — the node DaemonSet or recording rules may be down.
+      - alert: OtelFleetClusterPodMetricsAbsent
+        expr: absent(namespace:pods:count)
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: Cluster pod metrics are absent
+          description: namespace:pods:count has produced no data for 10m — the k8s_cluster receiver or recording rules may be down.
+
+      # A namespace that had pods dropping to zero — often a bad rollout/eviction.
+      - alert: OtelFleetNamespaceLostAllPods
+        expr: namespace:pods:count == 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: Namespace {{ $labels.k8s_namespace_name }} has no pods
+          description: namespace:pods:count is 0 for {{ $labels.k8s_namespace_name }} for 5m.
+
+      # Cluster CPU saturation. Threshold is an ABSOLUTE core count — set it to
+      # roughly your cluster's allocatable cores (there is no capacity metric in
+      # the safe rollup set to divide by). Disabled-ish by a very high default.
+      - alert: OtelFleetClusterCPUSaturation
+        expr: cluster:node_cpu_usage:sum > 1000000
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: Cluster CPU usage is high
+          description: cluster:node_cpu_usage:sum ({{ $value }} cores) exceeded the configured threshold for 15m — tune this to your cluster's capacity.

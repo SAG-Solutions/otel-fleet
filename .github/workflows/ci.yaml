@@ -392,6 +392,15 @@ jobs:
           helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set clusterMonitoring.enabled=true --set clusterMonitoring.recordingRules.enabled=true \
             --set clusterMonitoring.recordingRules.notifierUrl=http://am:9093 | grep -q 'notifier.url=http://am:9093'
+          # Starter cluster alert pack: off by default; opt-in bundles the rules file.
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.recordingRules.enabled=true | grep -c 'cluster-alerts.yaml')" = "0"
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.recordingRules.enabled=true \
+            --set clusterMonitoring.recordingRules.clusterAlerts.enabled=true | grep -q 'OtelFleetClusterNodeMetricsAbsent'
+          # Cluster overview dashboard ships with the dashboards bundle.
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set clusterMonitoring.enabled=true --set clusterMonitoring.dashboards.enabled=true | grep -q 'otelfleet-cluster'
           # Control-plane health dashboard: off by default; opt-in renders one
           # sidecar-labelled ConfigMap, independent of clusterMonitoring, and the
           # cluster-monitoring dashboards must NOT double-ship it.

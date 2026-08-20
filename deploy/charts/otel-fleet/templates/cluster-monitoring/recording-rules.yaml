@@ -16,6 +16,10 @@ metadata:
 data:
   recording-rules.yaml: |
 {{ .Files.Get "files/recording-rules.yaml" | indent 4 }}
+  {{- if $rr.clusterAlerts.enabled }}
+  cluster-alerts.yaml: |
+{{ .Files.Get "files/cluster-alerts.yaml" | indent 4 }}
+  {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -54,6 +58,9 @@ spec:
           {{- end }}
           args:
             - --rule=/etc/vmalert/rules/recording-rules.yaml
+            {{- if $rr.clusterAlerts.enabled }}
+            - --rule=/etc/vmalert/rules/cluster-alerts.yaml
+            {{- end }}
             {{- range $rr.additionalRuleConfigMaps }}
             - --rule=/etc/vmalert/rules-extra/{{ . }}/*.yaml
             {{- end }}

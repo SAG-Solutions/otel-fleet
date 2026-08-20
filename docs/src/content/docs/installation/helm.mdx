@@ -377,11 +377,13 @@ ways to see them:
   directly (PromQL against VictoriaMetrics), plus an ad-hoc PromQL panel. No
   extra tool required.
 - **Grafana** (optional) — point it at VictoriaMetrics as a Prometheus
-  datasource (URL `http://<victoriametrics>:8428`). The chart ships two curated
-  dashboards keyed to this bundle's exact metric names — **Kubernetes Nodes**
-  (CPU, memory, filesystem, network, load, readiness) and **Kubernetes
-  Workloads** (pod phases, top pods by CPU/memory, container restarts,
-  Deployment/DaemonSet health). Turn them on and a sidecar-enabled Grafana
+  datasource (URL `http://<victoriametrics>:8428`). The chart ships three curated
+  dashboards keyed to this bundle's exact metric names — **Kubernetes Cluster**
+  (cluster/namespace CPU, memory, network, pod counts, built on the recording
+  rollups), **Kubernetes Nodes** (CPU, memory, filesystem, network, load,
+  readiness) and **Kubernetes Workloads** (pod phases, top pods by CPU/memory,
+  container restarts, Deployment/DaemonSet health). Turn them on and a
+  sidecar-enabled Grafana
   imports them automatically:
 
   ```yaml
