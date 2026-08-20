@@ -76,6 +76,25 @@ type Service struct {
 
 	mu     sync.Mutex
 	firing map[string]bool // ruleID|customerID -> currently breaching
+
+	// InhibitLowerSeverity, when true, suppresses firing NOTIFICATIONS for
+	// warning/info alerts in a scope while a critical alert is actively firing in
+	// the same scope (a customer for metric rules, a region for cluster PromQL
+	// rules) — cutting alert-storm noise during an incident. Firing STATE is
+	// still tracked, so the resolve still notifies. Off by default
+	// (OTEL_FLEET_ALERT_INHIBIT_LOWER_SEVERITY).
+	InhibitLowerSeverity bool
+}
+
+// pendingNotify is one alert transition captured during an evaluation pass,
+// held until the whole pass is evaluated so inhibition can see every active
+// critical before any notification is sent.
+type pendingNotify struct {
+	channels []store.Webhook
+	payload  webhooks.Payload
+	firing   bool
+	severity string
+	scope    string
 }
 
 // New wires the evaluator. interval is the tick period (e.g. 60s). promql may
@@ -152,19 +171,41 @@ func (s *Service) Evaluate(ctx context.Context, now time.Time) error {
 		byHookID[h.ID] = h
 	}
 
+	// Two phases so inhibition sees the full picture: first evaluate every rule
+	// — updating firing state, collecting the transitions to notify, and marking
+	// which scopes have an actively-firing critical — then apply inhibition and
+	// send what survives.
+	var pending []pendingNotify
+	criticalScopes := map[string]bool{}
 	for _, rule := range rules {
-		if err := s.evalRule(ctx, now, rule, refs, byClientID, byID, byHookID); err != nil {
+		if err := s.evalRule(ctx, now, rule, refs, byClientID, byID, byHookID, &pending, criticalScopes); err != nil {
 			s.log.Error("alerting: rule evaluation failed", "rule", rule.ID, "name", rule.Name, "err", err)
 		}
 	}
+	s.dispatch(ctx, pending, criticalScopes)
 	return nil
 }
 
+// dispatch sends the pass's notifications, dropping firing notifications that a
+// same-scope active critical inhibits (when enabled). Resolves always go out.
+func (s *Service) dispatch(ctx context.Context, pending []pendingNotify, criticalScopes map[string]bool) {
+	for _, n := range pending {
+		if s.InhibitLowerSeverity && n.firing && n.severity != store.AlertSeverityCritical && criticalScopes[n.scope] {
+			s.log.Info("alerting: notification inhibited by active critical in scope", "scope", n.scope, "severity", n.severity)
+			continue
+		}
+		if len(n.channels) > 0 {
+			s.notifier.SendToChannels(ctx, n.channels, n.payload)
+		}
+	}
+}
+
 func (s *Service) evalRule(ctx context.Context, now time.Time, rule store.AlertRule, refs []store.CustomerRef,
-	byClientID map[string]store.CustomerRef, byID map[uuid.UUID]store.CustomerRef, byHookID map[uuid.UUID]store.Webhook) error {
+	byClientID map[string]store.CustomerRef, byID map[uuid.UUID]store.CustomerRef, byHookID map[uuid.UUID]store.Webhook,
+	pending *[]pendingNotify, criticalScopes map[string]bool) error {
 
 	if rule.Metric == store.AlertMetricPromQL {
-		return s.evalPromQL(ctx, now, rule, byHookID)
+		return s.evalPromQL(ctx, now, rule, byHookID, pending, criticalScopes)
 	}
 
 	since := now.Add(-time.Duration(rule.WindowSeconds) * time.Second).UTC()
@@ -194,6 +235,13 @@ func (s *Service) evalRule(ctx context.Context, now time.Time, rule store.AlertR
 		s.firing[key] = breached
 		s.mu.Unlock()
 
+		// Scope = the customer; a firing critical here inhibits lower-severity
+		// notifications for the same customer this pass.
+		scope := ref.ID.String()
+		if breached && rule.Severity == store.AlertSeverityCritical {
+			criticalScopes[scope] = true
+		}
+
 		if breached == was {
 			continue // no transition
 		}
@@ -202,8 +250,12 @@ func (s *Service) evalRule(ctx context.Context, now time.Time, rule store.AlertR
 			event = webhooks.AlertFiring
 		}
 		s.log.Info("alerting: transition", "rule", rule.Name, "customer", ref.Name, "metric", rule.Metric, "value", value, "threshold", rule.Threshold, "firing", breached)
-		if len(channels) > 0 {
-			s.notifier.SendToChannels(ctx, channels, webhooks.Payload{
+		*pending = append(*pending, pendingNotify{
+			channels: channels,
+			firing:   breached,
+			severity: rule.Severity,
+			scope:    scope,
+			payload: webhooks.Payload{
 				Event:      event,
 				OccurredAt: now.UTC(),
 				Detail: map[string]any{
@@ -216,8 +268,8 @@ func (s *Service) evalRule(ctx context.Context, now time.Time, rule store.AlertR
 					"observed":      value,
 					"windowSeconds": rule.WindowSeconds,
 				},
-			})
-		}
+			},
+		})
 	}
 	return nil
 }
@@ -226,7 +278,8 @@ func (s *Service) evalRule(ctx context.Context, now time.Time, rule store.AlertR
 // the metrics store, compare the scalar result to the threshold, and fire once
 // on transition. An empty/absent result is treated as "no data" (not a breach)
 // so a transiently-unavailable metric doesn't flap.
-func (s *Service) evalPromQL(ctx context.Context, now time.Time, rule store.AlertRule, byHookID map[uuid.UUID]store.Webhook) error {
+func (s *Service) evalPromQL(ctx context.Context, now time.Time, rule store.AlertRule, byHookID map[uuid.UUID]store.Webhook,
+	pending *[]pendingNotify, criticalScopes map[string]bool) error {
 	if s.promql == nil {
 		s.log.Warn("alerting: promql rule skipped, no metrics store configured", "rule", rule.Name)
 		return nil
@@ -250,6 +303,13 @@ func (s *Service) evalPromQL(ctx context.Context, now time.Time, rule store.Aler
 		s.firing[key] = breached
 		s.mu.Unlock()
 
+		// Scope = the region; a firing cluster-wide critical inhibits lower
+		// cluster alerts for the same region this pass.
+		scope := "region:" + region
+		if breached && rule.Severity == store.AlertSeverityCritical {
+			criticalScopes[scope] = true
+		}
+
 		if breached == was {
 			continue // no transition
 		}
@@ -258,8 +318,12 @@ func (s *Service) evalPromQL(ctx context.Context, now time.Time, rule store.Aler
 			event = webhooks.AlertFiring
 		}
 		s.log.Info("alerting: transition", "rule", rule.Name, "metric", "promql", "region", region, "query", rule.Query, "value", value, "threshold", rule.Threshold, "firing", breached)
-		if len(channels) > 0 {
-			s.notifier.SendToChannels(ctx, channels, webhooks.Payload{
+		*pending = append(*pending, pendingNotify{
+			channels: channels,
+			firing:   breached,
+			severity: rule.Severity,
+			scope:    scope,
+			payload: webhooks.Payload{
 				Event:      event,
 				OccurredAt: now.UTC(),
 				Detail: map[string]any{
@@ -272,8 +336,8 @@ func (s *Service) evalPromQL(ctx context.Context, now time.Time, rule store.Aler
 					"threshold":  rule.Threshold,
 					"observed":   value,
 				},
-			})
-		}
+			},
+		})
 	}
 	return nil
 }

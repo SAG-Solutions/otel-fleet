@@ -140,6 +140,19 @@ evaluation resumes cleanly when the window ends (a rule that was already firing
 before the window stays firing without re-notifying; one that started breaching
 during the window fires on the first tick after it ends).
 
+### Severity inhibition
+
+During an incident many lower-severity alerts often fire alongside the real
+cause. Set **`OTEL_FLEET_ALERT_INHIBIT_LOWER_SEVERITY=true`** (Helm
+`controlPlane.alertInhibitLowerSeverity`) and the evaluator **suppresses firing
+notifications for `warning`/`info` alerts in a scope while a `critical` alert is
+firing in that same scope** — the customer for metric-threshold rules, or the
+region for cluster PromQL rules. The firing **state is still tracked**, so the
+suppressed alert's **resolve still notifies**, and the critical itself always
+notifies. Off by default (each rule notifies independently). This is scoped
+inhibition, not full routing trees — for label-based routing/grouping keep an
+Alertmanager via the cluster-monitoring [`notifierUrl`](/otel-fleet/operations/migrating-from-kube-prometheus/#keeping-alertmanager-optional-bridge).
+
 ### Examples
 
 - **Ingest stopped for a key customer** — Metric `ingest_items`, comparison

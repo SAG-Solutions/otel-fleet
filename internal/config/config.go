@@ -137,6 +137,13 @@ type Config struct {
 	// (OTEL_FLEET_RETENTION_INTERVAL, default 24h).
 	RetentionInterval time.Duration
 
+	// AlertInhibitLowerSeverity suppresses firing notifications for warning/info
+	// alerts in a scope while a critical alert is firing in that same scope (the
+	// customer, or the region for cluster PromQL rules). Firing state is still
+	// tracked so resolves notify. OTEL_FLEET_ALERT_INHIBIT_LOWER_SEVERITY,
+	// default false.
+	AlertInhibitLowerSeverity bool
+
 	// PurgeOnDelete erases a customer's telemetry from ClickHouse when the
 	// customer is deleted (right-to-erasure), instead of waiting for the table
 	// TTL. OTEL_FLEET_PURGE_ON_DELETE, default true. Set false to keep a
@@ -208,6 +215,9 @@ func Load() (*Config, error) {
 
 	var err error
 	if cfg.PurgeOnDelete, err = envBool("PURGE_ON_DELETE", true); err != nil {
+		return nil, err
+	}
+	if cfg.AlertInhibitLowerSeverity, err = envBool("ALERT_INHIBIT_LOWER_SEVERITY", false); err != nil {
 		return nil, err
 	}
 	if cfg.RateLimitEnabled, err = envBool("RATE_LIMIT_ENABLED", true); err != nil {

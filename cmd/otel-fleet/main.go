@@ -214,6 +214,7 @@ func run(log *slog.Logger) error {
 	}
 	retentionSvc := retention.New(func(region string) retention.CH { return regionStores.ClickHouse(region) }, st, cfg.RetentionInterval, log)
 	alertingSvc := alerting.New(alerting.NewClickHouseSource(alertCHs), alerting.NewVMPromQLSource(vmByRegion), st, webhookDispatcher, time.Minute, log)
+	alertingSvc.InhibitLowerSeverity = cfg.AlertInhibitLowerSeverity
 
 	// Login provider registry: database providers + the OTEL_FLEET_OIDC_* env
 	// provider, resolved per request under /auth/{name}/...

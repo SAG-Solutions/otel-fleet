@@ -225,6 +225,45 @@ func TestEvaluatePromQLRuleFiresPerRegion(t *testing.T) {
 	}
 }
 
+func TestEvaluateInhibitsLowerSeverityInScope(t *testing.T) {
+	ch := uuid.New()
+	cust := store.CustomerRef{ID: uuid.New(), Name: "ACME", ClientID: "cust_x"}
+	// Two all-customer rules that both breach for cust_x (ingest 0 < 10): one
+	// critical, one warning — same customer scope.
+	critical := store.AlertRule{
+		ID: uuid.New(), Name: "ingest stopped", Metric: store.AlertMetricIngestItems,
+		Comparison: store.AlertComparisonBelow, Threshold: 10, WindowSeconds: 300,
+		Severity: store.AlertSeverityCritical, ChannelIDs: []uuid.UUID{ch}, Enabled: true,
+	}
+	warning := store.AlertRule{
+		ID: uuid.New(), Name: "ingest low", Metric: store.AlertMetricIngestItems,
+		Comparison: store.AlertComparisonBelow, Threshold: 10, WindowSeconds: 300,
+		Severity: store.AlertSeverityWarning, ChannelIDs: []uuid.UUID{ch}, Enabled: true,
+	}
+	run := func(inhibit bool) []capturedSend {
+		st := &fakeStore{
+			rules: []store.AlertRule{critical, warning},
+			refs:  []store.CustomerRef{cust},
+			hooks: []store.Webhook{{ID: ch, Enabled: true}},
+		}
+		n := &fakeNotifier{}
+		svc := New(&fakeSource{vals: map[string]float64{"cust_x": 0}}, nil, st, n, time.Minute, discardLog())
+		svc.InhibitLowerSeverity = inhibit
+		must(t, svc.Evaluate(context.Background(), time.Unix(1_700_000_000, 0)))
+		return n.sends
+	}
+
+	// Inhibit ON: only the critical notifies; the same-scope warning is suppressed.
+	on := run(true)
+	if len(on) != 1 || on[0].detail["severity"] != store.AlertSeverityCritical {
+		t.Fatalf("inhibit on: want 1 send (critical), got %+v", on)
+	}
+	// Inhibit OFF: both notify.
+	if off := run(false); len(off) != 2 {
+		t.Fatalf("inhibit off: want 2 sends, got %d", len(off))
+	}
+}
+
 func TestEvaluateSuppressedByMaintenanceWindow(t *testing.T) {
 	chID := uuid.New()
 	cust := store.CustomerRef{ID: uuid.New(), Name: "ACME", ClientID: "cust_x"}

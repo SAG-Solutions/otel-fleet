@@ -415,6 +415,11 @@ jobs:
             | grep -c 'OTEL_FLEET_PURGE_ON_DELETE')" = "0"
           helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
             --set controlPlane.purgeOnDelete=false | grep -q 'OTEL_FLEET_PURGE_ON_DELETE'
+          # Alert severity inhibition: env absent by default, rendered when set.
+          test "$(helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            | grep -c 'OTEL_FLEET_ALERT_INHIBIT_LOWER_SEVERITY')" = "0"
+          helm template t deploy/charts/otel-fleet --set external.databaseUrl=postgres://x:y@pg:5432/otelfleet \
+            --set controlPlane.alertInhibitLowerSeverity=true | grep -q 'OTEL_FLEET_ALERT_INHIBIT_LOWER_SEVERITY'
       - run: helm lint deploy/charts/otel-fleet-agent --set opamp.endpoint=wss://idp/v1/opamp --set bootstrapToken.value=otm_bt_x
       - name: Template edge-agent chart (inline token, and existing-secret + no-persistence)
         run: |

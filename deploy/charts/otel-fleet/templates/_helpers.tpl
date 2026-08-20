@@ -81,6 +81,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if hasKey .Values.controlPlane "purgeOnDelete" }}
 - { name: OTEL_FLEET_PURGE_ON_DELETE, value: {{ .Values.controlPlane.purgeOnDelete | quote }} }
 {{- end }}
+{{- if hasKey .Values.controlPlane "alertInhibitLowerSeverity" }}
+- { name: OTEL_FLEET_ALERT_INHIBIT_LOWER_SEVERITY, value: {{ .Values.controlPlane.alertInhibitLowerSeverity | quote }} }
+{{- end }}
 {{- with .Values.controlPlane.rateLimit }}
 {{- if hasKey . "enabled" }}
 - { name: OTEL_FLEET_RATE_LIMIT_ENABLED, value: {{ .enabled | quote }} }

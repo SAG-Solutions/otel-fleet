@@ -116,6 +116,10 @@ controlPlane:
   # (right-to-erasure) instead of waiting for the table TTL. Unset = server
   # default (true). Set false to keep a retention hold after deletion.
   # purgeOnDelete: true
+  # Suppress firing notifications for warning/info alerts in a scope while a
+  # critical alert is firing in that same scope (customer, or region for cluster
+  # PromQL rules) — cuts alert-storm noise. Unset = server default (false).
+  # alertInhibitLowerSeverity: true
   # In-cluster TLS. When disabled the listeners are plaintext (terminate TLS
   # at an ingress in front). When enabled the pods serve TLS directly.
   tls:
