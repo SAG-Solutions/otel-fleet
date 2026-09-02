@@ -58,7 +58,7 @@ Deliberate choices frozen at 1.0 that could otherwise surprise:
 - **`OTEL_FLEET_SESSION_SECURE` defaults to `false`** so the binary works over
   plain HTTP for local/dev; set it `true` in production (the Helm chart does).
   This is a *default*, not a frozen guarantee — see the
-  [security model](/otel-fleet/operations/security-model/#deployment-responsibilities).
+  [security model](/operations/security-model/#deployment-responsibilities).
 
 ## Deprecation policy
 

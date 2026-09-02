@@ -135,7 +135,7 @@ tenant-scoped queries.
 ### Supply chain
 - Release images are **cosign-signed** (keyless) and carry a **SBOM** + max-mode
   **SLSA build provenance**; archives ship SPDX SBOMs. See
-  [Verifying artifacts](/otel-fleet/installation/helm/#verifying-artifacts).
+  [Verifying artifacts](/installation/helm/#verifying-artifacts).
 
 ## Deployment responsibilities
 
@@ -155,7 +155,7 @@ otel-fleet ships secure-capable but not secure-by-accident. For production:
    grants sees *all* customers (backward-compatible default). Use explicit grants
    or SCIM-group management to scope users.
 8. Route audit logs and denial metrics to your SIEM; wire the
-   [recommended alerts](/otel-fleet/operations/runbooks/#recommended-control-plane-alerts).
+   [recommended alerts](/operations/runbooks/#recommended-control-plane-alerts).
 
 ## Residual risks (accepted, with rationale)
 

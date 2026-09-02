@@ -5,7 +5,7 @@ description: "The Billing page (admin only) turns per-customer ingest usage into
 
 The **Billing** page (admin only) turns per-customer ingest usage into a priced
 monthly statement, on top of the same ClickHouse usage aggregates as the
-[Costs](/otel-fleet/) page.
+[Costs](/) page.
 
 ## Pricing
 

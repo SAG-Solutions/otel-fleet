@@ -91,6 +91,6 @@ first.
 
 A single generic OIDC provider can be configured via `OTEL_FLEET_OIDC_*`
 environment variables (useful for bootstrap, before any admin exists) — see the
-[configuration reference](/otel-fleet/installation/configuration/#environment-defined-oidc-provider-bootstrap-fallback).
+[configuration reference](/installation/configuration/#environment-defined-oidc-provider-bootstrap-fallback).
 It shows up under the name `oidc`; a database provider with the same name shadows
 it.

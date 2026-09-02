@@ -5,7 +5,7 @@ description: "Copy-paste starting points for common pipelines. Each graph block 
 
 Copy-paste starting points for common pipelines. Each `graph` block is exactly
 what the pipeline builder produces and what `otel-fleetctl apply` consumes — drop
-one under a pipeline in your [config-as-code](/otel-fleet/guides/cli/) spec, or rebuild it in the
+one under a pipeline in your [config-as-code](/guides/cli/) spec, or rebuild it in the
 UI. Every graph is validated against the real collector binary before it can be
 activated, so a bad template fails fast with an inline error.
 
@@ -139,5 +139,5 @@ graph:
 Processors: `memory_limiter`, `batch`, `filter`, `transform`, `attributes`,
 `resource`. Exporters: `otlp`, `otlphttp`, `clickhouse`, `prometheusremotewrite`,
 `file`, `debug`. Each exposes a schema-driven form in the builder; the
-[REST API](/otel-fleet/reference/api/) `GET /catalog/components` returns the full
+[REST API](/reference/api/) `GET /catalog/components` returns the full
 JSON-schema catalog.

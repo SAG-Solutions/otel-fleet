@@ -13,7 +13,7 @@ recovery procedure), see `RECOVERY.md` in the repository and the Helm
 
 ## Control plane returning 5xx / high latency
 
-**Check** — the [health dashboard](/otel-fleet/installation/helm/#control-plane-health-dashboard):
+**Check** — the [health dashboard](/installation/helm/#control-plane-health-dashboard):
 5xx ratio, latency p95/p99, Go goroutines/heap, process CPU. `GET /healthz` and
 `/readyz` on the ops port (`:9090`).
 
@@ -46,7 +46,7 @@ export queue grows.
 **Check** — ClickHouse disk usage and merge backlog; the gateway queue depth.
 
 **Act** — reads degrade but the control plane stays up. To reclaim space, lower
-the global TTL or set per-customer [retention overrides](/otel-fleet/installation/configuration/#data-lifecycle--erasure);
+the global TTL or set per-customer [retention overrides](/installation/configuration/#data-lifecycle--erasure);
 mutations are async. For a hard outage, gateways buffer to their persistent
 queue and drain on recovery — size that volume for your worst tolerable outage.
 Never point two clusters at the same disk. Shard when one node's disk or merge
@@ -61,7 +61,7 @@ rules return errors; VM restarts.
 (often a new high-cardinality label from a pipeline) is the usual cause.
 
 **Act** — give VM more memory or reduce retention; find and drop the offending
-high-cardinality series at the pipeline. Enable [recording rules](/otel-fleet/installation/helm/#recording-rules)
+high-cardinality series at the pipeline. Enable [recording rules](/installation/helm/#recording-rules)
 so dashboards/alerts hit cheap pre-aggregated series instead of raw ones.
 
 ## Denial / auth spike (401 / 403 / 429)
@@ -74,7 +74,7 @@ probing), `tenant_scope` / `requires_admin` (a scoped user hitting forbidden
 areas — often a UI/permissions misconfig).
 
 **Act** — for `rate_limited` floods from one IP, block upstream at the ingress;
-remember the in-app limiter is [per-replica](/otel-fleet/installation/configuration/#rate-limiting-and-request-limits).
+remember the in-app limiter is [per-replica](/installation/configuration/#rate-limiting-and-request-limits).
 A sustained `unauthenticated` spike from many IPs is likely credential probing —
 tighten the fronting WAF/ingress.
 
@@ -96,7 +96,7 @@ on a healthy database.
 Create these as **PromQL alert rules** in otel-fleet (Settings → Alert rules,
 metric `promql`) — or via `POST /api/v1/settings/alert-rules` — against the
 control plane's own metrics scraped into VictoriaMetrics. They fire to your
-configured [notification channels](/otel-fleet/guides/alerting/).
+configured [notification channels](/guides/alerting/).
 
 | Alert | PromQL (`> threshold`) | Notes |
 | --- | --- | --- |
@@ -106,5 +106,5 @@ configured [notification channels](/otel-fleet/guides/alerting/).
 | Denial surge | `sum(rate(otel_fleet_http_denied_total[5m]))` | warn on an unusual sustained rate for your fleet |
 | Control plane down | `up{job="otel-fleet-control-plane"}` | via your Prometheus/VM scrape target health |
 
-Tune thresholds to your traffic. The [health dashboard](/otel-fleet/installation/helm/#control-plane-health-dashboard)
+Tune thresholds to your traffic. The [health dashboard](/installation/helm/#control-plane-health-dashboard)
 visualizes the same metrics for triage.

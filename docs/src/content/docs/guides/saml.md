@@ -4,7 +4,7 @@ description: "otel-fleet can act as a SAML 2.0 Service Provider (SP) for SP-init
 ---
 
 otel-fleet can act as a **SAML 2.0 Service Provider (SP)** for SP-initiated Web
-Browser SSO, alongside [OIDC/OAuth and GitHub](/otel-fleet/guides/sso/). Use it for identity
+Browser SSO, alongside [OIDC/OAuth and GitHub](/guides/sso/). Use it for identity
 providers that speak SAML — Okta, Microsoft Entra ID, Auth0, OneLogin, Google
 Workspace, ADFS.
 
@@ -41,10 +41,10 @@ The provider appears on the login page as **Continue with <name>**. On success:
 - **email** — the assertion `NameID` (when it is an email) or a common email
   attribute (`email`, `mail`, or the SAML/OID email claim used by Entra ID).
 - **display name** — a `displayName`/`name` attribute when present.
-- The user is matched/created by email (like [invites](/otel-fleet/guides/sso/)); a new user
-  gets the `viewer` role. Set role and [customer access](/otel-fleet/guides/sso/) in
+- The user is matched/created by email (like [invites](/guides/sso/)); a new user
+  gets the `viewer` role. Set role and [customer access](/guides/sso/) in
   **Settings → Users** (or provision users ahead of time via
-  [SCIM](/otel-fleet/guides/scim/)).
+  [SCIM](/guides/scim/)).
 
 The assertion's signature, validity window and audience are all verified before
 a session is created.
@@ -56,6 +56,6 @@ a session is created.
 
 :::note
 Encrypted assertions, signed AuthnRequests, and SAML Single Logout are not
-implemented. SCIM ([provisioning](/otel-fleet/guides/scim/)) and SAML complement each other:
+implemented. SCIM ([provisioning](/guides/scim/)) and SAML complement each other:
 SCIM manages the user lifecycle, SAML logs the user in.
 :::

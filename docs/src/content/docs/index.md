@@ -6,7 +6,7 @@ hero:
   tagline: Self-hosted, multi-tenant OpenTelemetry collector fleet management for logs, traces and metrics.
   actions:
     - text: Quickstart
-      link: /otel-fleet/quickstart/
+      link: /quickstart/
       icon: right-arrow
       variant: primary
     - text: View on GitHub
@@ -100,13 +100,13 @@ server for edge agents (`:4320`). The collectors are a custom OpenTelemetry
 Collector distribution (built with OCB) that adds two components: the `tenantauth`
 server authenticator and the `tenantstamp` processor.
 
-Read the [architecture deep-dive](/otel-fleet/architecture/) for the two-tier reasoning,
+Read the [architecture deep-dive](/architecture/) for the two-tier reasoning,
 the metric naming contract, and known limitations.
 
 ## Where to go next
 
-- [Quickstart](/otel-fleet/quickstart/) — running locally in about five minutes.
-- [Helm installation](/otel-fleet/installation/helm/) — Kubernetes deployment.
-- [Configuration reference](/otel-fleet/installation/configuration/) — every `OTEL_FLEET_*`
+- [Quickstart](/quickstart/) — running locally in about five minutes.
+- [Helm installation](/installation/helm/) — Kubernetes deployment.
+- [Configuration reference](/installation/configuration/) — every `OTEL_FLEET_*`
   environment variable.
-- [Guides](/otel-fleet/guides/multi-tenancy/) — multi-tenancy, pipelines, edge agents, SSO.
+- [Guides](/guides/multi-tenancy/) — multi-tenancy, pipelines, edge agents, SSO.

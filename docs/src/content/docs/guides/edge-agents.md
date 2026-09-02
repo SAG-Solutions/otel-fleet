@@ -94,7 +94,7 @@ The central gateway/forwarding tiers scale independently via KEDA in the
 
 **Multiple regions** — install the chart once per region, each pointing at that
 region's OpAMP endpoint (see the
-[multi-region design](/otel-fleet/design/multi-region-residency/)):
+[multi-region design](/design/multi-region-residency/)):
 
 ```sh
 helm install agent-eu deploy/charts/otel-fleet-agent \
@@ -145,7 +145,7 @@ sequenceDiagram
 
 - The OpAMP listener is plaintext WebSocket (`ws://`); for agents on the
   internet, terminate TLS in front of it (`wss://`) — see
-  [Helm: exposing OpAMP](/otel-fleet/installation/helm/#exposing-opamp-to-edge-agents).
+  [Helm: exposing OpAMP](/installation/helm/#exposing-opamp-to-edge-agents).
 - Keep a single control-plane replica: OpAMP sessions are process-sticky.
 - **Per-agent tokens.** On the first bootstrap-authenticated connection the
   control plane issues the agent its own token (`otm_at_…`) and offers it via
