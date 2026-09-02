@@ -12,7 +12,7 @@ user's **role and tenant (customer) access** from IdP group membership (see
 [Group mapping](#group-mapping-role--tenant)). Users not governed by a mapped
 group get the configured default role (`viewer`, least privilege) and are
 managed by an admin in **Settings → Users**. This pairs with
-[SSO](/otel-fleet/guides/sso/): SCIM allow-lists and deprovisions the account,
+[SSO](/guides/sso/): SCIM allow-lists and deprovisions the account,
 SSO logs the user in.
 
 ## Endpoint & authentication
@@ -82,7 +82,7 @@ and customer access — by naming convention:
 | Group `displayName` | Effect on members |
 |---|---|
 | `role:admin` / `role:operator` / `role:viewer` | sets the role (highest wins across groups) |
-| `customer:<slug>` | grants access to that customer (by [customer slug](/otel-fleet/guides/multi-tenancy/)) |
+| `customer:<slug>` | grants access to that customer (by [customer slug](/guides/multi-tenancy/)) |
 
 The prefixes are configurable (`OTEL_FLEET_SCIM_GROUP_ROLE_PREFIX`,
 `OTEL_FLEET_SCIM_GROUP_CUSTOMER_PREFIX`).

@@ -463,7 +463,7 @@ The underlying control-plane metrics are:
 
 The control plane needs `OTEL_FLEET_MASTER_KEY` (base64, 32 bytes —
 `openssl rand -base64 32`) to store SSO providers and pipeline password fields;
-see the [configuration reference](/otel-fleet/installation/configuration/#secrets-encryption).
+see the [configuration reference](/installation/configuration/#secrets-encryption).
 
 Create the Secret and point the chart at it with
 `controlPlane.masterKeySecretName`:
@@ -488,7 +488,7 @@ Secret referenced by `controlPlane.masterKeySecondarySecretName` (key
 `OTEL_FLEET_MASTER_KEY_SECONDARY`). Old ciphertexts keep decrypting; run
 **Settings → SSO → Encryption at rest → “Re-encrypt under current key”**, then
 clear `masterKeySecondarySecretName`. Full steps in the
-[configuration reference](/otel-fleet/installation/configuration/#key-rotation).
+[configuration reference](/installation/configuration/#key-rotation).
 :::
 
 ## Security hardening & availability

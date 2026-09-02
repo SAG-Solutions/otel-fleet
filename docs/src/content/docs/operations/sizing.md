@@ -6,7 +6,7 @@ description: "How to size the control plane, data plane, and stores for a given 
 otel-fleet separates a small stateful **control plane** from a horizontally
 scalable **data plane** (gateways) and three stores (PostgreSQL, ClickHouse,
 VictoriaMetrics). You scale each independently. These are starting points —
-measure with the [control-plane health dashboard](/otel-fleet/installation/helm/#control-plane-health-dashboard)
+measure with the [control-plane health dashboard](/installation/helm/#control-plane-health-dashboard)
 and your ClickHouse/VM metrics, then adjust.
 
 ## Components at a glance
@@ -45,7 +45,7 @@ and brief backend outages don't drop data.
 **ClickHouse.** The dominant cost. Plan disk from your ingest rate × retention:
 `daily_bytes ≈ events/day × avg_bytes/event × compression (~0.1–0.2)`, then
 × retention days, plus headroom for merges (~30–50%). Per-customer
-[retention overrides](/otel-fleet/installation/configuration/#data-lifecycle--erasure)
+[retention overrides](/installation/configuration/#data-lifecycle--erasure)
 and the global TTL bound growth. Give it fast local disk and memory for merges;
 shard once a single node's disk or merge throughput is the limit.
 
@@ -70,7 +70,7 @@ log is the main grower — a managed Postgres with routine backups is enough.
 The control-plane dashboard (request rate, 5xx ratio, latency p50/p95/p99,
 denials, OpAMP connected agents, Go/process runtime) tells you when the control
 plane needs more headroom. For the data plane, watch ClickHouse disk/merge
-metrics and VM active-series. Set the [alerts](/otel-fleet/operations/runbooks/#recommended-control-plane-alerts)
+metrics and VM active-series. Set the [alerts](/operations/runbooks/#recommended-control-plane-alerts)
 so you're paged before saturation, not after.
 
 A repeatable load harness lives in [`test/load/`](https://github.com/SAG-Solutions/otel-fleet/tree/main/test/load):

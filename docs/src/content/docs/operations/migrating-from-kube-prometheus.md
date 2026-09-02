@@ -117,7 +117,7 @@ vmalert then evaluates the alerting rules and routes firing alerts to
 Alertmanager. Leave `notifierUrl` empty to keep alerting **native** in otel-fleet
 instead — recreate the alerts as PromQL rules under **Settings → Alert rules**
 (fired to Slack / PagerDuty / Opsgenie / webhook, with severities and
-maintenance windows). See [Alerting](/otel-fleet/guides/alerting/).
+maintenance windows). See [Alerting](/guides/alerting/).
 
 ## Scraping control-plane components
 

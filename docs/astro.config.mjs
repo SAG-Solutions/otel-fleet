@@ -32,8 +32,7 @@ new MutationObserver(renderMermaid).observe(document.documentElement, {
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://sag-solutions.github.io',
-  base: '/otel-fleet',
+  site: 'https://docs.otel-fleet.com',
   markdown: {
     remarkPlugins: [remarkMermaid],
   },

@@ -100,7 +100,7 @@ confmap provider.
 Edge pipelines are rendered as a standalone per-customer collector config (all of
 the customer's active edge pipelines merged, sharing one OTLP receiver) and pushed
 over OpAMP to every connected agent of that customer immediately on activation.
-See [Edge agents](/otel-fleet/guides/edge-agents/).
+See [Edge agents](/guides/edge-agents/).
 
 ## Secrets in pipeline configs
 
@@ -122,4 +122,4 @@ The pipeline detail page shows per-stage throughput:
   VictoriaMetrics. Rendered component IDs encode the pipeline
   (`<type>/<customerSlug>__<pipelineSlug>__<node>`), which is what makes
   per-pipeline attribution of `otelcol_exporter_*` metrics possible — see
-  [the metric contract](/otel-fleet/architecture/#the-metric-contract).
+  [the metric contract](/architecture/#the-metric-contract).

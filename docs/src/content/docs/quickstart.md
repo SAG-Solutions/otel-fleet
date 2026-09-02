@@ -115,8 +115,8 @@ ClickHouse; an invalid key shows up as refused requests.
 
 ## Next steps
 
-- [Build a forwarding pipeline](/otel-fleet/guides/pipelines/) to route a customer's data to
+- [Build a forwarding pipeline](/guides/pipelines/) to route a customer's data to
   an external OTLP backend.
-- [Enroll an edge agent](/otel-fleet/guides/edge-agents/) with a bootstrap token.
-- [Configure SSO](/otel-fleet/guides/sso/) and invite your team.
-- [Deploy on Kubernetes](/otel-fleet/installation/helm/).
+- [Enroll an edge agent](/guides/edge-agents/) with a bootstrap token.
+- [Configure SSO](/guides/sso/) and invite your team.
+- [Deploy on Kubernetes](/installation/helm/).

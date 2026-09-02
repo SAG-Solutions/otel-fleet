@@ -69,7 +69,7 @@ service:
 ```
 
 For customer sites you can instead run an **edge agent** that otel-fleet manages
-remotely — see [Edge agents](/otel-fleet/guides/edge-agents/).
+remotely — see [Edge agents](/guides/edge-agents/).
 
 ### A quick test with telemetrygen
 

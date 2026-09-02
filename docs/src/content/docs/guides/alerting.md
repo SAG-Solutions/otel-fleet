@@ -151,7 +151,7 @@ region for cluster PromQL rules. The firing **state is still tracked**, so the
 suppressed alert's **resolve still notifies**, and the critical itself always
 notifies. Off by default (each rule notifies independently). This is scoped
 inhibition, not full routing trees — for label-based routing/grouping keep an
-Alertmanager via the cluster-monitoring [`notifierUrl`](/otel-fleet/operations/migrating-from-kube-prometheus/#keeping-alertmanager-optional-bridge).
+Alertmanager via the cluster-monitoring [`notifierUrl`](/operations/migrating-from-kube-prometheus/#keeping-alertmanager-optional-bridge).
 
 ### Examples
 
