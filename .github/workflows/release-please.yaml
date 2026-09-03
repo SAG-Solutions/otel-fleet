@@ -53,34 +53,89 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Per-arch native builds. Each (image × arch) builds on its OWN native runner
+  # (amd64 → ubuntu-latest, arm64 → ubuntu-24.04-arm) and pushes by digest with
+  # no tag. This replaces the previous single-runner QEMU emulation of arm64,
+  # which took hours for the heavy Go + bundled-collector images. The `merge`
+  # job below assembles the per-arch digests into one tagged multi-arch index.
   images:
     needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - {name: otel-fleet, dockerfile: Dockerfile}
+          - {name: otel-fleet-collector, dockerfile: Dockerfile.collector}
+          - {name: otel-fleet-supervisor, dockerfile: Dockerfile.supervisor}
+          # Slim variants: the same distro minus the five heavy SaaS/cloud
+          # exporters (Datadog/Elasticsearch/Kafka/S3/Splunk). Opt-in via
+          # images.collector.repository / agent supervisor.repository.
+          - {name: otel-fleet-collector-slim, dockerfile: Dockerfile.collector, buildArgs: BUILDER_CONFIG=builder-config.slim.yaml}
+          - {name: otel-fleet-supervisor-slim, dockerfile: Dockerfile.supervisor, buildArgs: BUILDER_CONFIG=builder-config.slim.yaml}
+        platform:
+          - {arch: amd64, runner: ubuntu-latest}
+          - {arch: arm64, runner: ubuntu-24.04-arm}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      # No QEMU — the runner is native for its arch.
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          build-args: ${{ matrix.image.buildArgs }}
+          platforms: linux/${{ matrix.platform.arch }}
+          # Push the per-arch image by digest only (no tag); the merge job tags
+          # the assembled index. Per-arch SBOM + max-mode SLSA provenance.
+          sbom: true
+          provenance: mode=max
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ matrix.image.name }},push-by-digest=true,name-canonical=true,push=true
+      - name: Export digest
+        env:
+          IMAGE: ${{ matrix.image.name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Assemble each image's per-arch digests into one tagged multi-arch index,
+  # then sign the index. One job per image.
+  merge:
+    needs: [release-please, images]
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - image: otel-fleet
-            dockerfile: Dockerfile
-          - image: otel-fleet-collector
-            dockerfile: Dockerfile.collector
-          - image: otel-fleet-supervisor
-            dockerfile: Dockerfile.supervisor
-          # Slim variants: the same distro minus the five heavy SaaS/cloud
-          # exporters (Datadog/Elasticsearch/Kafka/S3/Splunk). Opt-in via
-          # images.collector.repository / agent supervisor.repository.
-          - image: otel-fleet-collector-slim
-            dockerfile: Dockerfile.collector
-            buildArgs: BUILDER_CONFIG=builder-config.slim.yaml
-          - image: otel-fleet-supervisor-slim
-            dockerfile: Dockerfile.supervisor
-            buildArgs: BUILDER_CONFIG=builder-config.slim.yaml
+        image:
+          - otel-fleet
+          - otel-fleet-collector
+          - otel-fleet-supervisor
+          - otel-fleet-collector-slim
+          - otel-fleet-supervisor-slim
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-      - uses: docker/setup-qemu-action@v3
+          path: /tmp/digests
+          pattern: digests-${{ matrix.image }}-*
+          merge-multiple: true
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -93,29 +148,31 @@ jobs:
         run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
         env:
           TAG: ${{ needs.release-please.outputs.tag_name }}
-      - name: Build and push (multi-arch)
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          build-args: ${{ matrix.buildArgs }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          # Supply-chain attestations attached to the image index: an SBOM
-          # (buildkit/syft) and max-mode SLSA build provenance.
-          sbom: true
-          provenance: mode=max
-          tags: |
-            ${{ env.REGISTRY }}/${{ matrix.image }}:${{ steps.version.outputs.version }}
-            ${{ env.REGISTRY }}/${{ matrix.image }}:latest
-      - name: Sign image (cosign keyless)
-        run: |
-          cosign sign --yes \
-            "${REGISTRY}/${IMAGE}@${DIGEST}"
+      - name: Create and push manifest list
+        working-directory: /tmp/digests
         env:
           IMAGE: ${{ matrix.image }}
-          DIGEST: ${{ steps.build.outputs.digest }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          refs=""
+          for f in *; do refs="$refs ${REGISTRY}/${IMAGE}@sha256:${f}"; done
+          docker buildx imagetools create \
+            -t "${REGISTRY}/${IMAGE}:${VERSION}" \
+            -t "${REGISTRY}/${IMAGE}:latest" \
+            $refs
+      - name: Resolve index digest
+        id: idx
+        env:
+          IMAGE: ${{ matrix.image }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          digest=$(docker buildx imagetools inspect "${REGISTRY}/${IMAGE}:${VERSION}" --format '{{ .Manifest.Digest }}')
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+      - name: Sign image index (cosign keyless)
+        env:
+          IMAGE: ${{ matrix.image }}
+          DIGEST: ${{ steps.idx.outputs.digest }}
+        run: cosign sign --yes "${REGISTRY}/${IMAGE}@${DIGEST}"
 
   helm-chart:
     needs: release-please
